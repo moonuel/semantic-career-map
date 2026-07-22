@@ -138,6 +138,7 @@ These are explicitly listed as future improvements in the README, not blockers:
 - Implement text preprocessing: skill extraction, section segmentation, weighted concatenation
 - Generate base embeddings for dataset
 - Apply L2 normalization and optionally PCA whitening
+- Generate PCA, UMAP, and t-SNE visualizations to inspect embedding quality qualitatively
 - Build data augmentation pipeline: template-based synthetic posting generation
 - Build similarity search function
 - Evaluate optimization decisions with before/after metrics

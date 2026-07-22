@@ -260,6 +260,51 @@ def _role_color(role: str) -> str:
     return CATEGORY_COLORS.get(role, "#7f7f7f")
 
 
+def plot_tsne(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> None:
+    """Generate a 2D t-SNE scatter plot using cosine distance.
+
+    Args:
+        embeddings: (n, 384) float32 array.
+        jobs: List of job dicts matching the row order.
+        output_dir: Directory to write .png files.
+    """
+    from sklearn.manifold import TSNE
+
+    tsne = TSNE(
+        n_components=2,
+        metric="cosine",
+        perplexity=min(5, embeddings.shape[0] - 1),
+        random_state=RANDOM_SEED,
+        n_jobs=1,
+    )
+    coords = tsne.fit_transform(embeddings)
+
+    fig, ax = plt.subplots(figsize=(12, 9))
+    for role in sorted(set(j["role_category"] for j in jobs)):
+        mask = np.array([j["role_category"] == role for j in jobs])
+        ax.scatter(
+            coords[mask, 0], coords[mask, 1],
+            c=_role_color(role), label=role, s=100, alpha=0.85, edgecolors="white", linewidth=0.5,
+        )
+    for i, job in enumerate(jobs):
+        label = f"{job['company'].split(' (')[0].split(' ')[0][:8]}\n{job['title_raw'][:20]}"
+        ax.annotate(label, (coords[i, 0], coords[i, 1]), fontsize=6, alpha=0.8,
+                    textcoords="offset points", xytext=(5, 4))
+
+    ax.set_title("t-SNE — Embedding Space (cosine metric, perplexity={})".format(
+        min(5, len(jobs) - 1)))
+    ax.set_xlabel("t-SNE 1")
+    ax.set_ylabel("t-SNE 2")
+    ax.legend(fontsize=8, loc="best")
+    ax.grid(True, alpha=0.3)
+    ax.set_aspect("equal")
+
+    fig.tight_layout()
+    fig.savefig(output_dir / "raw_tsne_baseline.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"t-SNE plot saved → {output_dir / 'raw_tsne_baseline.png'}")
+
+
 def plot_pca(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> None:
     """Generate a 2D PCA scatter plot and a scree plot.
 
@@ -306,9 +351,9 @@ def plot_pca(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> None
     ax2.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(output_dir / "raw_pca.png", dpi=150, bbox_inches="tight")
+    fig.savefig(output_dir / "raw_pca_baseline.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"PCA plot saved → {output_dir / 'raw_pca.png'}")
+    print(f"PCA plot saved → {output_dir / 'raw_pca_baseline.png'}")
 
 
 def plot_umap(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> None:
@@ -347,9 +392,9 @@ def plot_umap(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> Non
     ax.set_aspect("equal")
 
     fig.tight_layout()
-    fig.savefig(output_dir / "raw_umap.png", dpi=150, bbox_inches="tight")
+    fig.savefig(output_dir / "raw_umap_baseline.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"UMAP plot saved → {output_dir / 'raw_umap.png'}")
+    print(f"UMAP plot saved → {output_dir / 'raw_umap_baseline.png'}")
 
 
 def print_summary(jobs: list[dict], embeddings: np.ndarray) -> None:
@@ -402,6 +447,7 @@ def main() -> None:
     print("\n── Step 3: Visualize ──")
     plot_pca(embeddings, jobs, OUTPUT_PLOTS_DIR)
     plot_umap(embeddings, jobs, OUTPUT_PLOTS_DIR)
+    plot_tsne(embeddings, jobs, OUTPUT_PLOTS_DIR)
 
     print_summary(jobs, embeddings)
     print("\nDone.")

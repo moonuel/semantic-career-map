@@ -41,10 +41,10 @@ Done. all-MiniLM-L6-v2 on CPU, L2-normalized to unit norm (verified). Shape (27,
 ### Step 1.2 — Visualization ✅
 
 **Input:** `data/raw_embeddings.npy`, `data/jobs.json`
-**Output:** `data/plots/raw_pca.png`, `data/plots/raw_umap.png`
+**Output:** `data/plots/raw_pca.png`, `data/plots/raw_umap.png`, `data/plots/raw_tsne.png`
 **Script:** `scripts/parse_and_embed_quickstart.py` (visualize portion)
 
-Done. PCA (2-component + scree plot) and UMAP (cosine metric, n_neighbors=5) generated with point labels colored by role category.
+Done. PCA (2-component + scree plot), UMAP (cosine metric, n_neighbors=5), and t-SNE (cosine metric, perplexity=5) generated with point labels colored by role category.
 
 ### Step 1.2b — Package Manager: uv
 
@@ -563,6 +563,7 @@ data/
   plots/
     raw_pca.png                 # Step 1.2
     raw_umap.png                # Step 1.2
+    raw_tsne.png                # Step 1.2
     augmented_umap.png          # Step 1.11
 
 backend/
@@ -579,7 +580,7 @@ tests/
 
 - [x] All 27 real postings parsed into structured JSON with correct sections
 - [x] Baseline embeddings stored and L2-normalized
-- [x] PCA + UMAP visualizations generated and saved (matplotlib PNGs)
+- [x] PCA + UMAP + t-SNE visualizations generated and saved (matplotlib PNGs)
 - [ ] Baseline metrics computed (self-retrieval, separation gap, NN audit)
 - [ ] All 5 experiments run with before/after deltas recorded
 - [ ] Golden set of 5–10 resumes created with relevance labels
