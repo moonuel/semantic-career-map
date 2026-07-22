@@ -21,7 +21,7 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 
 | Phase | Description | Status |
 |---|---|---|
-| 1 | Preprocessing & Embedding Optimization | 🔴 Not started |
+| 1 | Preprocessing & Embedding Optimization | 🟡 Baseline embedding + visualization complete (27 postings). Experiment loop next. |
 | 2 | Data Collection & Ingestion | 🟡 27 postings collected. LinkedIn saturated for ML roles. Will add non-ML postings later for contrast. |
 | 3 | Embedding Pipeline & Similarity Engine | 🔴 Not started |
 | 4 | FastAPI Backend | 🔴 Not started |
@@ -31,11 +31,14 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 | 8 | CI/CD Pipeline | 🔴 Not started |
 | 9 | Documentation & Polish | 🔴 Not started |
 
-**Collecting:** 27 ML/DS/AI job postings collected. LinkedIn no longer serves relevant roles at this volume. Stored in `data/selected-job-postings/`. Roles span: Data Scientist, ML Engineer, AI Engineer, Applied Researcher, AI Solutions Engineer, Performance Benchmarking Engineer, Data Engineering, and one banking DS/Analyst.
+**Collecting:** 27 ML/DS/AI job postings collected. Stored in `data/selected-job-postings/`. 
 
-**Next:** `scripts/parse_postings.py` → `data/jobs.json` → baseline embedding via `scripts/embed_baseline.py`.
+**Phase 1 progress:**
+- ✅ Steps 1.0–1.2: Parsed → embedded (all-MiniLM-L6-v2, L2-normalized) → PCA + UMAP visualized
+- 🔜 Step 1.3: Proxy metrics (self-retrieval, separation gap, nearest-neighbor audit)
+- 🔜 Steps 1.4–1.7: Preprocessing experiment loop (boilerplate → skills → weighted concat)
 
-**Future data expansion:** Non-ML postings (SWE, PM, DevOps) will be collected later to provide contrast in the embedding space — the current all-ML dataset risks producing a homogeneous vector space where all postings are similar, making retrieval distinctions harder to evaluate.
+**Future data expansion:** Non-ML postings (SWE, PM, DevOps) will be collected later to provide contrast in the embedding space.
 
 ### Data Status
 

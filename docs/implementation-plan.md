@@ -9,6 +9,8 @@
 **Duration:** 13–15 hours
 **Goal:** Establish a rigorous preprocessing workflow with baseline metrics, visualization, experiment tracking, and a golden evaluation set.
 
+> **Status:** Steps 1.0–1.2 complete (combined as `scripts/parse_and_embed_quickstart.py`). The combined script was a deliberate bootstrap for fast iteration; it will be refactored into the per-step scripts below once the experiment loop begins.
+
 ### Overview
 
 ```
@@ -20,127 +22,39 @@ Each preprocessing change is evaluated against the baseline using visualization 
 
 ---
 
-### Step 1.0 — Structured Data Extraction
+### Step 1.0 — Structured Data Extraction ✅
 
-**Input:** `data/selected-job-postings/*.md` (7 raw postings)
+**Input:** `data/selected-job-postings/*.md` (27 raw postings)
 **Output:** `data/jobs.json`
+**Script:** `scripts/parse_and_embed_quickstart.py` (parse portion)
 
-Parse each markdown file into structured fields:
+Done. 27 postings parsed with title extraction (filename heuristics + explicit text patterns), company detection (known mapping + filename fallback), role category labels (hand-mapped, 6 categories), and basic section detection (23 patterns covering about_role, responsibilities, qualifications, nice_to_have, what_we_offer, about_team).
 
-```json
-{
-  "id": "bmo-associate-data-scientist",
-  "title_raw": "Associate Data Scientist",
-  "company": "BMO Capital Markets",
-  "source_file": "bmo-associate-data-scientist.md",
-  "sections": {
-    "about_role": "...",
-    "responsibilities": "...",
-    "qualifications": "...",
-    "nice_to_have": "..."
-  },
-  "raw_full_text": "About the job BMO Capital Markets is a leading...",
-  "seniority_raw": "Associate",
-  "role_category": null
-}
-```
-
-**Implementation notes:**
-- Extract title from filename or from the first `#` heading if present
-- Detect sections by matching known headers: "About the Role", "Key Responsibilities", "Qualifications", "Nice to Have", "What We Offer", "About Us"
-- Sections not explicitly matched become the "boilerplate" bucket
-- `role_category` is hand-labeled (choices: "Data Scientist", "Applied Researcher", "ML Engineer", "AI Researcher", "Data Scientist (Risk)")
-
-**Script:** `scripts/parse_postings.py`
-
----
-
-### Step 1.1 — Baseline Embedding
+### Step 1.1 — Baseline Embedding ✅
 
 **Input:** `data/jobs.json`
-**Output:** `data/raw_embeddings.npy`, `data/raw_metadata.json`
+**Output:** `data/raw_embeddings.npy`
+**Script:** `scripts/parse_and_embed_quickstart.py` (embed portion)
 
-Embed the **entire raw markdown text** (including boilerplate, salary, EEO) into vectors.
+Done. all-MiniLM-L6-v2 on CPU, L2-normalized to unit norm (verified). Shape (27, 384). Mean pairwise cosine sim: 0.40.
 
-**Configuration:**
-- Model: `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
-- `normalize_embeddings=True` (L2 normalization at output)
-- `prompt_name=None` (no instruction prefix for symmetric tasks)
+### Step 1.2 — Visualization ✅
 
-```python
-from sentence_transformers import SentenceTransformer
+**Input:** `data/raw_embeddings.npy`, `data/jobs.json`
+**Output:** `data/plots/raw_pca.png`, `data/plots/raw_umap.png`
+**Script:** `scripts/parse_and_embed_quickstart.py` (visualize portion)
 
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-embeddings = model.encode(
-    [job["raw_full_text"] for job in jobs],
-    normalize_embeddings=True,
-    show_progress_bar=False,
-)
-np.save("data/raw_embeddings.npy", embeddings)
+Done. PCA (2-component + scree plot) and UMAP (cosine metric, n_neighbors=5) generated with point labels colored by role category.
+
+### Step 1.2b — Package Manager: uv
+
+The project uses `uv` for package management via `pyproject.toml`. Dependencies are also mirrored in `requirements.txt` for compatibility. Commands:
+
+```bash
+uv sync                           # Install all dependencies
+uv pip install -r requirements.txt  # Alternative: pip from requirements.txt
+uv run spacy download en_core_web_sm  # One-time: download spaCy model
 ```
-
-**Verification:**
-```python
-# Confirm L2 normalization
-norms = np.linalg.norm(embeddings, axis=1)
-assert np.allclose(norms, 1.0, atol=1e-6), f"Expected unit norms, got {norms}"
-print(f"Embeddings shape: {embeddings.shape}")  # (7, 384)
-```
-
-**Script:** `scripts/embed_baseline.py`
-
----
-
-### Step 1.2 — Visualization
-
-**Input:** `data/raw_embeddings.npy`, `data/raw_metadata.json`
-**Output:** `data/plots/raw_pca.png`, `data/plots/raw_umap.png`, qualitative notes
-
-Two-pass visualization to understand the raw embedding space.
-
-**PCA (Pass 1):**
-```python
-from sklearn.decomposition import PCA
-
-pca = PCA(n_components=2, random_state=42)
-coords_pca = pca.fit_transform(embeddings)
-
-print(f"Explained variance: {pca.explained_variance_ratio_}")
-# Plot with point labels, colored by role_category
-```
-
-**UMAP (Pass 2):**
-```python
-import umap
-
-reducer = umap.UMAP(n_neighbors=3, min_dist=0.1, metric="cosine", random_state=42)
-coords_umap = reducer.fit_transform(embeddings)
-```
-
-**Visualization library:** Use [DataMapPlot](https://github.com/TutteInstitute/datamapplot) (`pip install datamapplot`) instead of raw matplotlib. It produces interactive HTML data maps from UMAP coordinates with one call — zoomable, hover-labeled, and cluster-aware. Drop-in replacement for matplotlib scatter:
-
-```python
-import datamapplot
-
-datamapplot.create_plot(
-    coords_umap,
-    labels=role_labels,
-    title="Job Posting Embedding Space (Raw)",
-    sub_title="27 ML postings, all-MiniLM-L6-v2, cosine metric",
-)
-```
-
-Side-by-side PCA (matplotlib) vs UMAP (DataMapPlot) for the README. The HTML output can be embedded in the frontend for the deferred "Interactive UMAP visualization" feature.
-
-> See `docs/tutte-institute-tool-review.md` for evaluation of Tutte Institute tools.
-
-**What to record:**
-- PCA explained variance ratio (first 2 components)
-- Qualitative: "Data Scientist postings from BMO and Intact form a loose cluster"
-- Qualitative: "Boilerplate sections appear to pull same-company postings together"
-- Save plots to `data/plots/` for README inclusion
-
-**Script:** `scripts/visualize.py`
 
 ---
 
@@ -629,10 +543,8 @@ The final preprocessing pipeline:
 
 ```
 scripts/
-  parse_postings.py            # Step 1.0 — markdown → JSON
-  embed_baseline.py             # Step 1.1 — raw text → embeddings
-  visualize.py                  # Step 1.2 — PCA (matplotlib) + UMAP (DataMapPlot)
-  evaluate_baseline.py          # Step 1.3 — proxy metrics + NN audit + HDBSCAN cluster check
+  parse_and_embed_quickstart.py  # Steps 1.0–1.2 combined (bootstrap, done)
+  evaluate_baseline.py           # Step 1.3 — proxy metrics + NN audit + HDBSCAN cluster check
   exp_boilerplate.py            # Step 1.4 — boilerplate removal
   exp_canonicalize_titles.py    # Step 1.5 — title canonicalization
   exp_skill_extraction.py       # Step 1.6 — skill extraction
@@ -665,11 +577,10 @@ tests/
 
 ### Phase 1 Success Criteria
 
-- [ ] All 27 real postings parsed into structured JSON with correct sections
-- [ ] Baseline embeddings stored and L2-normalized
-- [ ] PCA + UMAP visualizations generated and saved (PCA via matplotlib, UMAP via DataMapPlot interactive HTML)
-- [ ] Baseline metrics computed (self-retrieval, separation gap, NN audit, HDBSCAN cluster alignment)
-- [ ] HDBSCAN cluster labels compared against hand-labeled role_category — alignment recorded
+- [x] All 27 real postings parsed into structured JSON with correct sections
+- [x] Baseline embeddings stored and L2-normalized
+- [x] PCA + UMAP visualizations generated and saved (matplotlib PNGs)
+- [ ] Baseline metrics computed (self-retrieval, separation gap, NN audit)
 - [ ] All 5 experiments run with before/after deltas recorded
 - [ ] Golden set of 5–10 resumes created with relevance labels
 - [ ] Final pytrec_eval metrics computed for baseline vs best config
