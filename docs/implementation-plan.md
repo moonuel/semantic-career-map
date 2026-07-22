@@ -30,6 +30,8 @@ Each preprocessing change is evaluated against the baseline using visualization 
 
 Done. 27 postings parsed with title extraction (filename heuristics + explicit text patterns), company detection (known mapping + filename fallback), role category labels (hand-mapped, 6 categories), and basic section detection (23 patterns covering about_role, responsibilities, qualifications, nice_to_have, what_we_offer, about_team).
 
+**Planned addition:** A `function_category` field will be added in a second labeling pass (Step 1.2c) — this captures what the job actually does (data-engineering, exploratory-analysis, model-development, model-production, research, applied-ai) rather than what it's called. See Step 1.2c for details.
+
 ### Step 1.1 — Baseline Embedding ✅
 
 **Input:** `data/jobs.json`
@@ -55,6 +57,31 @@ uv sync                           # Install all dependencies
 uv pip install -r requirements.txt  # Alternative: pip from requirements.txt
 uv run spacy download en_core_web_sm  # One-time: download spaCy model
 ```
+
+### Step 1.2c — Function-Based Role Labels (Planned)
+
+Current `role_category` labels are derived from raw job titles (Data Scientist, ML Engineer, AI Engineer, etc.), but job titles are a noisy signal — a "Data Scientist" at Coca-Cola doing demand modeling and a "Data Scientist" at Scribd building NLP models are fundamentally different roles. For clustering evaluation, we need labels that reflect **what the job actually does**, not what it's called.
+
+**Secondary labeling pass:** Each posting will be tagged with 1–2 function categories from a 12-category taxonomy derived from 2025–2026 job market research (see `docs/research-reports/ml-ai-responsibility-taxonomy.md` for the full report with sources):
+
+| Label | Domain | Description |
+|---|---|---|
+| `agentic-ai` | LLM/AI | Autonomous agents, tool use, multi-agent orchestration |
+| `llm-fine-tuning` | LLM/AI | LoRA/SFT/DPO model adaptation, distillation |
+| `llm-information-retrieval` | LLM/AI | RAG pipelines, hybrid search, vector DBs, retrieval eval |
+| `classical-ml` | Classical ML | Structured/tabular data, XGBoost, feature engineering |
+| `mlops-production` | ML Ops | CI/CD, model serving, drift monitoring, on-call |
+| `data-engineering` | Data | ETL/ELT, orchestration, data quality, warehousing |
+| `analytics-storytelling` | Analytics | EDA, A/B tests, dashboards, stakeholder presentations |
+| `computer-vision` | CV | Image/video, object detection, OCR, VLMs |
+| `ml-platform` | ML Infra | Feature stores, model registries, shared infra for ML teams |
+| `reinforcement-learning` | RL | PPO, reward engineering, environment simulation |
+| `research` | Research | Papers, novel algorithms, prototyping frontier methods |
+| `ai-safety-governance` | Safety | Bias auditing, explainability, red-teaming, compliance |
+
+**Why this matters for clustering:** Same-title roles that do different work (e.g., ICBC "Data Science Analyst" doing SQL reporting vs Scribd "Data Scientist II" building NLP models) should not cluster together. If preprocessing improvements bring same-function postings closer, the embedding space is capturing real work similarity, not title artifacts. This is a more honest clustering target than raw title categories.
+
+**Timing:** Applied before the experiment loop (Step 1.3), alongside the existing hand-labeled `role_category`. Both label sets will be stored in `jobs.json` and available to all evaluation scripts.
 
 ---
 
@@ -99,9 +126,8 @@ gap = np.mean(same_role_sims) - np.mean(diff_role_sims)
 print(f"Same-role mean sim: {np.mean(same_role_sims):.3f}")
 print(f"Cross-role mean sim: {np.mean(diff_role_sims):.3f}")
 print(f"Separation gap:     {gap:.3f}")
-# Positive gap = same-role postings are closer to each other ✓
-# Negative gap = cross-role postings are closer → bad
 ```
+Compute separation gap for **both** `role_category` (title-based) and `function_category` (work-based, from Step 1.2c). The function-based gap is the more meaningful signal — same-title labels can be misleading, but same-function postings should genuinely cluster together.
 
 **Metric C: Nearest-Neighbor Audit (Manual)**
 
@@ -119,7 +145,8 @@ For each posting, record top-2 nearest neighbors and a qualitative judgment:
   "self_retrieval": {"bmo-associate-data-scientist": 0, "...": 0},
   "same_role_mean_sim": 0.72,
   "cross_role_mean_sim": 0.68,
-  "separation_gap": 0.04,
+  "separation_gap_title": 0.04,
+  "separation_gap_function": 0.09,
   "nn_audit": {"bmo-associate-data-scientist": ["intact-data-scientist-2", "rbc-data-scientist"]}
 }
 ```
@@ -133,7 +160,7 @@ For each posting, record top-2 nearest neighbors and a qualitative judgment:
 **Input:** `data/raw_embeddings.npy`, `data/raw_metadata.json`
 **Output:** Cluster-vs-category alignment notes
 
-As a fourth sanity-check metric, run HDBSCAN clustering on the embeddings and compare against hand-labeled `role_category`. This validates that the embedding space contains meaningful cluster structure — if an unsupervised algorithm recovers your hand labels, the labels are grounded in the data.
+As a fourth sanity-check metric, run HDBSCAN clustering on the embeddings and compare against both `role_category` (title-based) and `function_category` (work-based, from Step 1.2c). The function alignment is the primary signal — if an unsupervised algorithm recovers work-based function labels, the embedding space captures what people actually do, not just what their title says.
 
 ```python
 import hdbscan
@@ -146,13 +173,15 @@ clusterer = hdbscan.HDBSCAN(
 )
 labels = clusterer.fit_predict(embeddings)
 
-# Cross-tabulate HDBSCAN labels vs role_category
+# Cross-tabulate HDBSCAN labels vs role_category and function_category
 # Record: number of clusters found, noise points, alignment with hand labels
 ```
 
 **What to record:**
 - Number of clusters found by HDBSCAN
-- Whether same-role_category postings fall in the same cluster
+- Whether same-role_category postings fall in the same cluster (caveat: titles are noisy)
+- Whether same-function_category postings fall in the same cluster (primary signal)
+- Whether cross-function postings are merged into one cluster (indicates embedding doesn't separate those functions)
 - Whether cross-category postings are merged into one cluster (indicates embedding doesn't separate those roles)
 - Any postings assigned to the noise label (-1) — indicates an outlier in the embedding space
 
