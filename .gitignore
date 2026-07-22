@@ -11,3 +11,4 @@ data/*_metadata.json
 data/baseline_metrics.json
 data/golden_set.json
 *.egg-info
+.env
