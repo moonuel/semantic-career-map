@@ -617,7 +617,7 @@ tests/
 
 ### Phase 1 Success Criteria
 
-- [ ] All 7+ real postings parsed into structured JSON with correct sections
+- [ ] All 27 real postings parsed into structured JSON with correct sections
 - [ ] Baseline embeddings stored and L2-normalized
 - [ ] PCA + UMAP visualizations generated and saved
 - [ ] Baseline metrics computed (self-retrieval, separation gap, NN audit)
@@ -633,12 +633,20 @@ tests/
 ## Phase 2: Data Collection & Ingestion
 
 **Duration:** 4–6 hours
-**Goal:** Expand from 7 to 50+ real job postings.
+**Goal:** Expand from 7 to 27+ real job postings, then later to 50+.
 
-### Step 2.0 — Collect 50+ ML Job Postings
-- Sources: LinkedIn, Indeed, company career pages, GitHub job boards
-- Target: 50–200 ML/DS/AI job postings (diverse roles, companies, seniority levels)
-- Store as markdown files in `data/collected-job-postings/`
+### Step 2.0 — Collect ML Job Postings (Complete)
+
+- **Status:** 27 postings collected from LinkedIn
+- **Sources:** LinkedIn
+- **Role breakdown:** Data Scientist (8), ML Engineer (5), AI Engineer (3), Applied Researcher (2), AI Solutions Engineer (1), Performance Benchmarking (1), Data Engineering (1), DS/Analyst (1), Data Analytics Intern (1), AI Intern (1), Consultant Analyst (1), ML Recruitment (1), Decision Scientist (1)
+- **Note:** LinkedIn no longer serves relevant ML roles at this volume. Collection stopped at 27.
+
+### Step 2.0b — Future: Non-ML Postings for Contrast
+
+- **Plan:** Collect 10–20 non-ML postings (Software Engineer, Product Manager, DevOps, Data Analyst, Project Manager) to add diversity
+- **Why:** An all-ML dataset risks producing an overly homogeneous embedding space. Non-ML postings act as negative examples, making retrieval distinctions between ML sub-roles more meaningful and easier to evaluate.
+- **Timing:** After Phase 1 preprocessing pipeline is validated on the 27 ML postings
 
 ### Step 2.1 — Re-run Phase 1 Pipeline on Expanded Dataset
 - Parse all new postings through the `parse_postings.py` script
@@ -647,7 +655,7 @@ tests/
 - Regenerate golden set if needed (new roles may require new resume profiles)
 
 ### Step 2.2 — Generate Augmented Data
-- Run `augment_jobs.py` on the expanded dataset (50+ seeds → 300+ synthetic)
+- Run `augment_jobs.py` on the collected dataset (27 seeds → ~200+ synthetic with non-ML contrast)
 - Spot-check 10 synthetic postings for realism
 
 ---

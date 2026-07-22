@@ -22,7 +22,7 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 | Phase | Description | Status |
 |---|---|---|
 | 1 | Preprocessing & Embedding Optimization | 🔴 Not started |
-| 2 | Data Collection & Ingestion | 🟡 In progress — collecting from LinkedIn |
+| 2 | Data Collection & Ingestion | 🟡 27 postings collected. LinkedIn saturated for ML roles. Will add non-ML postings later for contrast. |
 | 3 | Embedding Pipeline & Similarity Engine | 🔴 Not started |
 | 4 | FastAPI Backend | 🔴 Not started |
 | 5 | Docker Containerization | 🔴 Not started |
@@ -31,13 +31,18 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 | 8 | CI/CD Pipeline | 🔴 Not started |
 | 9 | Documentation & Polish | 🔴 Not started |
 
-**Collecting:** Targeting 50–200 ML/DS/AI job postings from LinkedIn. Currently at 7 in `data/selected-job-postings/`. Format: markdown files per posting. After collection → `scripts/parse_postings.py` → `data/jobs.json` → baseline embedding via `scripts/embed_baseline.py`.
+**Collecting:** 27 ML/DS/AI job postings collected. LinkedIn no longer serves relevant roles at this volume. Stored in `data/selected-job-postings/`. Roles span: Data Scientist, ML Engineer, AI Engineer, Applied Researcher, AI Solutions Engineer, Performance Benchmarking Engineer, Data Engineering, and one banking DS/Analyst.
+
+**Next:** `scripts/parse_postings.py` → `data/jobs.json` → baseline embedding via `scripts/embed_baseline.py`.
+
+**Future data expansion:** Non-ML postings (SWE, PM, DevOps) will be collected later to provide contrast in the embedding space — the current all-ML dataset risks producing a homogeneous vector space where all postings are similar, making retrieval distinctions harder to evaluate.
 
 ### Data Status
 
-- **Real job postings collected:** 7 (in `data/selected-job-postings/`)
-- **Target for Phase 2:** 50–200
-- **Target with augmentation:** 350+
+- **Real job postings collected:** 27 (in `data/selected-job-postings/`)
+- **Role breakdown:** Data Scientist (8), ML Engineer (5), AI Engineer (3), Applied Researcher (2), AI Solutions Engineer (1), Performance Benchmarking (1), Data Engineering (1), DS/Analyst (1), Data Analytics Intern (1), AI Intern (1), Consultant Analyst (1), ML Recruitment (1), Decision Scientist (1)
+- **Target for Phase 2:** 27 (collected) — expanding to include non-ML roles in future
+- **Target with augmentation:** ~350+
 
 ---
 

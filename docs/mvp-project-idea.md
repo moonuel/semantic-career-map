@@ -104,6 +104,7 @@ These are explicitly listed as future improvements in the README, not blockers:
 
 - Multiple embedding model comparison
 - Clustering and job family discovery
+- **Non-ML postings for contrast:** Collect 10–20 non-ML job postings (SWE, PM, DevOps, Data Analyst) to diversify the embedding space. An all-ML dataset risks homogeneity — all vectors cluster together, making retrieval distinctions between ML sub-roles less meaningful.
 - Resume parsing and skill extraction
 - Classification layer (job family prediction)
 - **ONNX Runtime export:** Convert the PyTorch Sentence Transformer model to ONNX for 2–3× inference speedup and ~75% smaller Docker image (ONNX Runtime is C++ with Python bindings — eliminates torch as a dependency). Requires one-time model export and manual tokenization + pooling implementation. See `docs/embedding-optimization-research.md` for analysis.
