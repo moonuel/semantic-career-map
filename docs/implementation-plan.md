@@ -115,10 +115,24 @@ import umap
 
 reducer = umap.UMAP(n_neighbors=3, min_dist=0.1, metric="cosine", random_state=42)
 coords_umap = reducer.fit_transform(embeddings)
-
-# Plot with point labels, colored by role_category
-# Side-by-side comparison with PCA plot
 ```
+
+**Visualization library:** Use [DataMapPlot](https://github.com/TutteInstitute/datamapplot) (`pip install datamapplot`) instead of raw matplotlib. It produces interactive HTML data maps from UMAP coordinates with one call — zoomable, hover-labeled, and cluster-aware. Drop-in replacement for matplotlib scatter:
+
+```python
+import datamapplot
+
+datamapplot.create_plot(
+    coords_umap,
+    labels=role_labels,
+    title="Job Posting Embedding Space (Raw)",
+    sub_title="27 ML postings, all-MiniLM-L6-v2, cosine metric",
+)
+```
+
+Side-by-side PCA (matplotlib) vs UMAP (DataMapPlot) for the README. The HTML output can be embedded in the frontend for the deferred "Interactive UMAP visualization" feature.
+
+> See `docs/tutte-institute-tool-review.md` for evaluation of Tutte Institute tools.
 
 **What to record:**
 - PCA explained variance ratio (first 2 components)
@@ -200,6 +214,40 @@ For each posting, record top-2 nearest neighbors and a qualitative judgment:
 
 ---
 
+### Step 1.3b — HDBSCAN Cluster Validation (Interleaved Metric)
+
+**Input:** `data/raw_embeddings.npy`, `data/raw_metadata.json`
+**Output:** Cluster-vs-category alignment notes
+
+As a fourth sanity-check metric, run HDBSCAN clustering on the embeddings and compare against hand-labeled `role_category`. This validates that the embedding space contains meaningful cluster structure — if an unsupervised algorithm recovers your hand labels, the labels are grounded in the data.
+
+```python
+import hdbscan
+
+clusterer = hdbscan.HDBSCAN(
+    min_cluster_size=2,
+    min_samples=1,
+    metric="euclidean",
+    cluster_selection_method="eom",
+)
+labels = clusterer.fit_predict(embeddings)
+
+# Cross-tabulate HDBSCAN labels vs role_category
+# Record: number of clusters found, noise points, alignment with hand labels
+```
+
+**What to record:**
+- Number of clusters found by HDBSCAN
+- Whether same-role_category postings fall in the same cluster
+- Whether cross-category postings are merged into one cluster (indicates embedding doesn't separate those roles)
+- Any postings assigned to the noise label (-1) — indicates an outlier in the embedding space
+
+Run this after every experiment (Steps 1.4–1.7) to track whether cluster structure improves.
+
+> See `docs/tutte-institute-tool-review.md` for background on HDBSCAN and the TIMC vector toolkit.
+
+---
+
 ### Step 1.4 — Experiment 1: Boilerplate Removal
 
 **Hypothesis:** Company descriptions, "About Us", EEO statements, salary disclosures, and recruiter notes are noise. Removing them increases the same-role vs cross-role separation gap.
@@ -223,8 +271,8 @@ clean_text = (
 
 **Re-embed & evaluate:**
 - Run same embedding pipeline as Step 1.1 but with `clean_text`
-- Re-run metrics from Step 1.3
-- Re-visualize with UMAP (same params as Step 1.2)
+- Re-run metrics from Step 1.3 (self-retrieval, separation gap, NN audit, HDBSCAN cluster alignment)
+- Re-visualize with UMAP (same params as Step 1.2, DataMapPlot)
 
 **Record delta:**
 ```
@@ -583,14 +631,14 @@ The final preprocessing pipeline:
 scripts/
   parse_postings.py            # Step 1.0 — markdown → JSON
   embed_baseline.py             # Step 1.1 — raw text → embeddings
-  visualize.py                  # Step 1.2 — PCA + UMAP plots
-  evaluate_baseline.py          # Step 1.3 — proxy metrics + NN audit
+  visualize.py                  # Step 1.2 — PCA (matplotlib) + UMAP (DataMapPlot)
+  evaluate_baseline.py          # Step 1.3 — proxy metrics + NN audit + HDBSCAN cluster check
   exp_boilerplate.py            # Step 1.4 — boilerplate removal
   exp_canonicalize_titles.py    # Step 1.5 — title canonicalization
   exp_skill_extraction.py       # Step 1.6 — skill extraction
   exp_weighted_concat.py        # Step 1.7 — weighted concat + fusion
   augment_jobs.py               # Step 1.10 — template-based augmentation
-  visualize_augmented.py        # Step 1.11 — full-scale UMAP
+  visualize_augmented.py        # Step 1.11 — full-scale UMAP (DataMapPlot)
   evaluate_final.py             # Step 1.9 — pytrec_eval metrics
 
 data/
@@ -619,8 +667,9 @@ tests/
 
 - [ ] All 27 real postings parsed into structured JSON with correct sections
 - [ ] Baseline embeddings stored and L2-normalized
-- [ ] PCA + UMAP visualizations generated and saved
-- [ ] Baseline metrics computed (self-retrieval, separation gap, NN audit)
+- [ ] PCA + UMAP visualizations generated and saved (PCA via matplotlib, UMAP via DataMapPlot interactive HTML)
+- [ ] Baseline metrics computed (self-retrieval, separation gap, NN audit, HDBSCAN cluster alignment)
+- [ ] HDBSCAN cluster labels compared against hand-labeled role_category — alignment recorded
 - [ ] All 5 experiments run with before/after deltas recorded
 - [ ] Golden set of 5–10 resumes created with relevance labels
 - [ ] Final pytrec_eval metrics computed for baseline vs best config

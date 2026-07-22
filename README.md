@@ -86,10 +86,11 @@ See `docs/mvp-project-idea.md` for the full project scope and design decisions.
 ## Documentation Index
 
 | Document | Purpose |
-|---|---|
+|---|---|---|
 | `docs/mvp-project-idea.md` | Project scope, deliverables, finish line |
 | `docs/implementation-plan.md` | Detailed phase-by-phase implementation plan |
 | `docs/embedding-optimization-research.md` | Research report on IR embedding optimization |
+| `docs/tutte-institute-tool-review.md` | Evaluation of Tutte Institute tools (UMAP, HDBSCAN, DataMapPlot, EVōC, Toponymy, etc.) for this project |
 | `docs/initial-project-idea.md` | Original project vision (historical reference) |
 | `AGENTS.md` | Operational instructions for AI coding agents |
 
@@ -111,7 +112,7 @@ See `docs/mvp-project-idea.md` for the full project scope and design decisions.
 ## Future Work
 
 **Retrieval & Model Quality**
-- Clustering and job family discovery
+- Clustering and job family discovery (planned: **EVōC** + **Toponymy** from Tutte Institute — see `docs/tutte-institute-tool-review.md`)
 - Multiple embedding model comparison
 - Hybrid BM25 + dense retrieval
 - Cross-encoder reranker for improved top-k precision
@@ -126,7 +127,7 @@ These were consciously deferred after profiling — current latency is acceptabl
 - **GPU-accelerated inference:** Enable CUDA for batch encoding of 10K+ postings. Not justified at current scale — `all-MiniLM-L6-v2` encodes a posting in ~20ms on CPU, well below any user-perceptible threshold. Would matter if a cross-encoder reranker were added to the query path.
 
 **User-Facing**
-- Interactive UMAP visualization of embedding space
+- Interactive UMAP visualization of embedding space (planned: **DataMapPlot** from Tutte Institute)
 - Recruiter-facing search interface
 - Salary estimation
 
