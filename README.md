@@ -22,7 +22,7 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 | Phase | Description | Status |
 |---|---|---|
 | 1 | Preprocessing & Embedding Optimization | 🔴 Not started |
-| 2 | Data Collection & Ingestion | 🔴 Not started |
+| 2 | Data Collection & Ingestion | 🟡 In progress — collecting from LinkedIn |
 | 3 | Embedding Pipeline & Similarity Engine | 🔴 Not started |
 | 4 | FastAPI Backend | 🔴 Not started |
 | 5 | Docker Containerization | 🔴 Not started |
@@ -31,7 +31,7 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 | 8 | CI/CD Pipeline | 🔴 Not started |
 | 9 | Documentation & Polish | 🔴 Not started |
 
-**Phase 1 tasks (next):** Parse raw postings → baseline embedding → visualize → measure preprocessing impact → golden set. See `docs/implementation-plan.md` for detail.
+**Collecting:** Targeting 50–200 ML/DS/AI job postings from LinkedIn. Currently at 7 in `data/selected-job-postings/`. Format: markdown files per posting. After collection → `scripts/parse_postings.py` → `data/jobs.json` → baseline embedding via `scripts/embed_baseline.py`.
 
 ### Data Status
 
