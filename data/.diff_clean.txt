@@ -1,0 +1,1299 @@
+
+──────────────────────────────────────────────────────────────────────
+## affirm-ai-solutions-engineer | Affirm | AI Solutions Engineer
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team', 'what_we_offer']
+  Raw: 4834 chars → Clean: 3922 chars (912 removed)
+
+About the job
+
+Affirm is reinventing credit to make it more honest and friendly, giving consumers the flexibility to buy now and pay later without any hidden fees or compounding interest.
+
+About The Role
+
+This is a hands-on engineering role. You will build, deploy, and maintain AI-powered systems that serve the People function and the broader employee base. The work is taking messy business problems (fragmented knowledge, manual processes, disconnected tools) and turning them into working software: agents, APIs, applications, and infrastructure. You will work closely with partners across the People function who own domain expertise and stakeholder relationships. Your job is to turn their rough applications and processes into production systems, and to push back when a technical constraint changes what's possible. This is not a pure backend role. You will be in the room when business problems are being scoped, and you need to understand the problem well enough to make architecture decisions on your own. You also need to take what you build and get it running in production. Hosting, security, deployment, and ongoing maintenance are all part of the job.
+
+What You'll Do
+
+Build and ship AI agents, APIs, and applications on Affirm's internal platform (Snowpark Container Services / Quicksilver). You own the full lifecycle: architecture, containerization, networking, secrets, CI/CD, monitoring, and fixing what breaks.
+Turn messy business requirements from People Operations stakeholders into production systems. Integrate with Workday, Notion, and case management tools so AI surfaces real answers from governed content, not model guesses.
+Navigate Affirm's existing security and data governance infrastructure to get AI systems running safely on people data. RBACs, data classification, and access policies already exist, but connecting them across systems (Workday, Snowflake, case tools) is where it gets messy. You figure out what's allowed, build within those constraints, and make sure employee data stays where it's supposed to.
+Design reliability infrastructure for multi-model LLM services. Structured output validation, fallback chains, circuit breakers for external APIs, and quality controls that catch hallucination before users see it.
+Work directly with non-technical stakeholders to scope problems, make architecture decisions, and give honest assessments of what AI can and can't do. You translate in both directions.
+Contribute to the team's shared Python codebase, dbt models, and Snowflake infrastructure as part of a small, full-stack team that ships fast.
+Own what you build. When something breaks in production, you diagnose and fix it.
+
+What We're Looking For
+
+Software engineering foundation. You have built, deployed, and maintained production applications. You understand version control (Git/GitHub), CI/CD pipelines, containerization, and what it takes to keep software running, not just written.
+Systems thinking and technical architecture. You understand how software systems fit together: databases, APIs, authentication, hosting, deployment pipelines. You can make architecture decisions, evaluate trade-offs, and read code well enough to know when something is wrong. The team works primarily in Python, and you should be comfortable in it, but the ability to think in systems matters more than raw coding skill.
+Builder disposition. You have created something from nothing: a system, a tool, a platform, in an environment where nobody handed you a spec. You identified the problem, designed the solution, and shipped it.
+Ability to work across the technical-business boundary. You can sit in a meeting with non-technical stakeholders, understand the real problem behind the stated request, and come back with a solution that actually addresses it. You translate in both directions: technical constraints into business language, business needs into technical requirements.
+
+──────────────────────────────────────────────────────────────────────
+## affirm-ml-engineer-2 | Affirm | ML Engineer 2
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 3780 chars → Clean: 3700 chars (80 removed)
+
+About the job
+
+Affirm is reinventing credit to make it more honest and friendly, giving consumers the flexibility to buy now and pay later without any hidden fees or compounding interest.
+
+On the Servicing ML team, you will build and improve machine learning and AI systems that automate customer operations such as disputes, returns, fraud, and chargebacks to make the best decisions for Affirm and our customers. You will work closely with experienced ML engineers, platform partners, and cross-functional stakeholders to take models from idea to prototype to production, and to keep them healthy with strong measurement and monitoring.
+
+What You'll Do
+
+You will develop AI systems that automate dispute and chargeback handling using structured evidence and business logic, creating a better experience for our customers.
+You will build models that automate refunds, getting money back to our customers faster.
+You will build and maintain evidence extraction pipelines that process unstructured data using LLM-powered workflows to produce structured, actionable outputs.
+You will prototype new modeling ideas, run offline experiments, and drive the best-performing approaches into production with appropriate risk controls.
+You will collaborate across Engineering, Servicing Operations, Product, and ML Platform to define requirements, evaluate tradeoffs, and communicate results clearly to both technical and non-technical audiences.
+
+What We Look For
+
+You have a total of 2+ years of experience as a machine learning engineer
+Strong Python skills and experience writing production-quality code
+Experience building and evaluating models for tabular classification problems (preferably gradient-boosted decision trees like LightGBM/XGBoost/CatBoost).
+Experience building applications with LLM APIs (e.g., OpenAI, Anthropic), including structured extraction, prompt engineering, and orchestration frameworks like LangChain or LangGraph.
+Familiarity with document and unstructured data processing (PDF/image extraction, text parsing, or similar).
+Experience with ML lifecycle tooling for training orchestration, experimentation, and model monitoring (e.g., Kubeflow, Airflow, MLflow, or equivalent internal platforms).
+Proficient in using AI-powered developer tools (e.g., Claude Code, Cursor, or similar) to accelerate iteration, debugging, and code quality as part of day-to-day development workflows.
+You have mastered taking a simple problem or business scenario into a solution that interacts with multiple software components, and executing on it by writing clear, easily understood, well tested and extensible code.
+You are comfortable navigating a large code base, debugging others' code, and providing feedback to other engineers through code reviews.
+Your experience demonstrates that you take ownership of your growth, proactively seeking feedback from your team, your manager, and your stakeholders.
+You have strong verbal and written communication skills that support effective collaboration with our global engineering team.
+
+Pay Grade - L
+
+Equity Grade - 5
+
+Employees new to Affirm typically come in at the start of the pay range. Affirm focuses on providing a simple and transparent pay structure which is based on a variety of factors, including location, experience and job-related skills.
+
+Base pay is part of a total compensation package that may include monthly stipends for health, wellness and tech spending, and benefits (including 100% subsidized medical coverage, dental and vision for you and your dependents). In addition, the employees may be eligible for equity rewards offered by Affirm Holdings, Inc. (parent company).
+
+CAN base pay range per year: $123,000 - $183,000
+
+──────────────────────────────────────────────────────────────────────
+## bmo-associate-data-scientist | BMO Capital Markets | Data Scientist
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team', 'what_we_offer']
+  Raw: 6775 chars → Clean: 3176 chars (3599 removed)
+
+About the job
+
+BMO Capital Markets is a leading, full-service North American-based financial services provider, with over 2,700 professionals in 30 locations around the world, including 20 offices in North America, offering corporate, institutional and government clients access to a complete range of investment and corporate banking products and services. BMO Capital Markets is a member of BMO Financial Group (NYSE, TSX: BMO), one of the largest diversified financial services providers in North America with US$1.0 trillion total assets and approximately 54,000 employees as of January 31, 2025.
+
+About The Role
+
+We are seeking a talented and experienced Data Scientist to join our Data Cognition Team at BMO Capital Markets. As a Data Scientist, you will be responsible for developing and implementing advanced analytics and machine learning models to support algorithmic trading strategies, and drive business decisions in the front office, Investment Banking, and Corporate Banking. You will collaborate closely with business teams and other stakeholders to understand their data needs and provide insights that improve trading performance and profitability.
+
+Key Responsibilities
+
+Develop and implement advanced analytics and machine learning models using techniques such as Generative AI, Deep Learning, and Reinforcement Learning.
+Build predictive models for algorithmic trading across asset classes including Equities, Fixed Income, Commodities, and Foreign Exchange.
+Collaborate with trading desks, investment banking teams, and corporate banking stakeholders to identify opportunities and optimize strategies.
+Research and experiment with new machine learning techniques, including time series analysis, to improve trading performance and profitability.
+Design and maintain reproducible machine learning pipelines for production environments.
+Analyze large datasets to extract insights and support strategic decision-making.
+Communicate complex technical concepts to non-technical stakeholders and present findings to senior management.
+Visualize complex data clearly and concisely for business consumption.
+
+Qualifications
+
+Ph.D. in Computer Science, Mathematics, Physics, or a related quantitative field (focus on finance, economics, or operations research preferred).
+Minimum 3 years of experience in data science or machine learning; experience in capital markets is a strong asset.
+Proficiency in statistical modeling, time series analysis, and machine learning frameworks.
+Strong programming skills (Python preferred) and experience with cloud technologies.
+Familiarity with financial tools such as Bloomberg, FactSet, and Thomson Reuters is a plus.
+Excellent problem-solving skills and ability to formulate hypotheses and learn from data.
+Strong communication skills for effective collaboration with technical and business stakeholders.
+Team-oriented, adaptable, and detail-focused with a results-driven mindset.
+
+Nice to Have
+
+Experience with Generative AI and advanced ML techniques.
+Knowledge of investment banking concepts, trading strategies, and financial data formats.
+Familiarity with MLOps tools and practices for model deployment and monitoring.
+
+──────────────────────────────────────────────────────────────────────
+## cerebras-ml-performance-benchmarking-engineer | Cerebras Systems | ML Performance Benchmarking Engineer
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 4092 chars → Clean: 4016 chars (76 removed)
+
+About the job
+
+Cerebras Systems builds the world's largest AI chip, 56 times larger than GPUs. This architecture allows Cerebras to deliver industry-leading training and inference speeds; over 10 times faster than GPU-based hyperscale cloud inference services.
+
+This order of magnitude increase in speed is transforming the user experience of AI applications, unlocking real-time iteration and increasing intelligence via additional agentic computation.
+
+Cerebras works with the leading model labs, global enterprises, and cutting-edge AI-native startups. OpenAI recently announced a multi-year partnership with Cerebras, to deploy 750 megawatts of scale, transforming key workloads with ultra high-speed inference.
+
+About The Role
+
+The Inference Core Platform group is at the heart of Cerebras' mission to deliver the world’s fastest AI inference. Our team builds the foundational software and hardware infrastructure that powers low-latency, high-speed, high-throughput deployment on the Cerebras Wafer-Scale Engine (WSE). We are responsible for the full stack—from model compilation and scheduling down to custom hardware kernels and driver development.
+
+The ML Performance Benchmarking team plays a pivotal role in shaping the performance and scalability of AI inference on one of the most advanced computing systems ever built. We drive the bring-up of core inference capabilities and deliver performance improvements at every stage of development – from early prototyping to production deployment.
+
+We're looking for passionate engineers to join us in redefining the limits of AI inference. If you thrive on building systems that measure, analyze, and optimize performance at scale, this is your opportunity to make a transformative impact on the future of AI.
+
+Scope Of The Team Includes
+
+Core Inference Observability – Design and implement end-to-end telemetry systems across the software stack, providing deep visibility into inference performance and enabling rapid iteration before and after deployment.
+Benchmarking Infrastructure – Architect, build, and scale the automation that generates, analyzes, and visualizes performance data used to inform business decisions across engineering and leadership.
+Performance Analysis – Dive deep into system behavior, dissect performance bottlenecks, and deliver actionable insights that directly influence which features ship and how they evolve.
+Feature Integration – Partner closely with Core Platform teams to define rigorous testing methodologies that validate inference features for peak performance.
+
+Skills & Qualifications
+
+Bachelor’s or Master’s degree in Computer Engineering, Systems Engineering, or a related field.
+Proficiency in Python and/or C++ programming.
+Proven experience in building and scaling automated infrastructure.
+Strong background in throughput and performance optimization techniques, especially in complex, large-scale systems.
+Excellent problem-solving skills and a strong analytical mindset.
+Demonstrated ability to dive deep into new domains.
+Ability to work in a fast-paced, ambiguous, and collaborative environment.
+
+Preferred Skills & Qualifications
+
+Familiarity with problem-solving at the intersection of hardware and software.
+Hands-on experience with AI workloads and architectures is a plus.
+
+Location
+
+On-site or hybrid at our Toronto office
+
+Why Join Cerebras
+
+About
+
+People who are serious about software make their own hardware. At Cerebras, we have built a breakthrough architecture that is unlocking new opportunities for the AI industry. With dozens of model releases and rapid growth, we’ve reached an inflection point in our business. Members of our team tell us there are five main reasons they joined Cerebras:
+
+Build a breakthrough AI platform beyond the constraints of the GPU.
+Publish and open source their cutting-edge AI research.
+Work on one of the fastest AI supercomputers in the world.
+Enjoy job stability with startup vitality.
+Our simple, non-corporate work culture that respects individual beliefs.
+
+──────────────────────────────────────────────────────────────────────
+## clario-ai-engineer | Clario (Thermo Fisher Scientific) | AI Engineer
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 2780 chars → Clean: 2698 chars (82 removed)
+
+About the job
+
+Join Clario, part of Thermo Fischer Scientific, as an AI Engineer, where your expertise in machine learning, generative AI, and software engineering will drive transformative solutions across the pharmaceutical and healthcare industries. You’ll be at the forefront of innovation - designing intelligent systems, fine-tuning models, and building scalable AI services that directly impact patient outcomes worldwide.
+
+What You'll Be Doing
+
+Design, develop, and maintain AI-powered applications with a strong focus on Agentic AI, AI Agents, and LLM-enabled workflows
+Build software services, APIs, and orchestration layers that connect AI models and tools into scalable production solutions
+Contribute to the design, training, fine-tuning, evaluation, and deployment of AI models, including large language models and supporting ML components
+Develop and optimize data pipelines for model training, retrieval, evaluation, and monitoring
+Implement testing strategies, benchmarks, and quality controls to ensure AI systems are reliable, accurate, secure, and performant
+Collaborate with AI engineers, software developers, scientists, and product managers to translate business requirements into technical solutions
+Participate in the full software development lifecycle: design, implementation, testing, deployment, and monitoring in cloud environments (AWS preferred)
+Apply engineering best practices for code quality, documentation, maintainability, and operational excellence
+Support experimentation with new AI techniques, frameworks, and tooling, and help mature promising ideas into production capabilities
+Stay up to date with advancements in generative AI, agentic systems, multi-modal AI, and cloud engineering
+
+What We're Looking For
+
+Bachelor's degree in Computer Science, Engineering, Data Science, or a related field (Master's a plus)
+3+ years of experience in software engineering, AI engineering, machine learning, or a related technical field
+Strong proficiency in Python and experience with AI/ML frameworks such as PyTorch or TensorFlow
+Experience building AI-enabled software applications and integrating machine learning or LLM capabilities into backend systems
+Hands-on experience or strong interest in Agentic AI, AI Agents, tool-use workflows, or multi-step orchestration patterns
+Familiarity with model training, fine-tuning, evaluation, prompt and workflow design, or model-serving concepts
+Understanding of cloud-based architectures
+Strong problem-solving, communication, and collaboration skills
+Commitment to code quality, security, scalability, and performance
+Eagerness to learn, adapt, and stay current with emerging AI technologies and engineering practices
+
+──────────────────────────────────────────────────────────────────────
+## clio-ml-engineer | Clio | ML Engineer
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team', 'what_we_offer']
+  Raw: 3764 chars → Clean: 2254 chars (1510 removed)
+
+About the job
+
+Clio is the global leader in legal AI technology, empowering legal professionals and law firms of every size to work smarter, faster, and more securely.
+
+We are transforming the legal experience for all by bettering the lives of legal professionals while increasing access to justice.
+
+Summary:
+
+We are currently seeking a Machine Learning Engineer to join our rapidly growing engineering team. This role is for someone who is passionate about building innovative solutions and being exposed to new challenges and technologies while making an impact.
+
+This role is available to candidates across Canada (excluding Quebec). If you are local to one of our hubs (Burnaby, Calgary, or Toronto) you will be expected to be in office minimum twice per week on one of our Anchor Days.
+
+A day in the life might look like:
+
+Develop advanced machine learning models using structured and unstructured data to improve Clio’s customer’s experience
+Create LLMs based solutions to help Clio’s clients to save time and create efficiencies
+Collaborate cross-functionally with engineering, product management, operations and data science to identify new ML-driven features for Clio customers
+Work in an agile environment with our team of machine learning engineers, MLOps engineering and full stack developers across a variety of projects
+
+What you may have:
+
+Hands-on experience in model development, particularly with traditional machine learning, NLP, and transformer-based models;
+Proficiency in data manipulation, cleaning, and preprocessing for complex unstructured datasets;
+Experience with agentic frameworks and workflows
+Experience working with open-source LLM foundation models and APIs for commercial LLMs, such as ChatGPT or Gemini;
+A proven ability to quickly learn new technologies and adapt to a dynamic, fast-paced environment with distributed teams and customers;
+A portfolio of past projects showcasing your successes, challenges, and growth as a machine learning expert;
+Exceptional communication skills and the ability to build trust with both internal teams and external customers;
+A strong desire to continuously learn, challenge yourself, and refine your craft as a machine learning engineer.
+
+This posting is for an existing vacancy.
+
+──────────────────────────────────────────────────────────────────────
+## coca-cola-data-scientist | Coca-Cola Canada Bottling | Data Scientist
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['_preamble', 'what_we_offer']
+  Raw: 6311 chars → Clean: 4983 chars (1328 removed)
+
+Role Details
+
+Work Location – Toronto
+Hybrid Environment – This position currently offers a hybrid work schedule. Subject to change. The in-office requirement is a minimum of three days per week (Tuesday, Wednesday & Thursday), with the flexibility to work remotely on the remaining days.
+Salary – The base salary range for this position is from $82,800 - $105,000 annually. The starting base salary offered is based on market location and may vary depending on job-related knowledge, role complexity, skills, experience, and internal equity.
+Initial Posting Close Date – July 30, 2026
+
+About This Opportunity
+
+We are recruiting for a Data Scientist to join our Data Science and Advanced Analytics team. This Advanced Analytics role is part of the broader Technology function and plays a key role in supporting high impact, data driven initiatives across the organization. The team partners with stakeholders in commercial strategy, sales execution, and operations to address complex business challenges through advanced analytics and machine learning.
+
+
+As a Data Scientist, you will contribute to cross functional projects involving demand modeling, promotion and trade spend optimization, pricing and elasticity analysis, network and inventory optimization, and scenario modeling. You will work closely with business partners to translate exploratory analytical work into scalable, production ready solutions that enhance planning, strengthen decision making, and improve execution across the organization.
+
+
+This is an exciting opportunity to leverage your experience in data science, advanced analytics, or applied machine learning to help solve meaningful business challenges and turn complex data into practical, scalable insights.
+Responsibilities
+
+Contribute to analytics initiatives using statistical and machine learning techniques to solve business problems in demand forecasting, pricing, and product optimization.
+Support the development and improvement of analytical models to understand demand drivers and price elasticity, ensuring insights are practical, reliable, and business-relevant.
+Assist in building tools and analytical processes that improve trade spend effectiveness and promotional performance, enabling smarter commercial and sales decisions.
+Support analytics initiatives that enhance operational planning and execution, applying data-driven insights as the function expands into operations-focused areas.
+Create clear visualizations and collaborate with cross-functional teams to translate data insights into actionable recommendations for commercial, sales, and operations stakeholders.
+
+Qualifications
+
+Bachelor’s degree or a college diploma in a quantitative or technical field (e.g., Statistics, Mathematics, Data Science, Engineering); a Master’s degree is considered an asset.
+3+ years of experience in data science, advanced analytics, or applied machine learning roles, with exposure to business-focused analytics.
+Strong experience working with large, complex datasets and proficiency in SQL and Python.
+Experience applying statistical modeling and machine learning techniques, such as regression-based models, tree-based models and optimization approaches.
+Foundational understanding of demand forecasting, elasticity modeling, promotional analysis, or scenario modeling.
+Familiarity with analytics development within Databricks and the Azure data ecosystem is considered an asset.
+Strong proficiency in data visualization tools such as Power BI (preferred) or Tableau.
+Ability to communicate analytical concepts clearly to both technical and non-technical audiences.
+Proactive mindset with the ability to work through ambiguity, take initiative, and suggest new analytical approaches or opportunities to improve business outcomes.
+
+#CBSAS
+#LI-KS1
+
+
+Why work with us?
+
+Join a local, family-owned business that’s part of a globally recognized brand, where you can develop your capabilities, competencies, and career.
+Coke Canada has a culture of learning, and we offer several channels to support your development, including on-the-job training and a library of free courses for just-in-time learning.
+We are committed to offering a comprehensive benefits package designed to help our employees achieve their best physical, mental, financial, and overall health and well-being. This includes a competitive compensation package, access to retirement and saving programs, family and employee assistance program, paid vacation and floater days.
+We have close, local connections with the communities in which we operate across Canada. We’re determined to make a positive difference in our communities; this includes opportunities for employee volunteerism.
+We’re building our business responsibly and our mission is to work Toward a Better Future Together. We have a plan that outlines how we are reducing, reusing, recycling, decreasing our carbon footprint, and using water responsibly. For more information visit cokecanada.com/sustainability/
+
+──────────────────────────────────────────────────────────────────────
+## dayforce-product-ai-intern | Dayforce | Product & AI Intern
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 3556 chars → Clean: 3470 chars (86 removed)
+
+About the job
+
+Dayforce, a global leader in Human Capital Management (HCM) with headquarters in Toronto, Ontario, and Minneapolis, Minnesota, operates across North America, EMEA, and APJ regions. Our Cloud HCM platform, recognized for its unified database and continuous calculation engine, enhances efficiency, productivity, and compliance for global workforces. We are committed to "Making Work Life Better™" for employees, customers, and partners worldwide.
+
+As an Intern at Dayforce, you’ll gain real-world experience with meaningful responsibilities, access to development programs, and the chance to collaborate globally, bringing new ideas and optimizing processes across multiple business units.
+
+Job Title: Product & AI Intern
+
+Location: Virtual
+
+Duration: Fall 2026 – 4 months (September 2026 – December 2026)
+
+Availability: *Full-time availability of 37.5 – 40 hours weekly is required to be eligible for this opportunity.
+
+Benefits For Students
+
+Experience working for one of the fastest growing Human Capital Management technology companies in the world Access to Dayforce’s development programs and resources
+Ability to work with as well as create relationships with members across the globe
+Autonomy to bring forth new ideas and optimize existing structures within the organization
+Meaningful responsibilities, enabling you to obtain ‘real-world’ experience
+Dynamic hands-on exposure to multiple business-units and stakeholders across Dayforce
+
+About The Opportunity
+
+We are seeking a technical AI Product Intern to support our GenAI and AI Agent product initiatives. In this role, you will work directly with the AI product team to develop prototypes that spark future product innovation, as well as help improve model performance, evaluate multilingual model output quality. Furthermore, you will have the opportunity to help us evolve our product analytics capabilities in Pendo, and craft meaningful content in Confluence. This internship is ideal for a Computer Science or Engineering student with a passion for machine learning, AI, experimentation, and turning messy problems into working solutions.
+
+What You’ll Get To Do
+
+Build working demos in live code to communicate product opportunities
+Create annotated datasets to improve our LLM-based systems
+Assist with hands-on evaluation of multilingual model output
+Develop and refine product analytics in Pendo and analyze product usage data in Pendo and Databricks to generate insights that inform our roadmap
+Craft and refine meaningful content and documentation (e.g. Confluence) for broad stakeholder communications
+Support our teams’ development workflows and experimentation infrastructure
+
+Skills And Experience We Value
+
+Proven experience with machine learning, preferably GenAI or LLM applications
+Experience with programming languages: Python and SQL, etc.
+Comfort with tools such as (or similar to): Databricks, Pendo, Visual Studio, etc.
+Entrepreneurial mindset: works with minimal guidance and solves their own problems
+Ability to translate ambiguous tasks into clear outputs
+Strong communication skills and curiosity about how product and ML intersect
+
+What Would Really Make You Stand Out
+
+Front-end experience (React, Streamlit, etc.) for prototyping
+Familiarity with multilingual NLP or localization tools
+This internship is a chance to work on frontier tech with real-world applications and visibility. You’ll get to experiment, deliver, and influence the future of AI at Dayforce.
+
+──────────────────────────────────────────────────────────────────────
+## deloitte-ai-ml-models-consultant-analyst | Deloitte | Analyst/Consultant, AI/ML Models
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team', 'what_we_offer']
+  Raw: 4794 chars → Clean: 1182 chars (3612 removed)
+
+About the job
+
+Analyst/Consultant, AI/ML Models - Financial Engineering & Modeling (Permanent / Contract)
+
+Posting Start Date: 5/29/26
+
+Job Type: PermanentWork Model: HybridReference code: 133514Primary Location: Toronto, ONAll Available Locations: Toronto, ON
+
+You are someone with:
+
+Relevant experience in AI/ML domain
+Knowledge of NLP, LLMs (extractive and generative), fine-tuning, development, and deployment of LLM model. Familiar with higher level trends in LLMs and open-source platforms
+Creatively solution new features for the clients’ Generative AI offerings, including testing, evaluating and benchmarking different LLMs and toolchains
+Experience with Langchain and RAG
+Demonstrated hands-on experience with Python, Hugging Face, TensorFlow, Keras, PyTorch or similar statistical tools
+Solid academic background with a PhD or Master’s degree in Computer Science, Artificial Intelligence, Machine Learning, or related field
+Exceptional problem-solving abilities, meticulous attention to detail and a talent for logical reason
+Curiosity and enthusiasm about new and unfamiliar technologies with ability to learn technical/scientific concepts quickly with minimal direction
+
+──────────────────────────────────────────────────────────────────────
+## ebay-applied-researcher-1 | eBay | Applied Researcher 1
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team']
+  Raw: 3701 chars → Clean: 2753 chars (948 removed)
+
+About the job
+
+At eBay, we're more than a global ecommerce leader — we’re changing the way the world shops and sells. Our platform empowers millions of buyers and sellers in more than 190 markets around the world. We’re committed to pushing boundaries and leaving our mark as we reinvent the future of ecommerce for enthusiasts.
+
+Our customers are our compass, authenticity thrives, bold ideas are welcome, and everyone can bring their unique selves to work — every day. We're in this together, sustaining the future of our customers, our company, and our planet.
+
+Join a team of passionate thinkers, innovators, and dreamers — and help us connect people and build communities to create economic opportunity for all.
+
+What You Will Accomplish
+
+Deliver scientifically robust solutions that improve key buyer and seller outcomes, such as relevance, engagement, and marketplace efficiency.
+Design, build, and iterate on machine learning models and data pipelines that power ranking, recommendation, and advertising products in eBay search.
+Partner with cross-functional teams to define problem statements, validate hypotheses, and translate research into scalable, production-ready solutions.
+Promote and standardize scientific methodologies, experimentation practices, and best-in-class evaluation frameworks across the organization.
+Share technical and research contributions through internal forums and external conferences, helping position eBay as a leader in e-commerce advertising.
+Continuously expand your expertise in large-scale machine learning, big data technologies, and online experimentation while mentoring and learning from peers.
+
+What You Will Bring
+
+MS or PhD in Computer Science, Statistics, Mathematics, or a related quantitative field, or equivalent practical experience.
+1–3 years of relevant industry experience with a PhD, or 3–5 years with an MS, working in areas such as online advertising, ranking, recommendation, targeting, fraud detection, or related fields.
+Hands-on experience applying machine learning techniques (e.g., classification, regression, ranking, recommendation) in large-scale, real-world systems.
+Proficiency with big data tools and technologies such as Hadoop, SQL, and Spark, and comfort working with large, complex datasets.
+Strong programming skills in Python or R, and in at least one of Java, Scala, or C/C++, with a focus on building production-quality solutions.
+A track record of scientific impact demonstrated by 2 or more related publications in reputable conferences or journals, and the ability to clearly communicate research findings to both technical and non-technical audiences.
+
+
+Additional Details
+
+The base pay range for this position is expected in the range below:
+
+C$118,000 - C$157,500
+
+──────────────────────────────────────────────────────────────────────
+## fgf-brands-ai-engineer-new-grad | FGF Brands | AI Engineer New Grad
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 2250 chars → Clean: 2140 chars (110 removed)
+
+About the job
+
+Summary
+
+FGF Brands is on a mission to lead the food manufacturing industry through innovation, speed, and smart execution. As we enter the next phase of our Digital and AI transformation, we are creating a unique, high-impact role designed for a curious, tech-savvy, business-minded young graduate who wants to be at the intersection of technology, executive leadership, and industry reinvention.
+
+We’re hiring an AI Engineer who builds with AI. This is not a passive “learn AI on the job” role. It’s for someone who has prototypes, ships, and experiments—turning real operational problems into working software. You’ll work directly with senior leaders across supply chain and operations, building agentic AI tools that solve real business problems and get used in production.
+
+What FGF Offers:
+
+FGF believes in Home Grown Talent, accelerated career growth with leadership training. Unleashing Your Potential
+Competitive Compensation, Health Benefits, & a generous flexible medical / Health spending account
+RRSP matching program
+Tuition reimbursement
+Discount program that covers almost everything under the sun - Restaurants, gyms, shopping etc.
+
+Primary Responsibilities
+
+Build and ship AI-powered and agentic solutions focused on supply chain and operations
+Rapidly prototype and iterate—POCs in days, not quarters
+Apply LLMs to real-world data using RAG, fine ‑ tuning, and agent frameworks
+Build internal tools, automations, and dashboards that drive measurable impact
+Partner with senior leaders to translate business friction into working software
+Evaluate and integrate emerging AI tools and frameworks
+Clearly explain what you build through demos and practical walkthroughs
+
+Required Experience
+
+A recent graduate (0–3 years of experience)
+Background in Computer Science, Mathematics, Engineering, or a related technical field
+You’ve built real AI projects and can show them (side projects count)
+Strong Python, APIs, version control, and basic system design
+Hands-on experience with LLMs (prompting, RAG, fine ‑ tuning, or agentic frameworks)
+Able to explain technical concepts simply to non ‑ technical partners
+
+──────────────────────────────────────────────────────────────────────
+## hellofresh-ml-engineer-operations-technology | HelloFresh | ML Engineer Operations Technology
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 5034 chars → Clean: 4945 chars (89 removed)
+
+About the job
+
+We are hiring a Machine Learning Engineer in our ML Solutions squad to help build innovative generative AI products that provide AI-powered assistants to HelloFresh's culinary Chefs helping them editorialize content, validate recipe data, detect issues, suggest corrections, and ideate. As a Machine Learning Engineer, you will primarily contribute to our agentic generative AI system that automates recipe content production, while also supporting the MLOps platform that enables data scientists across the company to develop, deploy, and monitor ML models at scale.
+
+Lettuce Share What This Role Will Be Responsible For
+
+Develop and maintain an agentic GenAI system that integrates with HelloFresh's culinary content pipeline (API development, LLM orchestration, image generation).
+Design and implement production-grade AI Agent evaluations to measure quality, reliability, and performance of generative outputs.
+Design and build scalable, production-grade ML systems capable of handling large datasets, complex model pipelines, and real-time API integrations.
+Contribute to our MLOps platform — a set of tools and services built on Databricks, MLFlow, and Prefect that help data scientists develop, deploy, and maintain ML applications.
+Collaborate with data scientists, product managers, and culinary stakeholders to translate business needs into reliable AI & ML products.
+Improve operational excellence through automation, monitoring, drift detection, and data quality practices.
+Stay up-to-date on advancements in generative AI, agentic workflows, and MLOps tooling, and propose improvements to the team's development lifecycle.
+All other duties, as assigned
+
+Sound a-peeling? Here's what we're looking for
+
+Strong software development skills in Python and SQL, including DevOps practices, test-driven development (TDD), spec-driven development, and fluency working with AI coding agents.
+Hands-on experience building and maintaining production ML systems, including model serving, monitoring, and CI/CD pipelines.
+Familiarity or interest in generative AI (LLMs, image generation, prompt engineering, agentic architectures).
+Experience with modern MLOps tooling such as MLFlow, feature engineering, Kubernetes, and workflow orchestration (e.g., Prefect). Experience with PySpark and Databricks is a plus.
+A passion for building developer tools and platforms that improve productivity and enable other teams to scale ML adoption.
+Ability to communicate complex technical findings to both technical and non-technical stakeholders.
+
+Let’s cut to the cheese, this is why you'll love it here
+
+Box Discount - Amazing discounts on 1 box per week! 75% discount on weekly HelloFresh and Chefs Plate meal kits AND 50% off weekly Factor meal box.
+Health & Wellness - Health & Dental benefits from day 1, a Health Spending Account, unlimited access to the Headspace app to meet your self-care needs, and 25% discount on GoodLife fitness memberships!
+Vacation & PTO - Time off is also an important part of self-care! We offer generous vacation and PTO to help you create a good work-life balance.
+Family Benefits - A parental leave top-up program for expectant parents.
+Growth & Development - We support your career progression and invest in your continued learning through experiences and initiatives owned by our dedicated L&D team
+Work Hard & Have Fun - From team socials to engaging company days, you’ll have plenty of opportunity to experience the fun!
+Diversity & Inclusion Initiatives - With impactful ERG’s like FreshPride, Women Empowered and LIMES, we are committed to our diversity, equity & inclusion efforts.
+Food Puns - this one is kind of a big dill if you haven’t already noticed. We even have some punny meeting room names!
+
+Flexible Hybrid Approach
+
+At HelloFresh, we know that flexible work arrangements are essential in enabling you to do your best work, while balancing your personal and life needs. Offering remote work flexibility, along with the opportunity to interact and collaborate in the office are all a part of creating a great employee experience.
+
+To meet these needs, we are pleased to provide Flexible Hybrid work. Flexible Hybrid is a people-first approach that is based on choice, trust, personalization, and empowers teams to choose when and how often they work from the office and work from home, in addition to team days and company days. This means a minimum of 2 days in office per week, with most teams in office between 2-3 days a week.
+
+HelloFresh Canada uses AI-integrated technology to help us process and evaluate applications more efficiently. This includes tools that screen and assess candidate qualifications based on the requirements for this role. While these tools assist our workflow, all final selection decisions are made by our hiring team.
+
+This is a posting for an existing vacancy. We are actively seeking to fill this position.
+
+Toronto, ON Pay Range
+
+$135,000—$155,000 CAD
+
+──────────────────────────────────────────────────────────────────────
+## huawei-ai-ml-researcher | Huawei Canada | AI ML Researcher
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['_preamble', 'about_team']
+  Raw: 3434 chars → Clean: 1176 chars (2258 removed)
+
+About the job:
+
+Build and ship AI/ML capabilities that power next-generation Huawei intelligent products, including smartphones, smart glasses, wearables, and emerging devices.
+Design, prototype, and evaluate deep learning models across vision, language, audio, and video, and advance their integration into real product experiences.
+Translate cutting-edge research in generative AI, foundation models, and efficient inference into robust, scalable prototypes and product-ready solutions.
+Own end-to-end model development workflows: data curation, training, fine-tuning, evaluation, optimization, and deployment on device or in the cloud.
+Partner with researchers, engineers, designers, and product managers to identify high-impact opportunities and deliver measurable user and business outcomes.
+Contribute to a culture of technical excellence through reproducible experiments, thorough documentation, code review, and knowledge sharing.
+Publish and patent innovations at top-tier venues when appropriate.
+
+The total target annual compensation for this position ranges from $106,000 - $156,000 depending on education, experience, and demonstrated expertise.
+
+Job requirements
+
+──────────────────────────────────────────────────────────────────────
+## industrial-and-commercial-bank-of-china-data-science-analyst | ICBC | Data Science Analyst
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['_preamble']
+  Raw: 1962 chars → Clean: 1652 chars (310 removed)
+
+Job Description and Responsibilities:
+
+Develop program using Python, Oracle Procedure, Java and other tools for analytical data mining, software development, or business reporting.
+Responsible for project co-ordination related to the development and management of all project-related development, participate and manage in the design, specifications, coding, testing and implementation of bank’s application program and business reporting.
+Lead and facilitate sessions with business units to gather requirements, refine and document use cases, business rules, scenarios, and data, as well as functional systems requirements throughout the development lifecycle.
+Investigate and resolve application-related problems.
+Provide second-level support for the bank’s application system, including after-hour support as required.
+
+Qualifications:
+
+Undergraduate degree in Computer Science and Data Science related fields;
+Be familiar with Python, SQL, BI report tools and Java;
+Good working knowledge of project management ;
+Excellent customer service skills;
+Able to communicate and writing skills in English and Mandarin or Cantonese;
+Ability to set priorities and work efficiently under pressure of high volume;
+Must be an independent problem solver with troubleshooting, decision making and analytical skills.
+
+Job Types: Full-time, Fixed term contract
+
+Benefits:
+
+Company pension
+Dental care
+Disability insurance
+Employee assistance program
+Extended health care
+Life insurance
+Paid time off
+Tuition reimbursement
+Vision care
+
+Education:
+
+Bachelor's Degree (preferred)
+
+Licence/Certification:
+
+CISA, CISM, CRISC, CISSP (preferred)
+
+Work Location: In person
+
+──────────────────────────────────────────────────────────────────────
+## intact-data-scientist-2 | Intact | Data Scientist 2
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 5354 chars → Clean: 5235 chars (119 removed)
+
+About the job
+
+Our employees are at the heart of everything we do. Together, we help people, businesses, and society prosper in good times and be resilient in bad times.
+
+Our employee promise represents Intact’s commitment to you in exchange for living our Values, striving to do your best work, being open to change and investing in your career. In return, we promise to provide support, opportunities and performance-led financial rewards at a workplace where you can shape the future, win as a team and grow with us.
+
+Pay at Intact is about much more than just salary.
+
+Flexible work arrangements and a hybrid work model
+Possibility to purchase up to 5 extra days off per year
+Multiple benefits offered to support physical and mental wellbeing, including telemedicine, Wellness account and much more
+Share plan & other savings: up to 12% of salary or even more (ask how you could earn guaranteed income for life)
+
+Salary Range (but Not Limited To)
+
+94,200 - 115,200
+
+Annual Bonus Target, Based On The Base Salary, With a Potential Payout Of Up To Double The Target (subject To Personal And Company Performance)
+
+10%
+
+As part of our commitment to Win As A Team, we share our success with employees through our annual bonus plan and Employee Share Purchase Plan (ESPP) – with Intact matching 50% of your net shares.
+
+Our pension offerings provide flexibility and long-term security for our employees beyond their careers. We are one of the few companies offering the opportunity to receive guaranteed income for life via our defined benefit pension plan.
+
+Salary for the candidate will be determined taking into consideration a number of factors including: experience, skills, qualifications, anticipated contribution to role, internal equity, etc. The salary range presented above is based on a 35-hour workweek and would represent a majority of different candidate profiles. However, we encourage candidates who may fall outside of this range to apply as well.
+
+About The Role
+
+We’re looking for Data Scientist II to join our growing teams. You’ll build and deliver data science solutions end-to-end, framing problems with partners, developing and validating models with strong scientific practices, and contributing to a team culture of high-quality engineering, knowledge sharing, and continuous improvement.
+
+What You'll Do Here
+
+Build, validate, and deliver analytics and machine learning solutions that translate complex data into clear insights and recommendations.
+Write production-quality code that is stable, testable, and maintainable; contribute to shared standards through code reviews and documentation.
+Apply sound statistical and machine learning methodology (e.g., experiment design, appropriate validation, model evaluation, monitoring) and continuously improve how we measure quality and impact.
+Work independently on scoped problems—from ambiguity to implementation—taking ownership of technical tasks and driving them to completion.
+Recommend and use appropriate tools, packages, and libraries to solve problems efficiently and reliably.
+Partner closely with stakeholders across the organization to define success metrics, communicate trade-offs, and enable data-driven decisions.
+Support and elevate teammates by collaborating on technical challenges, sharing best practices, and contributing to a learning culture.
+Help the team stay focused on priorities by raising risks early, aligning on scope, and contributing to the technical direction and evolution of our approaches and platforms.
+Maintain and improve data science tools and platforms, helping ensure efficiency, reliability, and repeatability of our work.
+
+What You Bring To The Table
+
+Degree in a relevant discipline (e.g., mathematics, engineering, operations research, statistics, geomatics, AI) or an equivalent combination of education and experience.
+2+ years of experience in advanced statistics, data mining, and/or text mining, with evidence of delivering real-world outcomes.
+Strong Python skills and Git-based development practices (e.g., version control, peer review); experience writing tests and producing clear technical documentation.
+Solid understanding of machine learning methods and when to use them; comfortable explaining results and limitations to both technical and non-technical audiences.
+Strong problem-solving skills and comfort operating in partially defined problem spaces.
+Strong communication, organizational, and time management skills in a multi-project environment.
+No Canadian work experience required however must be eligible to work in Canada.
+
+Assets (nice to have)
+
+Insurance Pricing / Segmentation (e.g., GLM/GBM, segmentation, model calibration, portfolio impact measurement).
+AI Governance experience / AI tool building for underwriting
+Call Center Optimization (e.g., demand forecasting, staffing/queueing concepts, routing optimization, speech/text analytics).
+Intelligent Document Processing and Information Retrieval (e.g., document preprocessing, classification and summarization, advanced information retrieval, LLM-assisted and Agentic workflows, Complex decision making).
+Usage-Based Insurance (UBI) / telematics (e.g., time-series feature engineering, driver scoring, monitoring drift/seasonality).
+
+──────────────────────────────────────────────────────────────────────
+## kinaxis-data-analytics-coop-intern | Kinaxis | Data Analytics Co-op Intern
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team']
+  Raw: 4596 chars → Clean: 2039 chars (2557 removed)
+
+About the job
+
+What You Will Do
+
+Modernization & Development
+
+Assist in modernizing data systems with cloud-based tools.
+Learn and apply modern data engineering practices and tools under guidance.
+Develop basic data pipelines and integrations.
+Participate in data validation, cleansing, and error-handling mechanisms to maintain data quality.
+Stay updated on the latest technology trends relevant to your role.
+
+Collaboration & Solution Design
+
+Work with team members to gather requirements and support small-scale data-driven solutions.
+Contribute to team planning and the execution of data projects.
+Troubleshoot issues while focusing on learning and skill development.
+Work in an agile environment to deliver tasks collaboratively.
+
+Insights & Enablement
+
+Create simple data models and dashboards to provide actionable insights to stakeholders.
+Build and maintain visually appealing BI reports/dashboards.
+
+Storytelling & Influence
+
+Learn to deliver compelling presentations to engage and inform stakeholders.
+
+What We Are Looking For
+
+Currently enrolled in a Bachelor’s degree program in Computer Science, Software Engineering, or related fields.
+Exposure to SQL, Python, or data pipeline tools (e.g., Airflow, dbt) through coursework or previous projects.
+Exposure to BI tools such as PowerBI and/or Looker is a plus
+Basic understanding of software engineering principles, including CI/CD pipelines, version control (Git), and RESTful APIs.
+Basic knowledge of database concepts and different types of data models.
+Interest in infrastructure-as-code (Terraform) and/or configuration-as-code (Ansible) is a plus.
+A passion for learning and solving technical challenges.
+Must be a Canadian Citizen or a Permanent Resident due to CGRP security requirements
+
+Things that would definitely help
+
+Learn how to modernize legacy systems using cutting-edge cloud-native technologies.
+Gain hands-on experience in developing data products that create a tangible impact.
+Collaborate with cross-functional teams to deliver innovative data solutions.
+
+──────────────────────────────────────────────────────────────────────
+## mastercard-data-scientist-2 | Mastercard | Data Scientist II
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team']
+  Raw: 6894 chars → Clean: 6229 chars (665 removed)
+
+About the job
+
+Overview
+
+The Security Solutions Data Science team is responsible for developing Artificial Intelligence (AI) and Machine Learning (ML) models that power Mastercard’s Identity and risk solutions across authentication and authorization use cases. These models are production-ready and designed to support key products and capabilities that help make digital transactions safer, smarter, and more trusted.
+
+In addition to building models, the team is responsible for the research and development of scalable end-to-end data science capabilities covering the full lifecycle of model creation—from data extraction and feature engineering to validation, deployment, and monitoring. These capabilities must be designed to scale and to be repeatable, resilient, and industrialized so they can support long-term product growth and evolving business needs.
+
+Services within Mastercard is responsible for acquiring, engaging, and retaining customers by managing fraud and risk, enhancing cybersecurity, and improving the digital payments experience. Within this space, the Identity Data Science portfolio plays an important role in advancing intelligence-driven solutions that enable more effective risk assessment and decisioning across the merchant lifecycle.
+
+You will join a dynamic and innovative team working at scale with modern big data platforms and technologies. In this role, you will focus on solving merchant risk during onboarding and ongoing monitoring through the research and development of a merchant registry and profiling capability within the Identity Data Science portfolio. This includes helping build the foundational data assets, profiling logic, analytical workflows, and machine learning approaches needed to better understand merchant behavior, relationships, and risk signals over time.
+
+Role
+
+You will contribute to the design and development of data science capabilities that improve merchant risk assessment across onboarding and monitoring workflows.
+
+Key Responsibilities Include
+
+Analyze large-scale transaction, merchant, and related entity data to identify patterns, trends, and anomalies
+Support the research and development of a merchant registry and profiling capability to strengthen merchant risk assessment during onboarding and ongoing monitoring
+Contribute to feature engineering, entity resolution, and analytical workflows that improve merchant-level intelligence
+Prototype machine learning and analytical solutions under guidance from senior team members
+Help build and maintain scalable data and model workflows using Databricks and Spark-based environments
+Identify appropriate techniques for different analytical problems and help validate solutions through structured testing, benchmarking, and performance evaluation
+Support model monitoring, benchmarking, and iterative improvement of data science solutions
+Work closely with partners across Data Science, Product, and Engineering in an Agile environment to support iterative delivery and continuous improvement
+
+
+All About You
+
+Essential Skills to be successful:
+
+Bachelor’s degree in Data Science, Statistics, Mathematics, Computer Science, or another quantitative discipline such as Engineering, Economics, or Physics
+Experience in applying data science and machine learning to solve real business problems
+Solid foundation in statistics, analytics, and core machine learning concepts
+Experience with Python and SQL; familiarity with tools such as Pandas for data manipulation and analysis
+Exposure to large datasets and interest in scalable data processing; familiarity with Spark is a plus
+Experience with writing clean, modular, and well-documented code following Data Science best practices. Ability to collaborate effectively through code contributions, peer reviews, and shared development workflows to ensure robust, maintainable, and efficient solutions
+Ability to identify appropriate analytical techniques and validate solutions through structured evaluation
+Critical thinking and a drive to produce high quality work, ensuring that all solutions meet rigorous standards
+Understanding of Agile methodologies, with the ability to contribute to iterative delivery
+Openness to learn and apply new technologies, staying current with industry trends and advancements
+Good communication skills, enabling effective collaboration with team members and stakeholders
+Self-driven with a collaborative mindset and enthusiasm for learning in a fast-paced, innovative environment
+
+
+Mastercard is a merit-based, inclusive, equal opportunity employer that considers applicants without regard to gender, gender identity, sexual orientation, race, ethnicity, disabled or veteran status, or any other characteristic protected by law. We hire the most qualified candidate for the role. In the US or Canada, if you require accommodations or assistance to complete the online application process or during the recruitment process, please contact reasonable_accommodation@mastercard.com and identify the type of accommodation or assistance you are requesting. Do not include any medical or health information in this email. The Reasonable Accommodations team will respond to your email promptly.
+
+Corporate Security Responsibility
+
+All activities involving access to Mastercard assets, information, and networks comes with an inherent risk to the organization and, therefore, it is expected that every person working for, or on behalf of, Mastercard is responsible for information security and must:
+
+Abide by Mastercard’s security policies and practices;
+Ensure the confidentiality and integrity of the information being accessed;
+Report any suspected information security violation or breach, and
+Complete all periodic mandatory security trainings in accordance with Mastercard’s guidelines.
+
+
+In line with Mastercard’s total compensation philosophy and assuming that the job will be performed in Canada, the successful candidate will be offered a competitive pay based on location, experience and other qualifications for the role and may be eligible to participate in a discretionary annual incentive program. This posting reflects one or more current openings on our team.
+
+Pay Ranges
+
+Toronto, Canada: $91,000 - $140,000 CAD
+
+──────────────────────────────────────────────────────────────────────
+## motion-recruitment-ml-engineer | Motion Recruitment | ML Engineer
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 1817 chars → Clean: 1731 chars (86 removed)
+
+About the job
+
+An exciting opportunity based in Toronto, Canada (hybrid), with a fast-growing, product-driven company building innovative financial technology solutions. This full time role focuses on designing and scaling modern machine learning systems using technologies such as Python, PyTorch, Scikit-learn, and cloud platforms.
+
+This is a unique chance to join a high-growth team at a pivotal stage - where product-market fit is established and innovation is accelerating. The company is looking for someone who thrives on building impactful ML solutions end-to-end and enjoys working in a fast-paced environment. If you're passionate about deploying scalable AI systems, optimizing perfor,ance, and influencing criticical production decisions - this role is for you.
+
+What You Will Be Doing
+
+Tech Breakdown
+
+50% Machine Learning Model Development
+25% Data Engineering & Pipeline Development
+15% MLOps & Deployment
+10% Collaboration & Strategy
+
+Daily Responsibilities
+
+65% Hands On
+10% Management Duties
+25% Team Collaboration
+
+You Will Receive The Following Benefits
+
+Medical, Dental, and Vision Insurance
+Vacation Time
+
+Current Vacancy: Yes
+
+Required Skills & Experience
+
+Strong experience in Python
+Experience with machine learning libraries (Scikit-learn, LightGBM, PyTorch)
+Hands-on experience with data manipulation tools (Pandas, NumPy) and SQL/NoSQL databases
+Familiarity with cloud platforms (AWS, GCP, or Azure)
+Knowledge of MLOps practices, including CI/CD pipelines
+
+Desired Skills & Experience
+
+Experience with MLOps tools such as MLflow, Kubeflow, or SageMaker
+Familiarity with containerization and orchestration tools (Docker, Kubernetes)
+Experience building and deploying machine learning models in production
+
+──────────────────────────────────────────────────────────────────────
+## ontario-teachers-pension-plan-data-scientist | Ontario Teachers' Pension Plan | Data Scientist
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team']
+  Raw: 7473 chars → Clean: 6892 chars (581 removed)
+
+The opportunity
+
+We are seeking a talented and driven Data Scientist to join our team. The successful candidate will work with Private Markets Teams to build solid data and analytics foundation: derive insights from data, interpretdata, and develop statistical models as needed and contribute to overall data science capabilities.
+
+This role reports to the director of private investments technology and works with the private markets business group and the AI COE to identify, design, implement and maintain AI solutions, machine learning algorithms, statistical model development and related technologies.
+
+The Data Scientist also participates in data science practices and capability development at OTPP. If you are passionate about solving challenging problems and thrive in a fast-paced, high-stakes environment, we want to hear from you.
+
+What You'll Do
+
+Actively participate in the end-to-end machine learning and AI development lifecycle, from experimentation and prototyping to deployment, monitoring, and continuous improvement
+Design, build, and evaluate AI-enabled solutions using large language models, generative AI, retrieval-augmented generation, embeddings, vector search, prompt engineering, and model orchestration frameworks
+Implement best practices in LLM-based engineering, including RAG frameworks, evaluation approaches, guardrails, monitoring, and continuous improvement
+Develop and apply machine learning, statistical modelling, and mathematical optimization techniques to support predictive decision-making, scenario analysis, resource allocation, portfolio construction, and other complex business problems
+Translate business objectives, constraints, and trade-offs into analytical, AI/ML, or optimization-based solution approaches
+Champion strong coding standards, including documentation, version control, testing, reproducibility, and code review practices
+Contribute to building and promoting best practices across the team by sharing knowledge, reusable patterns, and lessons learned
+Stay up to date with emerging technologies, industry trends, and advancements in AI, machine learning, optimization, and data science
+Explore and experiment with new techniques, tools, models, and data sources, providing thoughtful recommendations to the business
+Collaborate with team members on research, analysis, experimentation, and idea generation, while progressively developing independent insights
+Build strong partnerships with business stakeholders, particularly within Private Markets, to drive impactful data-driven, AI-enabled, and optimization-based solutions
+Support the delivery of key reports, analytics, models, visualizations, prototypes, and decision-support tools aligned with business priorities.
+Continuously identify opportunities to enhance AI/ML and optimization approaches, leveraging new techniques, emerging tools, and alternative data sources
+
+What You'll Need
+
+Bachelor’s degree in a quantitative discipline.
+Master’s or Ph.D. degree in a quantitative discipline with a data science, statistical modelling, machine learning, AI, optimization, or computer science focus preferred.
+Machine learning, data science, AI engineering, or applied analytics experience in industry or an academic setting.
+Experience in mathematical and statistical model development to support predictive decision-making
+Experience or strong familiarity with large language models, generative AI, retrieval-augmented generation, embeddings, vector databases, prompt engineering, and LLM evaluation
+Experience or strong familiarity with mathematical optimization techniques, such as linear programming, mixed-integer programming, nonlinear optimization, stochastic optimization, simulation-based optimization, or heuristic methods is a huge asset
+Experience formulating business problems as analytical, machine learning, AI, or optimization problems, including defining objectives, constraints, trade-offs, and success measures
+Proficient programming skills in Python, R, Spark, or other open-source programming languages and related libraries
+Experience with relevant data science, machine learning, AI, or optimization libraries and tools, such as scikit-learn, PyTorch, TensorFlow, Hugging Face, LangChain, LlamaIndex, OR-Tools, Pyomo, Gurobi, CPLEX, CVXPY, SciPy, or similar
+Proficient SQL skills in mining complex and multi-sourced data environments
+Experience in both on-premise and cloud computing environments
+Experience analyzing large sets of data for patterns and correlations using visualization tools
+Proficient with Git workflow
+Good coding habits, including documentation, version control, testing, reproducibility, and code review
+Passionate about applying analytics, AI, machine learning, and optimization in the investment area
+Ability to quickly learn and adopt new technologies, tools, and approaches
+Ability to independently research potential solutions from industry, open-source, vendor, and academic resources
+Ability to articulate thoughts and ideas to effectively collaborate with business, data, and technology partners
+Strong problem-solving skills working in a team-based environment
+Previous experience in investments, capital markets, private equity, or private markets is an asset.
+
+,
+
+What We’re Offering
+
+Pay-for-performance with base salary and annual incentive based on individual and enterprise performance. The Base Salary range for this level is as follows: $105,000 - $155,000. Individual compensation and placement of this role in the range is based on different factors unique to each candidate, including but not limited to relevant experience, skills, demonstrated competencies, and internal equity as they relate to the role.
+
+Numerous opportunities for professional growth and development
+Comprehensive employer paid benefits coverage
+Retirement income through a defined benefit pension plan
+The opportunity to invest back into the fund through our Deferred Incentive Program
+A flexible work environment combining in office collaboration and remote working
+Competitive time off
+Our Flexible Travel Program gives you the option to work abroad in another region/country for up to a month each year
+Employee discount programs including Edvantage and Perkopolis
+
+At Ontario Teachers', diversity is one of our core strengths. We take pride in ensuring that the people we hire and the culture we create, reflect and embrace diversity of thought, background and experience. Through our Diversity, Equity and Inclusion strategy and our Employee Resource Groups (ERGs), we celebrate diversity and foster inclusion through events for colleagues to connect for professional development, networking & mentoring. We are building an inclusive and equitable workplace where our talent is respected, accepted and empowered to be themselves. To learn more about our commitment to Diversity, Equity and Inclusion, check out Life at Teachers'.
+
+──────────────────────────────────────────────────────────────────────
+## pinterest-ml-engineer-2 | Pinterest | ML Engineer 2
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team']
+  Raw: 4329 chars → Clean: 2681 chars (1648 removed)
+
+About the job
+
+What You’ll Do
+
+Build cutting edge technology using the latest advances in deep learning and machine learning to personalize Pinterest
+Partner closely with teams across Pinterest to experiment and improve ML models for various product surfaces (Homefeed, Ads, Growth, Shopping, and Search), while gaining knowledge of how ML works in different areas
+Use data driven methods and leverage the unique properties of our data to improve candidates retrieval
+Work in a high-impact environment with quick experimentation and product launches
+Keeping up with industry trends in recommendation systems
+
+What We’re Looking For
+
+2+ years of industry experience applying machine learning methods (e.g., user modeling, personalization, recommender systems, search, ranking, natural language processing, reinforcement learning, and graph representation learning)
+End-to-end hands-on experience with building data processing pipelines, large scale machine learning systems, and big data technologies (e.g., Hadoop/Spark)
+M.S. or PhD in Machine Learning or related areas
+Expertise in scalable realtime systems that process stream data
+Passion for applied ML and the Pinterest product
+
+Nice To Have
+
+Experience using Cursor, Copilot, Codex, or similar AI coding assistants for development, debugging, testing, and refactoring.
+Familiarity with LLM-powered productivity tools for documentation search, experiment analysis, SQL/data exploration, and engineering workflow acceleration.
+
+
+This job posting is for an open vacancy. Please note that the company utilizes artificial intelligence to screen applicants for the positions.
+
+Relocation Statement:
+
+This position is not eligible for relocation assistance. Visit our PinFlex page to learn more about our working model.
+
+
+In-Office Requirement Statement
+
+We let the type of work you do guide the collaboration style. That means we're not always working in an office, but we continue to gather for key moments of collaboration and connection.
+This role will need to be in the office for in-person collaboration 1-2 times per quarter and therefore needs to be in a commutable distance from the Toronto office (85 Richmond St. W).
+
+
+At Pinterest we believe the workplace should be equitable, inclusive, and inspiring for every employee. In an effort to provide greater transparency, we are sharing the base salary range for this position. Final salary is based on a number of factors including location, travel, relevant prior experience, or particular skills and expertise.
+
+Information regarding the culture at Pinterest and benefits available for this position can be found here.
+
+Canada based applicants only
+
+$170,840—$220,840 CAD
+
+──────────────────────────────────────────────────────────────────────
+## rbc-data-scientist-ai-model-risk | RBC | Data Scientist AI Model Risk
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['what_we_offer']
+  Raw: 6298 chars → Clean: 3413 chars (2885 removed)
+
+About the job
+
+Job Description
+
+What is the opportunity?
+
+RBC is a global leader in applying Artificial Intelligence (AI) in the banking sector in order to create value for our clients, with capabilities ranging from LLM-powered digital banking to voice assistants in customer service. A failure to effectively prepare for and manage emerging model risk related to AI would subject RBC to financial, regulatory, and reputational risks and, as a result, RBC would not be able to provide its clients with the best quality service. Therefore, the AI validation team within RBC's Enterprise Model Risk Management (RBC Group Risk Management) is tasked with assessing, and managing the model risk that may arise from these AI capabilities.
+
+The AI validation team uses machine learning, statistical, and computational strategies to assess model risk. In doing so, RBC is able to identify model weaknesses early and enhance the reliability of production models across all lines of business.
+
+What will you do?
+
+Application: You will have the opportunity to collaborate with teams across a wide variety of business functions, such as the following: Internal Audit, Cybersecurity, Fraud Management, Anti-Money Laundering, Insurance, Credit Risk, Technology Operations, Identity & Access Management, Human Resources.
+Technical Scope: Your primary focus will be on validation of LLM-based applications and agentic AI systems. This role may also involve validating traditional machine learning models, including classification, regression, anomaly detection, natural language processing, reinforcement learning, and recommendation systems.
+Validation: Your role is to challenge models and identify risks associated with their use – both conceptually and empirically. To that end, you will explore modelling considerations such as conceptual soundness, metric reproducibility & stability, benchmarking, uncertainty quantification, fairness, privacy, explainability, implementation controls and more. You will also have the freedom to explore ideas that interest you and build your own models and tools.
+Research & Development: You will read research papers (established work and state-of-the-art) to enhance how our team validates models and contribute to our knowledge pool. You are encouraged to apply what you've learned to real-world problems, develop reusable software packages, and share your insights with others.
+IT: You will collaborate with cross-functional stakeholders to establish and promote best-practices related to MLOps, tooling and IT infrastructure.
+
+What do you need to succeed?
+
+Must-have
+
+Passionate about learning and staying up-to-date with research and technology
+Strong communication and interpersonal skills
+Progress towards a PhD or Master's degree in Statistics, Computer Science, Applied Mathematics, Econometrics, Engineering, Quantitative Finance, or a related quantitative field
+Proficient programming skills in Python; you should already be comfortable with writing research experiments and be willing to learn how to write clean code.
+Familiarity with popular LLMs and agentic frameworks.
+
+Nice-to-have
+
+A risk-oriented mindset: You are curious about the "how" as well as the "why"
+Publication or prior research experience (applied or fundamental)
+Experience with version control systems
+Comfortable with command line tools
+Familiarity with popular machine learning frameworks and libraries
+
+──────────────────────────────────────────────────────────────────────
+## scotiabank-ai-ml-data-scientist | Scotiabank | AI ML Data Scientist
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['what_we_offer']
+  Raw: 5196 chars → Clean: 4530 chars (666 removed)
+
+About the job
+
+Requisition ID: 267509
+
+Join a purpose driven winning team, committed to results, in an inclusive and high-performing culture.
+
+Overview
+
+Scotiabank is seeking a highly specialized and innovative Data Scientist to join our Global Artificial Intelligence and Machine Learning team. This role is central to building and deploying next-generation AI/ML products across the bank’s business lines, focusing specifically on leveraging advanced Large Language Models (LLMs) to transform how we process, understand, and extract value from complex, unstructured documents.
+
+The ideal candidate will be an integral part of the organization’s AI/ML strategy, using cutting-edge Gemini prompting techniques and robust Python coding to solve high-impact business challenges.
+
+Is this role right for you? In this role you, will:
+
+The Data Scientist will be a core member of the Global AI/ML team, focused on creating value for both the bank and its customers through AI-driven products. You will work closely with a diverse team of data scientists, data engineers, AI/ML product managers, and software developers to understand business partner challenges and processes, turning those insights into scalable, working solutions. You will have direct exposure to working production models and will be responsible for creating new, high-impact AI/ML solutions. Understand how the Bank’s risk appetite and risk culture should be considered in decision making
+
+Key Responsibilities
+
+Technical Delivery and Development:
+
+Develop, test, and implement highly effective models optimized for specific document understanding tasks (e.g., data extraction, classification).
+Write and maintain high-quality Python code to preprocess, process, and analyze large volumes of structured and unstructured documents, building robust data pipelines.
+Design, build, and rigorously evaluate specialized machine learning models for document understanding, ensuring accuracy, fairness, and scalability.
+Collaborate with Data Engineers and software developers to develop and deploy document understanding solutions efficiently and reliably into production environments.
+Stay up-to-date on the latest advances in generative AI, Python coding libraries, machine learning best practices, and the field of Document AI. Support Research & Development focused on the effective application of design thinking and advanced techniques.
+
+Collaboration And Strategy
+
+Support high-impact analytical use cases focused on supporting a wide variety of business lines, delivering AI/ML products that simultaneously provide value to customers and the organization.
+Collaborate with key stakeholders and partners to define and enforce machine learning and artificial intelligence best-practices across the organization.
+Understand how the Bank’s risk appetite and risk culture should be considered in decision making related to model development and deployment.
+Collaborate seamlessly with data scientists, data engineers, software engineers, and ML product owners to implement scalable ML/AI products throughout the bank.
+
+Skills
+
+Do you have the skills that will enable you to succeed in this role? - We'd love to work with you if you have:
+
+Expert-level proficiency in Python for data manipulation, statistical modeling, and pipeline development.
+Proven, hands-on experience designing and optimizing prompts for advanced large language models (specifically Gemini, or comparable LLMs) tailored for structured document analysis.
+Direct experience with document understanding tasks, including working with unstructured text, OCR output, and information extraction from complex forms or contracts.
+Practical experience with ML/AI techniques, including supervised, unsupervised, and specifically deep learning and NLP methods.
+Experience with big data tools such as SQL, Hadoop, and Spark.
+Proven ability to ingest, clean, and work effectively with large volumes of structured and unstructured non-traditional data.
+Experience with DevOps principles and/or software engineering best practices (e.g., Git, continuous integration/delivery, Jira).
+University/Post graduate degree in a relevant STEM discipline (Science, Technology, Engineering, and Mathematics).
+Effective communication skills with the ability to prepare clear project documentation and compelling presentations.
+Ability to translate technical knowledge into tangible business value and collaborate effectively across technical and non-technical teams.
+Working knowledge of visualization tools such as Power BI.
+
+──────────────────────────────────────────────────────────────────────
+## scribd-data-scientist-2 | Scribd | Data Scientist 2
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team']
+  Raw: 5886 chars → Clean: 5007 chars (879 removed)
+
+About the job
+
+Scribd, Inc. is on a mission to advance human understanding. Our four products — Scribd®, Slideshare®, Everand™, and Fable — help billions of people across the globe move beyond access and into insight, application, and expertise.
+
+Culture at Scribd, Inc.
+
+We support a culture where our employees can be real and be bold; where we debate and commit as we embrace plot twists; and where every employee is empowered to take action as we prioritize the customer.
+
+We believe the best work happens when individual flexibility is balanced with meaningful community connection. Scribd Flex empowers employees to choose the workstyle and location that support their best performance, while committing to intentional in-person moments that strengthen collaboration and culture. Occasional in-person attendance is required for all Scribd, Inc. employees, regardless of location.
+
+So what are we looking for in new team members? At Scribd, Inc., we hire for “GRIT.” Traditionally defined as the intersection of passion and perseverance toward long-term goals, GRIT reflects the mindset we expect from every employee. For us, it also serves as a practical framework for how we work: setting and achieving Goals, delivering Results within your role, contributing Innovative ideas and solutions, and strengthening the broader Team through collaboration and attitude.
+
+This posting reflects an approved, open position within the organization.
+
+Role Overview
+
+We are seeking a Data Scientist II with experience developing and deploying machine learning models. You will help design and implement high impact AI and ML systems. We work in cross-functional teams collaborating with Machine Learning Engineers, Data Engineers and Product. We are seeking a curious and collaborative individual with an eye for simplicity, end-end visibility and impact and that is excited about building models using massive amounts of data, using language models and deploying models.
+
+Responsibilities
+
+Focus on a variety of content classification use cases, leveraging everything from traditional NLP to sophisticated LLMs and generative models
+Investigate methods of solving our most challenging problems at Scribd, at scale
+Collaborate with other Data Scientists, Machine Learning Engineers and ML Data Engineers on cross-functional projects
+Leverage any algorithm at your disposal: from classical Scikit-learn and NumPy models to custom Neural Networks in PyTorch to third party LLM APIs
+Process massive amounts of data with Python, SQL and Spark
+Align with stakeholders through written and verbal communications methods on the approaches and results of projects, while writing detailed, accurate and concise project documentation
+
+Requirements
+
+3+ years of post qualification experience developing machine learning models, working with systems at scale and deploying to production environments.
+Proficiency in Python.
+Hands-on experience building ML pipelines and working with distributed data processing frameworks like Apache Spark, Databricks, or similar.
+Intermediate level in at least three of these fields: classification algorithms, natural language processing, search, information retrieval, named entity recognition, deep learning, generative models.
+Intermediate level or greater experience with SQL or PySpark.
+Bachelors or Masters in relevant quantitative discipline including but not limited to Statistics, Computer Science, Data Science, Artificial Intelligence or another field with a strong quantitative focus.
+
+At Scribd, your base pay is one part of your total compensation package and is determined within a range. Our pay ranges are based on the local cost of labor benchmarks for each specific role, level, and geographic location. San Francisco is our highest geographic market in the United States. In the state of California, the reasonably expected salary range is between $118,000 [minimum salary in our lowest geographic market within California] to $184,000 [maximum salary in our highest geographic market within California].
+
+In the United States, outside of California, the reasonably expected salary range is between $97,000 [minimum salary in our lowest US geographic market outside of California] to $175,000 [maximum salary in our highest US geographic market outside of California].
+
+In Canada, the reasonably expected salary range is between $123,000 CAD[minimum salary in our lowest geographic market] to $150,000 CAD[maximum salary in our highest geographic market].
+
+We carefully consider a wide range of factors when determining compensation, including but not limited to experience; job-related skill sets; relevant education or training; and other business and organizational needs. The salary range listed is for the level at which this job has been scoped. In the event that you are considered for a different level, a higher or lower pay range would apply. This position is also eligible for a competitive equity ownership, and a comprehensive and generous benefits package.
+
+──────────────────────────────────────────────────────────────────────
+## tactable-data-engineer | Tactable | Data Engineer
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: ['about_team', 'what_we_offer']
+  Raw: 5775 chars → Clean: 2214 chars (3561 removed)
+
+About the job
+
+What You’ll Do
+
+
+End-to-End Data Engineering
+
+Build scalable, reliable ETL/ELT pipelines using Python, and SQL
+Design and maintain batch and near–real-time data workflows using Python-based frameworks
+Integrate diverse data sources from Azure Blob, ADLS, and both relational and non-relational systems
+Migrate legacy data architectures into modern, cloud-native environments
+Optimize workloads for performance, cost, and fault tolerance
+Ensure data quality, observability, and reliability across pipelines
+
+
+Technical Leadership
+
+Own critical components of infrastructure across batch and streaming systems
+Break down complex technical challenges into executable components
+Mentor junior engineers through code reviews, architectural guidance, and technical pairing
+Automate and standardize pipelines to reduce overhead and increase velocity
+Contribute to internal tooling, documentation, and engineering best practices
+
+
+Client & Project Exposure
+
+Work directly with client engineering teams in finance, trading, and enterprise tech
+Rotate across domains and industries every 6–12 months, gaining broad exposure to systems and technologies
+Tackle greenfield builds, system migrations, and enterprise-scale data transformations
+Engage as a true partner, not a vendor, in shaping data product strategy
+
+What You Bring
+
+
+Must-Have Experience
+
+Extensive experience in data engineering or software engineering roles
+Strong programming skills in Python
+Deep experience building and maintaining production-grade data pipelines
+Strong SQL skills and experience working with both structured and unstructured data
+Hands-on experience with cloud infrastructure (preferably Azure)
+Experience with CI/CD pipelines and infrastructure-as-code practices
+Familiarity with data orchestration tools (e.g., Airflow, dbt)
+Experience working in containerized environments (Docker, Kubernetes)
+
+Bonus Points For
+
+Experience working in finance, trading, or other regulated / high-performance environments
+Experience with Databricks or similar managed data platforms
+Strong documentation, collaboration, and knowledge-sharing mindset
+Comfort working across the full data lifecycle, from ingestion to analytics and reporting
+
+──────────────────────────────────────────────────────────────────────
+## td-applied-ml-scientist-1 | TD Bank | Applied ML Scientist 1
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 3615 chars → Clean: 3539 chars (76 removed)
+
+About the job
+
+Work Location:
+
+Toronto, Ontario, Canada
+
+Hours
+
+37.5
+
+Line Of Business
+
+Analytics, Insights, & Artificial Intelligence
+
+Pay Details
+
+$105,500 - $125,000 CAD
+
+TD is committed to providing fair and equitable compensation opportunities to all colleagues. Growth opportunities and skill development are defining features of the colleague experience at TD. Our compensation policies and practices have been designed to allow colleagues to progress through the salary range over time as they progress in their role. The base pay actually offered may vary based upon the candidate's skills and experience, job-related knowledge, geographic location, and other specific business and organizational needs.
+
+As a candidate, you are encouraged to ask compensation related questions and have an open dialogue with your recruiter who can provide you more specific details for this role.
+
+Job Description
+
+Additional Job Description
+
+We’re looking for a highly motivated Applied Machine Learning Scientist to join our AI2 team. In this role, you’ll drive the development and deployment of ML solutions that power data-driven decision-making across our Canadian Personal Banking division. You’ll work closely with various teams to bring AI capabilities to life and deliver measurable business impact.
+
+This is a unique opportunity work on high-impact initiatives in a fast-growing function. If you're passionate about solving real-world problems with machine learning and want to make a tangible difference at scale, we'd love to hear from you.
+
+What You’ll Do
+
+Develop, deploy, and maintain Predictive and Generative AI models for use cases such as Agentic AI, Chatbots, Pricing, and Anomaly Detection, Forecasting
+Design and implement clean, modular, and reusable ML codebases using object-oriented programming (OOP) principles and best coding practices
+Translate business problems into analytical frameworks and collaborate with cross-functional teams to define success metrics and solution approaches
+Build production-ready ML pipelines, ensuring robustness, scalability, and maintainability
+Conduct rigorous model evaluation, documentation, A/B testing, and monitoring to ensure model performance, fairness, and stability in production
+Communicate complex technical results to non-technical stakeholders and provide actionable insights
+Stay current with ML research, GenAI advancements, and software engineering best practices to bring innovative approaches into production
+
+What You Bring
+
+2+ years of experience applying machine learning to real-world business problems
+Strong proficiency in Python for ML modeling and implementation
+Experience building maintainable, well-tested, and production-quality ML code
+Proficiency with key ML libraries and frameworks
+Experience working with structured and unstructured data, feature engineering, and model interpretability techniques
+Exposure to GenAI or large language models and their practical applications
+Hands-on experience with model deployment, monitoring, and lifecycle management in production environments
+Strong problem-solving skills and a track record of delivering results in cross-functional teams
+Undergraduate degree required; advanced technical degree in a STEM field preferred
+
+Nice to Have
+
+Experience working in financial services or regulated environments
+Familiarity with causal inference, anomaly detection, or agent-based systems
+Experience applying software engineering practices such as code reviews, version control, testing, and documentation in ML projects
+
+──────────────────────────────────────────────────────────────────────
+## thumbtack-data-scientist-2-monetization-pricing | Thumbtack | Data Scientist 2 Monetization Pricing
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 3379 chars → Clean: 3327 chars (52 removed)
+
+About the job
+
+Thumbtack helps millions of people confidently care for their homes.
+
+Thumbtack is the one app you need to take care of and improve your home — from personalized guidance to AI tools and a best-in-class hiring experience. Every day in every county of the U.S., people turn to Thumbtack to complete urgent repairs, seasonal maintenance and bigger improvements. We help homeowners know which projects to do, when to do them and who to hire from our growing community of 300,000 local service businesses. If making an impact inspires you, join us. Imagine what we’ll build together.
+
+About The Data Science Team
+
+The Data Science team empowers Thumbtack to use data to guide business decisions. We collaborate with partners across the company to solve the most analytically challenging problems -- everything from informing how we set prices across almost a thousand local services categories, to evaluating the impact of a new business model on company performance, to identifying early predictors of high-quality customers. We are a tight-knit, intellectually curious team that is committed to improving Thumbtack and improving each other.
+
+About The Role
+
+Data Scientists at Thumbtack are empowered early on to leverage their critical thinking, interpersonal, and technical skills to make a positive impact on the company. Data Scientist embed with product teams to support new product feature launches, study the economics of our massive and dynamic marketplace, and help inform strategy. As a Data Scientist, you’ll be the person responsible for all the analytical needs of an entire team of engineers, designers, and product/marketing managers -- helping empower the team and Thumbtack more broadly to build the best product, as quickly as possible.
+
+What You'll Do
+
+Propose and conduct quantitative research into key user behaviors, product flows, and business trends; based on analysis and in collaboration with cross-functional partners, identify potential new opportunities and next steps for the product team
+Design and analyze experiments and other tests for causal inference, in collaboration with engineers, applied scientists, and economists
+Partner with product managers, engineers, etc. to help scope new features, e.g., scenario modeling for possible impact on key metrics, make recommendations on business logic of new features, etc.
+Define and monitor key metrics; investigate changes in metrics and propose next steps
+Develop topic area expertise, e.g., develop a deep understanding of how Thumbtack search works and interacts with other systems
+Contribute to our team and company data culture through accessible data table design and maintenance
+Collaborate with, mentor, and help recruit team members
+
+In order to be successful, you must bring
+
+2+ years of experience in data science, analytics or economics
+Experience managing stakeholders with competing priorities in areas such as Product Management, Design, Engineering and Marketing
+Experience scoping, analyzing, and communicating results of experiments
+Expert in SQL
+Strong communication skills and ability to build strong relationships cross-functionally and with leadership
+Bachelor’s, Master’s, or Doctoral degree in a technical area such as: Statistics, Engineering, Analytics, Math, Computer Science, Operations Research, Economic
+
+──────────────────────────────────────────────────────────────────────
+## venterra-realty-data-decision-scientist | Venterra Realty | Data Decision Scientist
+──────────────────────────────────────────────────────────────────────
+  Excluded sections: (none)
+  Raw: 4200 chars → Clean: 4105 chars (95 removed)
+
+About the job
+
+Description
+
+ROLE: Data Scientist or Decision Scientist
+
+REPORTS TO: Director, Data Science
+
+LOCATION: Hybrid / Corporate Office in Richmond Hill, Ontario
+
+SALARY: $110,000-$140,000, up to 10% discretionary incentive target*
+
+THE OPPORTUNITY
+
+Technology is in the DNA of its founders. The Chairman and Co-Founder holds an Engineering Degree and a Master's Degree in Artificial Intelligence. Earlier in their careers, the Chairman and the CEO jointly led the growth and sale of a highly successful software business focused on logistics optimization, subsequently applying their business and technology acumen to the real estate industry, creating Venterra. As a result, the organization is one of the few in the industry with its own in-house property management stack (full spectrum of applications covering rent management, pricing optimization, purchasing, utility billing, work order, and capital expenditure management, etc.), resulting in greater control over its technology destiny. The organization views this capability as a crucial competitive advantage to compete at the highest level of the industry. Venterra has an established competence in Decision Science and is investing heavily in AI - including increasing integration of agentic AI solutions in operational workflows. Current projects on AI/ML/LLM solutions have the potential to revolutionize management, customer experience, and decision optimization.
+
+We are looking for a Data Scientist or Decision Scientist to join our growing team, adding and augmenting the strength of our current team.
+
+Key Job Responsibilities
+
+Apply machine learning, predictive modeling, and statistical analysis to develop innovative solutions that drive success in multifamily real estate.
+Design, build, and deploy AI agents and multi-agent workflows (AWS infrastructure), taking use cases from prototype through production.
+Validate scientific methodologies and project outcomes from other team members.
+Collaborate on developing models that enhance rental pricing optimization, demand forecasting, and property management efficiency.
+Contribute to the company's large language model (LLM) and agentic AI strategy, leveraging LLMs and retrieval-augmented generation (RAG) to extract insights from unstructured data, automate workflows, and improve decision-making processes.
+Use statistical methods and techniques to transform large datasets into actionable insights, supporting data-driven decisions across areas like occupancy, tenant behavior, and operational efficiency.
+Work with cross-functional teams (software engineering, data engineering, DevOps, cybersecurity) to promote and implement a data-first, AI-first culture throughout the organization.
+
+CANDIDATE PROFILE
+
+A PhD or Master in a quantitative discipline such as mathematics, science, engineering, statistics, AI, computer science, or a related field is strongly preferred. However, candidates with a Bachelor's degree with relevant experience will also be considered.
+5+ years of relevant experience in predictive modeling, machine learning, and advanced statistics to solve business problems.
+Proficiency in Python, along with experience using any tools such as scikit-learn, XGBoost, PyTorch, LightGBM, pandas, and numpy.
+Hands-on experience building LLM-powered applications : prompt engineering, RAG pipelines, embeddings/vector search, and LLM evaluation. Experience with agentic frameworks (e.g., Strands Agents, LangGraph, LangChain) is a strong asset.
+Intermediate to expert-level understanding of machine learning techniques , including gradient-boosted trees, clustering, neural networks, deep learning, and transformer architectures - and sound judgment on when to apply classical ML vs. LLM-based approaches.
+Strong analytical and problem-solving skills, with the ability to translate data into meaningful insights that influence business outcomes.
+Curiosity, ownership, and a bias toward shipping production-ready solutions - comfortable working in ambiguous, fast-moving problem spaces.
+Excellent communication, time management, and organizational skills.
