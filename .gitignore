@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.npy
+data/jobs.json
+data/jobs_augmented.json
+data/plots/
+data/*_embeddings.npy
+data/*_metadata.json
+data/baseline_metrics.json
+data/golden_set.json
+*.egg-info
