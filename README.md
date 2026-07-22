@@ -48,17 +48,18 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 
 ## Quick Start
 
-> The project is in early pre-implementation. No code has been written yet.
-
 ```bash
-# Create virtual environment
-python -m venv .venv && source .venv/bin/activate
+# Create virtual environment and install dependencies (uses uv)
+uv venv && uv sync
 
-# Install dependencies (after requirements.txt is created)
-pip install -r requirements.txt
+# Download spaCy model (one-time)
+uv run spacy download en_core_web_sm
+
+# Parse all postings, embed, and visualize
+uv run python scripts/parse_and_embed_quickstart.py
 
 # Run tests (after tests are written)
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ---

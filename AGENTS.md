@@ -6,9 +6,9 @@
 
 ## Project at a Glance
 
-- **Stack:** Python 3.11+, Sentence Transformers, FastAPI, Docker
-- **Package manager:** pip + requirements.txt (no poetry/pipenv yet)
-- **No virtual environment set up yet** — create one with `python -m venv .venv` before installing
+- **Stack:** Python 3.12+, Sentence Transformers, FastAPI, Docker
+- **Package manager:** uv + pip (pyproject.toml + requirements.txt)
+- **No virtual environment set up yet** — create one with `uv venv` before installing
 - **No tests exist yet** — test framework is pytest, install with `pip install pytest`
 
 ## Development Commands
