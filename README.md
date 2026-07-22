@@ -2,7 +2,7 @@
 
 > A production-oriented machine learning system that models the ML job market as a high-dimensional semantic space and maps resumes into that space using modern embedding models, vector search, and clustering.
 >
-> **Status:** Phase 1 — Preprocessing & Embedding Optimization (Pre-Implementation)
+> **Status:** Phase 1 — Baseline embedding + visualization complete. Proxy metrics + experiment loop next.
 
 ---
 
@@ -37,6 +37,16 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 - ✅ Steps 1.0–1.2: Parsed → embedded (all-MiniLM-L6-v2, L2-normalized) → PCA + UMAP visualized
 - 🔜 Step 1.3: Proxy metrics (self-retrieval, separation gap, nearest-neighbor audit)
 - 🔜 Steps 1.4–1.7: Preprocessing experiment loop (boilerplate → skills → weighted concat)
+
+**Planned: function-based role labels.** Current `role_category` labels are derived from raw job titles (Data Scientist, ML Engineer, etc.), but titles are noisy — a "Data Scientist" might do pure analytics while another builds production ML systems. A second labeling pass will assign each posting to a **function category** based on the actual work described:
+- `data-engineering` — pipelines, ETL, infrastructure
+- `exploratory-analysis` — A/B testing, dashboards, SQL-heavy analytics
+- `model-development` — training, fine-tuning, experimentation
+- `model-production` — deployment, MLOps, serving, monitoring
+- `research` — novel methods, publications, prototyping
+- `applied-ai` — building AI-powered products/features end-to-end
+
+Each posting may map to 1–2 categories. These labels will be used to judge cluster quality during the experiment loop — if preprocessing improvements bring same-function postings closer together, the embedding space is capturing *what people actually do*, not just what their title says.
 
 **Future data expansion:** Non-ML postings (SWE, PM, DevOps) will be collected later to provide contrast in the embedding space.
 
