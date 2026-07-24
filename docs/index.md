@@ -22,7 +22,7 @@ A semantic search tool for mapping your interests and experience to actual job f
     
     A "Machine Learning Engineer" won't match an "Applied Scientist" role, even when the work is identical.
 
-    How do you find the jobs families that are right for you? 
+    **How do you find the jobs that are right for you?**
 
 -   **Solution**
 
