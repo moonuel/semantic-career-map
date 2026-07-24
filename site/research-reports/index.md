@@ -1,47 +1,27 @@
-# Experiment Log
+# Research Reports
 
-Experiment log tracking the development of the semantic embedding pipeline for job posting matching. Results inform the next step and final architecture. Hand-written with love.
+Research log for exploratory reports that fuel experiments and the final design. Usually AI-generated and used to guide early prototypes and downstream agents.
 
-**Experiments follow a consistent methodology:**
-
-    1. Establish context and hypothesis
-    2. Document experimental design
-    3. Document results and discussion
-    4. Write concrete conclusions and next-steps
-
-## Planned progression:
-
-### Job posting embeddings
-```
-Raw text baseline → LLM text extraction → Feature engineering → Clustering evaluation 
-```
-
-### User input embeddings
-```
-Raw user input baseline → LLM feature engineering → Embedding optimization → Classification and ranking
-```
-
-## Completed Experiments
 
 <div class="grid cards" markdown>
 
--   [**001 — Baseline Embedding**](001-baseline-embedding.md){ .md-button }
+-   [**001 — Embedding optimization**](001-embedding-optimization-research.md){ .md-button }
 
     **2026-07-22**
 
-    Initial pipeline established — 27 postings, weak clustering, noisy text from boilerplate contamination.
+    Feeding raw data into a model is almost never optimal. Approximate techniques for data cleaning inputs are sufficient for initial validation. 
 
--   [**002 — Regex boilerplate Removal**](002-boilerplate-removal.md){ .md-button }
+-   [**002 — Tutte Institute Tools**](002-tutte-institute-tool-review.md){ .md-button }
 
     **2026-07-22**
 
-    Improved separation gap (+0.0203, 3.4×) but brittle regex approach expected to fail on varied posting formats.
+    I saw a cool talk by Dr. Valerie Poulin detailing the usage of LLMs to annotate branches in hierarchically-clustered, interactive UMAP embeddings. Would love to try it. 
 
--   [**003 — LLM Extraction**](003-llm-extraction.md){ .md-button }
+-   [**003 — Taxonomy of ML/AI Responsibilities**](003-ml-ai-responsibility-taxonomy.md){ .md-button }
 
-    **2026-07-23**
+    **2026-07-22**
 
-    **Best results:** +0.0493 separation gap (8.2×), 100% self-retrieval, zero hallucinations on 5 datasets. Generality on further postings to be tested, as well as LLM evals. 
+    I'm working with the hypothesis that jobs are more accurately grouped by responsibilities rather than title. An audit of ML/AI responsibilities was conducted and a taxonomy of roles constructed from that.
 
 </div>
 

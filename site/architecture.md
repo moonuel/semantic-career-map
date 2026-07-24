@@ -1,6 +1,8 @@
 # Architecture
 
-To be determined once methods and designs settle after initial research and validation.
+!!! info "Architecture doc coming soon!"
+    The system design doc will be formalized once methods and designs settle from initial research and validation.
+
 
 <!-- ## System Overview
 

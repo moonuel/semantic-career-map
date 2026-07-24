@@ -18,9 +18,9 @@ A semantic search tool for mapping your interests and experience to actual job f
 
     ---
 
-    Traditional job searches fail when responsibilities don't match the title. 
+    Traditional job searches struggle when *responsibilities don't match the title*. 
     
-    A "machine learning engineer" won't match an "applied scientist" role, even when the work is identical.
+    A "Machine Learning Engineer" won't match an "Applied Scientist" role, even when the work is identical.
 
     How do you find the jobs families that are right for you? 
 
@@ -28,11 +28,11 @@ A semantic search tool for mapping your interests and experience to actual job f
 
     ---
 
-    Dense vector embeddings provide semantic clustering of jobs based on responsibilities.
+    Dense text embeddings provide *semantic clustering of job postings* based on responsibilities.
 
-    Dimension-reduction tools provide intuitive 2D visualizations.
+    Clustering and similarity rankings *map your interests to job families* based on skills and experience.
 
-    Clustering and similarity ranking maps your experience to actual job families based on skills and experience.
+    Dimension-reduction tools provide *intuitive 2D visualizations* of high-dimensional spaces.
 
 <!-- -   :material-pipe:{ .lg .middle } **System** -->
 
@@ -51,7 +51,7 @@ A semantic search tool for mapping your interests and experience to actual job f
 <div style="text-align: center; padding: 0.5em 0 0.5em;" markdown="1">
 
 [Launch Demo](demo.md){ .md-button .md-button--primary }
-[View Source Code](https://github.com/moonuel/semantic-career-map){ .md-button }
+[View Source Code](https://github.com/moonuel/semantic-career-map){ .md-button .md-button--warn }
 </div>
 
 <div style="text-align: center; padding: 0 0 2em;" markdown="1">

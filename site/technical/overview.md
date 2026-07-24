@@ -1,3 +1,4 @@
 # Technical Details
 
-Deferred for now until close to final implementation. This section will serve as a comprehensive report of mathematical background and implementation details.
+!!! info "Technical details coming soon!"
+    Once done, this section will serve as a comprehensive report of mathematical background and implementation details.

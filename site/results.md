@@ -1,6 +1,7 @@
 # Results
 
-This page will summarize the key results from research experiments that are solidified in the final design.
+!!! info "Results are also in progress!"
+    This page will be used to summarize the key results from research experiments solidified in the final design.
 
 As of July 23, 2026:
 

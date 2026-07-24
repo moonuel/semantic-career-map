@@ -46,13 +46,14 @@ nav:
   - Results: results.md
   - Experiment Log:
     - Overview: experiments/index.md
-    - "001 – Baseline Embedding": experiments/001-baseline-embedding.md
-    - "002 – Boilerplate Removal": experiments/002-boilerplate-removal.md
-    - "003 – LLM Extraction": experiments/003-llm-extraction.md
+    - "001 - Baseline Embedding": experiments/001-baseline-embedding.md
+    - "002 - Boilerplate Removal": experiments/002-boilerplate-removal.md
+    - "003 - LLM Extraction": experiments/003-llm-extraction.md
   - Research Reports:
-    - "Embedding optimization": research-reports/embedding-optimization-research.md
-    - "Taxonomy of AI/ML Roles": research-reports/ml-ai-responsibility-taxonomy.md
-    - "Tutte Institute Visualization Tools": tutte-institute-tool-review.md
+    - Overview: research-reports/index.md
+    - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md
+    - "002 - Tutte Institute Visualization Tools": research-reports/002-tutte-institute-tool-review.md
+    - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
 markdown_extensions:
   - abbr
   - admonition
