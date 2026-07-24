@@ -1,12 +1,15 @@
 # Results
 
 !!! info "Results are also in progress!"
-    This page will be used to summarize the key results from research experiments solidified in the final design.
+    This page will be used to summarize the performance results of the pipeline, once it is completed. 
+    
+    In the meantime, this page is used to document the strongest findings that will be solidified in the final work.
 
 As of July 23, 2026:
 
-- Embedding job postings using LLM-based text cleaning shows significant improvement over raw and regex-based cleaning methods.
-- UMAP appears the most effective (compared to PCA and t-SNE) for visualizing embedding clusters, likely due to the non-linear structure of the embedding space.
+- `MiniLM-L6-v2` is sufficient and capable of embedding text at this scale (job postings).
+- UMAP appears the most effective (compared to PCA and t-SNE) for visualizing potential text embedding clusters, likely since the embedded vectors are normalized to the unit hypersphere.
+- Using LLM-based (gpt-5.4-nano) text cleaning appears to significantly improve separation of embedded vectors, compared to raw and regex-based cleaning methods.
 
 <!-- 
 ## Summary Dashboard
