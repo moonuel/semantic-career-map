@@ -90,13 +90,13 @@ semantic-career-map/
 ├── backend/                    # FastAPI app, embeddings, retrieval
 ├── data/                       # Job postings, embeddings, golden set
 ├── scripts/                    # Data pipeline, experiments, evaluation
-├── site/                       # Documentation site source (Zensical/MkDocs)
+├── docs/                       # Documentation site source (Zensical/MkDocs)
 │   ├── experiments/            # Experiment log (3 experiments)
 │   ├── technical/              # Tech choices, evaluation, data processing
 │   └── assets/images/          # PCA, UMAP, t-SNE visualizations
 ├── _build/                     # Built documentation site (deployed to GitHub Pages)
 ├── tests/                      # pytest tests
-├── docs/                       # Planning and research documents
+├── docs_bak/                   # Internal planning and research documents (deprecated)
 ├── AGENTS.md                   # Instructions for AI coding agents
 ├── requirements.txt            # Python dependencies
 ├── mkdocs.yml                  # Zensical/MkDocs site configuration
@@ -111,7 +111,7 @@ See `docs/mvp-project-idea.md` for the full project scope and design decisions.
 
 ---
 
-## Documentation Index
+## Documentation Index (deprecated)
 
 | Document | Purpose |
 |---|---|---|
