@@ -1,0 +1,88 @@
+site_name: Semantic Career Mapping
+site_description: "Engineering documentation for a production-oriented semantic search system: embedding pipeline, vector retrieval, evaluation benchmarks, and experiment log."
+site_author: moonuel
+site_url: https://moonuel.github.io/semantic-career-map/
+copyright: "Copyright &copy; 2026 moonuel"
+docs_dir: site
+site_dir: _build
+
+repo_url: https://github.com/moonuel/semantic-career-map
+repo_name: moonuel/semantic-career-map
+
+theme:
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.indexes
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - search.highlight
+  language: en
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Project Overview: project.md
+  - Demo: demo.md
+  - Architecture: architecture.md
+  - Technical Details:
+    - Embedding Pipeline: technical/embedding-pipeline.md
+    - Data Processing: technical/data-processing.md
+    - Evaluation: technical/evaluation.md
+    - Technology Choices: technical/tech-choices.md
+  - Results: results.md
+  - Experiment Log:
+    - Overview: experiments/index.md
+    - "001 – Baseline Embedding": experiments/001-baseline-embedding.md
+    - "002 – Boilerplate Removal": experiments/002-boilerplate-removal.md
+    - "003 – LLM Extraction": experiments/003-llm-extraction.md
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
