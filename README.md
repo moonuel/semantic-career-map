@@ -21,13 +21,8 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 
 | Phase | Description | Status |
 |---|---|---|
-<<<<<<< HEAD
 | 1 | Preprocessing & Embedding Optimization | 🟡 Baseline embedding + visualization complete (27 postings). Experiment loop next. |
 | 2 | Data Collection & Ingestion | 🟡 27 postings collected. LinkedIn saturated for ML roles. Will add non-ML postings later for contrast. |
-=======
-| 1 | Preprocessing & Embedding Optimization | 🔴 Not started |
-| 2 | Data Collection & Ingestion | 🟡 In progress — collecting from LinkedIn |
->>>>>>> 26e55410ac3d7b39d7a733a4a20cb926d71c81a5
 | 3 | Embedding Pipeline & Similarity Engine | 🔴 Not started |
 | 4 | FastAPI Backend | 🔴 Not started |
 | 5 | Docker Containerization | 🔴 Not started |
@@ -36,7 +31,6 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 | 8 | CI/CD Pipeline | 🔴 Not started |
 | 9 | Documentation & Polish | 🔴 Not started |
 
-<<<<<<< HEAD
 **Collecting:** 27 ML/DS/AI job postings collected. Stored in `data/selected-job-postings/`. 
 
 **Phase 1 progress:**
@@ -55,9 +49,6 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 Each posting may map to 1–2 categories. These labels will be used to judge cluster quality during the experiment loop — if preprocessing improvements bring same-function postings closer together, the embedding space is capturing *what people actually do*, not just what their title says.
 
 **Future data expansion:** Non-ML postings (SWE, PM, DevOps) will be collected later to provide contrast in the embedding space.
-=======
-**Collecting:** Targeting 50–200 ML/DS/AI job postings from LinkedIn. Currently at 7 in `data/selected-job-postings/`. Format: markdown files per posting. After collection → `scripts/parse_postings.py` → `data/jobs.json` → baseline embedding via `scripts/embed_baseline.py`.
->>>>>>> 26e55410ac3d7b39d7a733a4a20cb926d71c81a5
 
 ### Data Status
 
