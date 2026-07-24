@@ -3,7 +3,7 @@ site_description: "Engineering documentation for a production-oriented semantic 
 site_author: moonuel
 site_url: https://moonuel.github.io/semantic-career-map/
 copyright: "Copyright &copy; 2026 moonuel"
-docs_dir: site
+docs_dir: docs
 site_dir: _build
 
 repo_url: https://github.com/moonuel/semantic-career-map
