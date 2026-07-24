@@ -51,7 +51,7 @@ A semantic search tool for mapping your interests and experience to actual job f
 <div style="text-align: center; padding: 0.5em 0 0.5em;" markdown="1">
 
 [Launch Demo](demo.md){ .md-button .md-button--primary }
-[View Source Code](https://github.com/moonuel/semantic-career-map){ .md-button .md-button--warn }
+<!-- [View Source Code](https://github.com/moonuel/semantic-career-map){ .md-button .md-button--warn } -->
 </div>
 
 <div style="text-align: center; padding: 0 0 2em;" markdown="1">
