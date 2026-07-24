@@ -1,4 +1,4 @@
-site_name: Semantic Career Mapping
+site_name: AI/ML Career Map
 site_description: "Engineering documentation for a production-oriented semantic search system: embedding pipeline, vector retrieval, evaluation benchmarks, and experiment log."
 site_author: moonuel
 site_url: https://moonuel.github.io/semantic-career-map/
@@ -38,17 +38,21 @@ nav:
   - Demo: demo.md
   - Architecture: architecture.md
   - Technical Details:
-    - Embedding Pipeline: technical/embedding-pipeline.md
-    - Data Processing: technical/data-processing.md
-    - Evaluation: technical/evaluation.md
-    - Technology Choices: technical/tech-choices.md
+    - Overview: technical/overview.md
+    # - Embedding Pipeline: technical/embedding-pipeline.md
+    # - Data Processing: technical/data-processing.md
+    # - Evaluation: technical/evaluation.md
+    # - Technology Choices: technical/tech-choices.md
   - Results: results.md
   - Experiment Log:
     - Overview: experiments/index.md
     - "001 – Baseline Embedding": experiments/001-baseline-embedding.md
     - "002 – Boilerplate Removal": experiments/002-boilerplate-removal.md
     - "003 – LLM Extraction": experiments/003-llm-extraction.md
-
+  - Research Reports:
+    - "Embedding optimization": research-reports/embedding-optimization-research.md
+    - "Taxonomy of AI/ML Roles": research-reports/ml-ai-responsibility-taxonomy.md
+    - "Tutte Institute Visualization Tools": tutte-institute-tool-review.md
 markdown_extensions:
   - abbr
   - admonition

@@ -6,11 +6,11 @@ The embedding pipeline converts raw job posting text into dense 384-dimensional 
 
 ```mermaid
 graph LR
-    A[Raw Text] --> B[Cleaning]
-    B --> C[Section Segmentation]
-    C --> D[Embedding Model<br/>all-MiniLM-L6-v2]
-    D --> E[L2 Normalization]
-    E --> F[Vector Storage]
+    A[Raw Text] -->B[Data Cleaning]
+    B --> C[Feature Engineering]
+    C --> D[Vector Embedding and L2 Normalization]
+    D --> E[Vector Storage]
+    E --> F[Dimensionality Reduction and Visualization]
 ```
 
 ## Preprocessing
@@ -20,19 +20,6 @@ graph LR
 - Whitespace collapsing: multiple spaces, tabs, and newlines reduced to single spaces
 - Unicode normalization: NFKC normalization for consistent character encoding
 - Case preservation: `all-MiniLM-L6-v2` is trained on cased text — lowercasing is skipped
-
-### Section Segmentation
-
-Each job posting is parsed into structured sections using 23 regex patterns:
-
-| Section | Typical Content |
-|---|---|
-| `about_role` | One-paragraph summary of the role |
-| `responsibilities` | Bulleted list of day-to-day duties |
-| `qualifications` | Required skills, experience, education |
-| `nice_to_have` | Preferred but not required qualifications |
-| `what_we_offer` | Benefits, salary, perks (excluded) |
-| `about_team` | Team description, org structure (excluded) |
 
 ### Boilerplate Removal
 

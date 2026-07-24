@@ -1,36 +1,40 @@
 # Project Overview
 
-## Problem Statement
+## Motivation
 
-Most resume screening systems rely on keyword matching. A "machine learning engineer" won't match an "applied scientist" role, even when the work is identical. This project demonstrates end-to-end ML engineering by building a working semantic search system that maps resumes and job postings into a shared embedding space.
+In the current AI/ML job market, the same title can describe **vastly different roles**. It can be difficult to identify **which roles are truly relevant** to your skill set.
 
-Given an arbitrary resume or text query, the system answers:
+This tool is designed to help (me) bridge this gap by using semantic search to match my interests, skills, and experiences to relevant job families in AI and machine learning, regardless of title.
 
-- Which job postings are most semantically similar?
-- What does the ranking look like when scored by semantic similarity?
+It also fills an experience gap I've been looking to fill for some time, by deploying a concrete artifact demonstrating my data engineering, machine learning, and software engineering skills. 
+
+This project demonstrates end-to-end ML engineering by building a working semantic search system that maps resumes and job postings into a shared embedding space.
 
 ---
 
 ## Goals
 
-### Primary
+<!-- ### Primary -->
 
-- [x] Build an end-to-end semantic search system
-- [ ] Evaluate embedding quality empirically with proxy metrics and golden sets
-- [ ] Deploy an interactive retrieval service via FastAPI
-- [ ] Containerize and deploy to cloud
+- [ ] Build an end-to-end semantic search system for navigating AI/ML career opportunities
+- [ ] Develop a robust data pipeline to improve embedding quality and downstream unsupervised learning performance
+- [x] Establish a rigorous experimental workflow with documented hypotheses, evaluations, results, and design decisions
+- [ ] Deploy the system through a secure API layer using FastAPI while protecting proprietary implementation details
+- [ ] Containerize the application and deploy the service to a cloud environment
+- [ ] Publish an accessible demo for others to verify quality of work
+- [x] Provide comprehensive documentation of research and development, system architecture, and engineering decisions
 
-### Non-Goals
+<!-- ### Non-Goals
 
 - [x] Training foundation models — out of scope
 - [x] Building a general search engine — focused on job posting retrieval
 - [x] User accounts or persistent storage — MVP is stateless
 - [x] Multiple embedding model comparison — single model, documented rationale
-- [x] GPU-accelerated inference — CPU latency is ~20 ms, well below threshold
+- [x] GPU-accelerated inference — CPU latency is ~20 ms, well below threshold -->
 
 ---
 
-## System Capabilities
+<!-- ## System Capabilities
 
 <div class="grid cards" markdown>
 
@@ -60,31 +64,29 @@ Given an arbitrary resume or text query, the system answers:
 
 </div>
 
----
+--- -->
 
-## Project Evolution
+<!-- ## Planned Evolution
 
 ```
-Research prototype (2026-07-22)
+Research prototype: baseline embedding + visualization (2026-07-22)
         ↓
-Baseline embedding + visualization
+Experiment loop: text extraction, feature engineering, clustering [current]
         ↓
-Experiment loop: boilerplate → LLM extraction  [current]
-        ↓
-Production pipeline: skill extraction, weighted concatenation, augmentation
+Production pipeline: pre-processing, embedding, similarity ranking, classification
         ↓
 FastAPI backend + Docker + Cloud deployment
 ```
 
----
+--- -->
 
-## Project Scope
+## Current Status
 
 | # | Deliverable | Status |
 |---|---|---|
 | 1 | Data Ingestion Pipeline | 🟡 27 postings collected, expanding |
 | 2 | Embedding Pipeline | ✅ all-MiniLM-L6-v2, L2-normalized |
-| 3 | Embedding Optimization & Feature Engineering | 🟡 3 experiments complete, 4 planned |
+| 3 | Embedding Optimization & Feature Engineering | 🟡 3 experiments complete, more planned |
 | 4 | Similarity Scoring Engine | 🟡 Cosine distance implemented, pytrec_eval planned |
 | 5 | FastAPI Backend | 🔴 Not started |
 | 6 | Docker Containerization | 🔴 Not started |
@@ -92,8 +94,8 @@ FastAPI backend + Docker + Cloud deployment
 | 8 | Frontend + Documentation | 🟡 Documentation site in progress |
 | 9 | CI/CD Pipeline | 🔴 Not started |
 
-## Data Status
+<!-- ## Data Status
 
 - **Real job postings collected:** 27 (in `data/selected-job-postings/`)
 - **Role breakdown:** Data Scientist (8), ML Engineer (5), AI Engineer (3), Applied Researcher (2), plus 9 additional roles
-- **Target with augmentation:** ~350+ postings
+- **Target with augmentation:** ~350+ postings -->

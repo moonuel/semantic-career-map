@@ -1,13 +1,21 @@
 # Results
 
+This page will summarize the key results from research experiments that are solidified in the final design.
+
+As of July 23, 2026:
+
+- Embedding job postings using LLM-based text cleaning shows significant improvement over raw and regex-based cleaning methods.
+- UMAP appears the most effective (compared to PCA and t-SNE) for visualizing embedding clusters, likely due to the non-linear structure of the embedding space.
+
+<!-- 
 ## Summary Dashboard
 
 <div class="grid cards" markdown>
 
--   **Current Dataset:** 27 job postings (target: ~350 with augmentation)
+-   **Current Dataset:** 27 job postings (target: "many more" with augmentation)
 -   **Embedding Dimension:** 384 (all-MiniLM-L6-v2)
--   **Self-Retrieval:** 100.0% (all variants — no embedding collapse)
--   **Best Separation Gap:** +0.0493 (LLM-cleaned text, 8.2× over raw)
+-   **Degeneracy Check:** 100.0% (no collapse over 27 embeddings)
+-   **Improved Separation Gap:** +0.0493 (LLM-cleaned text, 8.2× over raw)
 
 </div>
 
@@ -109,4 +117,4 @@ Baseline PCA/UMAP/t-SNE findings from Experiment 001:
 - Skill extraction with spaCy PhraseMatcher
 - Weighted concatenation experiments (title weighting, multi-field fusion)
 - Golden set construction for pytrec_eval (Precision@5, MRR, NDCG)
-- Template-based data augmentation (27 seeds → ~350 postings)
+- Template-based data augmentation (27 seeds → ~350 postings) -->

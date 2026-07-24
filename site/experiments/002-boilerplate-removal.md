@@ -2,76 +2,55 @@
 
 **Date:** July 22, 2026
 
-## Question
+This experiment tests the effect of removing non-essential content (company culture, about us, etc.) from job postings before embedding.
 
-Does removing non-essential content (company culture, About Us, EEO statements) from job postings before embedding improve role-based cluster separation?
+**Hypothesis:** Embedding of only the body text should improve cluster separation and reduce noise from unrelated company information.
 
-## Hypothesis
+## Experimental Design
 
-Embedding only body text (responsibilities and requirements) should improve cluster separation and reduce noise from unrelated company information.
-
-## Setup
-
-| Property | Value |
-|---|---|
-| Input | `data/jobs.json` — parsed postings with per-section fields |
-| Cleaning method | Concatenate: `about_role + responsibilities + qualifications + nice_to_have` |
-| Excluded | `company_culture`, `about_us`, `what_we_offer`, salary, EEO, recruiter notes |
-| Embedding model | `all-MiniLM-L6-v2`, L2-normalized (same as baseline) |
+- The `jobs.json` contains parsed job postings with fields per-section (title, responsibilities, requirements, company culture, etc.)
+- Only the `responsibilities` and `requirements` sections are concatenated for embedding, excluding `company_culture`, `about_us`, and other non-essential sections.
+    - A `clean_text` field was added to the JSON structure containing the concatenated body text.
+    - Only the following fields were kept:
+    ```
+    KEEP_SECTIONS = ["about_role", "responsibilities", "qualifications", "nice_to_have"]
+    ```
+- The same embedding pipeline is used as in the baseline experiment (all-MiniLM-L6-v2, L2-normalized), but applied to the cleaned text.
+- UMAP, PCA and t-SNE visualizations are generated for direct comparison against the baseline embeddings.
+- `diff_vscode.py` is used to generate raw and clean_text files diff-able with VSCode.
 
 ## Results
+
+- Results are improved but unfortunately not satisfactory.
+    - Remaining text still includes non-job related content, such as benefits or company culture information.
+    - The boilerplate removal regex patterns fail to capture all variations of these sections across different posting formats.
+- Visualizations do show improvement in cluster separation compared to the baseline however, with less overlap remaining between role categories.
 
 ### PCA
 
 ![PCA boilerplate](../assets/images/exp_boilerplate_pca.png)
 
-- Data Scientist roles and all other roles appear on two roughly orthogonal PCA axes
-- Suggests distinct semantic features distinguish role categories along principal components
-- More pronounced structure than baseline PCA
+- Interestingly, the PCA plot seems to put the Data Scientist roles and all the other roles on two orthogonal axes. Very interesting!
+    - I wonder what this means. So far we've worked under the assumption that there is no meaning to the dimensions in the embedding space.
+    - However, PCA does reveal that the first two principal components capture the most variance in the data, and the orthogonal arrangement suggests that different role categories may be distinguished by distinct semantic features captured along these axes.
 
 ### UMAP
 
 ![UMAP boilerplate](../assets/images/exp_boilerplate_umap.png)
 
-- More meaningful separation between groups compared to baseline
-- Data Scientist roles occupy a diagonal band — inter-category separation improved
-- Fewer overlapping points between distinct role categories
+- UMAP seems to also capture more meaningful separation between groups.
+- Data Scientist roles (blue) occupy a diagonal band across the plot. Not sure if this is better or worse.
+    - Clustering performance seems worse but the separation between distinct role categories appears improved.
 
 ### t-SNE
 
 ![t-SNE boilerplate](../assets/images/exp_boilerplate_tsne.png)
 
-- Poorest visualization, consistent with baseline pattern
-- Embedding spans a larger area than baseline — less boilerplate-induced compression
+- t-SNE performance remains the poorest of the three. No discernible structure gained, although the embedding appears to span a larger area than in the baseline.
 
-## Metrics
+## Discussion
 
-| Variant | Self-Retrieval | Separation Gap | Mean CosSim |
-|---|---|---|---|
-| Raw (Experiment 001) | 100.0% | +0.0060 | 0.4045 |
-| Section-Cleaned | 100.0% | +0.0203 | 0.4298 |
-
-| What Improved | What Didn't |
-|---|---|
-| +3.4× separation gap over raw text | Brittle regex fails on varied posting formats |
-| Less overlap between role categories | Remaining text still has non-job content |
-| No embedding collapse | Manual section extraction doesn't scale |
-
-## Interpretation
-
-Removing non-essential content improves cluster separation and reduces noise, but the approach has critical limitations:
-
-| Limitation | Impact |
-|---|---|
-| Brittle regex | Section patterns fail on varied posting formats |
-| Manual extraction | 23 pre-determined patterns may not generalize |
-| Incomplete cleaning | Non-job content escapes section detection |
-
-The regex-based approach works for the current dataset but will not scale to production.
-
-## Engineering Decision
-
-**Switch to an LLM-based extraction workflow.** An LLM can automatically identify and extract relevant sections regardless of formatting. This trades a one-time API cost for robustness against real-world posting variance. Directly leads to Experiment 003.
-
-!!! note "Image References"
-    Plot images generated by experiment scripts and stored in `site/assets/images/`.
+- Early results suggest that removing non-essential content improves cluster separation and reduces noise from unrelated company information.
+- But the boilerplate removal step is brittle, depending on complicated regex and pre-determined section extraction that may not scale to real-world job posting variance.
+    - At the present moment, it doesn't even clean up all the unwanted text.
+- Switching early to an **LLM extraction-based workflow** to automatically identify and extract relevant sections (responsibilities, requirements) from unstructured job postings.

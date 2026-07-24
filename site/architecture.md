@@ -1,15 +1,17 @@
 # Architecture
 
-## System Overview
+To be determined once methods and designs settle after initial research and validation.
+
+<!-- ## System Overview
 
 ```mermaid
 graph TD
-    User[User] --> API[API Server<br/>FastAPI]
-    API --> ES[Embedding Service<br/>all-MiniLM-L6-v2]
-    API --> VS[Vector Store<br/>numpy arrays]
-    ES --> DP[Document Pipeline<br/>preprocessing]
-    DP --> JP[Job Postings<br/>data/jobs.json]
-    VS --> JP
+User[User] --> API[API Server<br/>FastAPI]
+API --> ES[Embedding Service<br/>all-MiniLM-L6-v2]
+API --> VS[Vector Store<br/>numpy arrays]
+ES --> DP[Document Pipeline<br/>preprocessing]
+DP --> JP[Job Postings<br/>data/jobs.json]
+VS --> JP
 ```
 
 ## Components
@@ -84,4 +86,4 @@ No user accounts, no persistence layer. Reduces deployment complexity and operat
 
 ### Why CPU-only?
 
-`all-MiniLM-L6-v2` encodes a posting in ~20 ms on CPU — well below any user-perceptible threshold. GPU adds cost and complexity without meaningful query-time benefit at this scale. GPU would matter if a cross-encoder reranker were added to the retrieval pipeline (deferred to future work).
+`all-MiniLM-L6-v2` encodes a posting in ~20 ms on CPU — well below any user-perceptible threshold. GPU adds cost and complexity without meaningful query-time benefit at this scale. GPU would matter if a cross-encoder reranker were added to the retrieval pipeline (deferred to future work).  -->
