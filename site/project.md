@@ -2,13 +2,13 @@
 
 ## Motivation
 
-In the current AI/ML job market, the same title can describe **vastly different roles**. It can be difficult to identify **which roles are truly relevant** to your skill set.
+In the current AI/ML job market, the same title can describe ***vastly different roles***. It can be difficult to identify which roles are **truly relevant** to your skill set.
 
-This tool is designed to help (me) bridge this gap by using semantic search to match my interests, skills, and experiences to relevant job families in AI and machine learning, regardless of title.
+This tool is designed to help (me) bridge this gap by using semantic search to match my **interests, skills, and experiences** to job families in AI and machine learning, regardless of title.
 
-It also fills an experience gap I've been looking to fill for some time, by deploying a concrete artifact demonstrating my data engineering, machine learning, and software engineering skills. 
+It also fills an experience gap I've been looking to fill for some time, by deploying a concrete artifact demonstrating my **data engineering, machine learning, and software engineering** skills. 
 
-This project demonstrates end-to-end ML engineering by building a working semantic search system that maps resumes and job postings into a shared embedding space.
+This project demonstrates **end-to-end ML engineering** by building a working semantic search system that maps resumes and job postings into a shared embedding space, complete with ***comprehensive documentation*** of the entire research and development process. 
 
 ---
 
@@ -16,13 +16,13 @@ This project demonstrates end-to-end ML engineering by building a working semant
 
 <!-- ### Primary -->
 
-- [ ] Build an end-to-end semantic search system for navigating AI/ML career opportunities
-- [ ] Develop a robust data pipeline to improve embedding quality and downstream unsupervised learning performance
-- [x] Establish a rigorous experimental workflow with documented hypotheses, evaluations, results, and design decisions
+- [ ] Build an end-to-end **semantic search system** for navigating AI/ML career opportunities
+- [ ] Develop a **robust data pipeline** to improve embedding quality and downstream unsupervised learning performance
+- [x] Establish a **rigorous experimental workflow** with documented hypotheses, evaluations, results, and design decisions
 - [ ] Deploy the system through a secure API layer using FastAPI while protecting proprietary implementation details
 - [ ] Containerize the application and deploy the service to a cloud environment
 - [ ] Publish an accessible demo for others to verify quality of work
-- [x] Provide comprehensive documentation of research and development, system architecture, and engineering decisions
+- [x] Provide **comprehensive documentation** of research and development, system architecture, and engineering decisions
 
 <!-- ### Non-Goals
 
