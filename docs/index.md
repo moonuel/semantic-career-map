@@ -32,7 +32,7 @@ A semantic search tool for mapping your interests and experience to actual job f
 
     Clustering and similarity rankings *map your interests to job families* based on skills and experience.
 
-    Dimension-reduction tools provide *intuitive 2D visualizations* of high-dimensional spaces.
+    Dimension-reduction provides *intuitive 2D visualizations* of high-dimensional spaces.
 
 <!-- -   :material-pipe:{ .lg .middle } **System** -->
 
