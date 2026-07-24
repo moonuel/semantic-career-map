@@ -2,13 +2,11 @@
 
 ## Motivation
 
-In the current AI/ML job market, the same title can describe ***vastly different roles***. It can be difficult to identify which roles are **truly relevant** to your skill set.
+In the current AI/ML job market, the same job title can describe ***vastly different responsibilities***. It can be difficult to identify which roles are **truly relevant** to your skill set.
 
-This tool is designed to help (me) bridge this gap by using semantic search to match my **interests, skills, and experiences** to job families in AI and machine learning, regardless of title.
+This tool is designed to help (me) bridge this gap by using semantic search to match my **interests, skills, and experiences** to job families in AI and machine learning, beyond title.
 
-It also fills an experience gap I've been looking to fill for some time, by deploying a concrete artifact demonstrating my **data engineering, machine learning, and software engineering** skills. 
-
-This project demonstrates **end-to-end ML engineering** by building a working semantic search system that maps resumes and job postings into a shared embedding space, complete with ***comprehensive documentation*** of the entire research and development process. 
+It also fills an experience gap I've been looking to fill, by deploying an **end-to-end ML engineering** project demonstrating my research experience, engineering skill, and product thinking through accessible artifacts and ***comprehensive documentation***.
 
 ---
 
