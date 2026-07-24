@@ -10,6 +10,7 @@
 
 | What | Files That Reference It |
 |---|---|
+| Active work-in-progress items | `TODO.md` |
 | Current phase / deliverable status table | `project.md:81-93`, `index.md:88-106` (commented-out) |
 | Experiment # and status (completed/planned) | `experiments/index.md:24-65`, `research-reports/index.md:36-44`, `project.md:81-93` |
 | Dataset size (27 postings) | `project.md:85`, `technical/data-processing.md:11-12`, `technical/evaluation.md:140`, `technical/embedding-pipeline.md:38`, `results.md:113`, `results.md:10` (date), `experiments/001-baseline-embedding.md:11`, `architecture.md:33` |

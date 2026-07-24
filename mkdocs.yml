@@ -35,6 +35,7 @@ theme:
 nav:
   - Home: index.md
   - Project Overview: project.md
+  - TODO: TODO.md
   - Demo: demo.md
   - Architecture: architecture.md
   - Technical Details:
