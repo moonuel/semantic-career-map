@@ -2,7 +2,9 @@
 
 > A production-oriented machine learning system that models the ML job market as a high-dimensional semantic space and maps resumes into that space using modern embedding models, vector search, and clustering.
 >
-> **Status:** Phase 1 — Baseline embedding + visualization complete. Proxy metrics + experiment loop next.
+> **Status:** Phase 1 — 3 experiments complete (baseline, boilerplate removal, LLM extraction). Integrated documentation site deployed. Experiment loop in progress.
+>
+> **Documentation site:** [semantic-career-map](https://moonuel.github.io/semantic-career-map/) — live via GitHub Pages
 
 ---
 
@@ -20,23 +22,27 @@ Rather than relying on keyword matching, resumes and job postings are mapped int
 ## Current Status
 
 | Phase | Description | Status |
-|---|---|---|
-| 1 | Preprocessing & Embedding Optimization | 🟡 Baseline embedding + visualization complete (27 postings). Experiment loop next. |
-| 2 | Data Collection & Ingestion | 🟡 27 postings collected. LinkedIn saturated for ML roles. Will add non-ML postings later for contrast. |
-| 3 | Embedding Pipeline & Similarity Engine | 🔴 Not started |
+|---|---|---|---|
+| 1 | Preprocessing & Embedding Optimization | 🟡 3 experiments complete (baseline, boilerplate removal, LLM extraction). LLM-cleaned text achieves best separation gap (+0.0493, 8.2× over raw). Experiment loop in progress. |
+| 2 | Data Collection & Ingestion | 🟡 27 postings collected. Golden set hand-cleaned (5 postings). LinkedIn saturated for ML roles. Non-ML postings planned for contrast. |
+| 3 | Embedding Pipeline & Similarity Engine | 🟡 Cosine similarity on L2-normalized vectors functional. Self-retrieval benchmark implemented. pytrec_eval integration next. |
 | 4 | FastAPI Backend | 🔴 Not started |
 | 5 | Docker Containerization | 🔴 Not started |
 | 6 | Cloud Deployment | 🔴 Not started |
 | 7 | Frontend | 🔴 Not started |
-| 8 | CI/CD Pipeline | 🔴 Not started |
-| 9 | Documentation & Polish | 🔴 Not started |
+| 8 | Documentation Site | ✅ Integrated documentation site ([live](https://moonuel.github.io/semantic-career-map/)) with experiment log, architecture docs, results, and demo page. Built with Zensical, deployed via GitHub Actions to GitHub Pages. |
+| 9 | CI/CD Pipeline | 🟡 GitHub Actions workflow deploys docs site on push to main. Full test + Docker build pipeline not yet started. |
 
 **Collecting:** 27 ML/DS/AI job postings collected. Stored in `data/selected-job-postings/`. 
 
-**Phase 1 progress:**
-- ✅ Steps 1.0–1.2: Parsed → embedded (all-MiniLM-L6-v2, L2-normalized) → PCA + UMAP visualized
-- 🔜 Step 1.3: Proxy metrics (self-retrieval, separation gap, nearest-neighbor audit)
-- 🔜 Steps 1.4–1.7: Preprocessing experiment loop (boilerplate → skills → weighted concat)
+**Phase 1 experiments complete:**
+- ✅ Steps 1.0–1.2: Parsed → embedded (all-MiniLM-L6-v2, L2-normalized) → PCA + UMAP + t-SNE visualized
+- ✅ Step 1.4: Boilerplate removal experiment — section-filtered clean text embedding
+- ✅ Step 1.4b: LLM-based text extraction — gpt-5.4-nano strips company culture/benefits/EEO, evaluated against hand-cleaned golden set (5 postings). Best separation gap: +0.0493 (8.2× over raw baseline)
+- 🔜 Step 1.3: Proxy metrics formalization (self-retrieval, separation gap, NN audit, HDBSCAN cluster check)
+- 🔜 Steps 1.5–1.7: Title canonicalization, skill extraction, weighted concatenation
+
+**Documentation site:** The [integrated documentation site](https://moonuel.github.io/semantic-career-map/) ([source](site/)) includes architecture documentation, experiment logs (3 experiments), results with before/after metrics, technology choices, and a project overview. Built with Zensical (MkDocs successor), deployed to GitHub Pages via GitHub Actions on push to main.
 
 **Planned: function-based role labels.** Current `role_category` labels are derived from raw job titles (Data Scientist, ML Engineer, etc.), but titles are noisy — a "Data Scientist" might do pure analytics while another builds production ML systems. A second labeling pass will assign each posting to a **function category** based on the actual work described:
 - `data-engineering` — pipelines, ETL, infrastructure
@@ -83,15 +89,23 @@ uv run pytest tests/ -v
 semantic-career-map/
 ├── backend/                    # FastAPI app, embeddings, retrieval
 ├── data/                       # Job postings, embeddings, golden set
-├── frontend/                   # Simple web UI
 ├── scripts/                    # Data pipeline, experiments, evaluation
+├── site/                       # Documentation site source (Zensical/MkDocs)
+│   ├── experiments/            # Experiment log (3 experiments)
+│   ├── technical/              # Tech choices, evaluation, data processing
+│   └── assets/images/          # PCA, UMAP, t-SNE visualizations
+├── _build/                     # Built documentation site (deployed to GitHub Pages)
 ├── tests/                      # pytest tests
 ├── docs/                       # Planning and research documents
 ├── AGENTS.md                   # Instructions for AI coding agents
 ├── requirements.txt            # Python dependencies
-├── Dockerfile                  # Container definition
+├── mkdocs.yml                  # Zensical/MkDocs site configuration
+├── .github/workflows/          # CI/CD — docs deployment
+├── Dockerfile                  # Container definition (planned)
 └── README.md                   # This file
 ```
+
+The [documentation site](https://moonuel.github.io/semantic-career-map/) is integrated into the repository under `site/`. It's built with Zensical and auto-deployed to GitHub Pages on every push to main via `.github/workflows/docs.yml`.
 
 See `docs/mvp-project-idea.md` for the full project scope and design decisions.
 
@@ -106,6 +120,7 @@ See `docs/mvp-project-idea.md` for the full project scope and design decisions.
 | `docs/embedding-optimization-research.md` | Research report on IR embedding optimization |
 | `docs/tutte-institute-tool-review.md` | Evaluation of Tutte Institute tools (UMAP, HDBSCAN, DataMapPlot, EVōC, Toponymy, etc.) for this project |
 | `docs/initial-project-idea.md` | Original project vision (historical reference) |
+| `site/` | Documentation site source — architecture, experiments, results, demo page |
 | `AGENTS.md` | Operational instructions for AI coding agents |
 
 ---

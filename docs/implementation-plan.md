@@ -761,17 +761,112 @@ GET  /jobs/{id}        # Single job details
 
 ---
 
+## Phase 7b: Integrated Documentation Site
+
+**Duration:** 3–4 hours (interleaved with Phases 1–3)
+**Status:** ✅ Deployed
+
+The project includes a living documentation site that serves as the public-facing information and demo hub. It is integrated into the repository, not a separate project.
+
+### Technology
+- **Builder:** [Zensical](https://pypi.org/project/zensical/) (MkDocs successor) — inherits Material for MkDocs theme, Mermaid diagrams, and Python-Markdown extensions
+- **Config:** `mkdocs.yml` (Zensical reads standard MkDocs configuration)
+- **Source:** `site/` directory
+- **Output:** `_build/` directory
+- **Deployment:** GitHub Pages via `.github/workflows/docs.yml` — auto-deploys on push to `main`/`master`
+- **Live URL:** `https://moonuel.github.io/semantic-career-map/`
+
+### Site Structure
+
+| Page | Content |
+|---|---|
+| `index.md` | Home page — problem, solution, architecture diagram, phase status |
+| `project.md` | Project overview, goals, deliverable status |
+| `demo.md` | Planned demo interface, API endpoints, how it works (placeholder until backend is built) |
+| `architecture.md` | Full system architecture, data flow, design decisions |
+| `results.md` | Experiment results with before/after comparison tables |
+| `experiments/index.md` | Experiment log overview |
+| `experiments/001-baseline-embedding.md` | Baseline embedding experiment |
+| `experiments/002-boilerplate-removal.md` | Boilerplate removal experiment |
+| `experiments/003-llm-extraction.md` | LLM-based text extraction experiment |
+| `technical/tech-choices.md` | Technology choices and rationale |
+| `technical/evaluation.md` | Evaluation methodology |
+| `technical/data-processing.md` | Data processing pipeline |
+| `technical/embedding-pipeline.md` | Embedding pipeline details |
+
+### Build & Deploy
+
+```bash
+# Install Zensical
+pip install zensical
+
+# Build the site
+zensical build --clean
+
+# Output goes to _build/ (as configured in mkdocs.yml: site_dir)
+```
+
+The GitHub Actions workflow (`.github/workflows/docs.yml`):
+```yaml
+name: Documentation
+on:
+  push:
+    branches: [master, main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+      - run: pip install zensical
+      - run: zensical build --clean
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _build
+      - uses: actions/deploy-pages@v5
+        id: deployment
+```
+
+### Relationship to Frontend (Phase 7)
+
+The documentation site and the interactive frontend serve different purposes:
+- **Documentation site** (`site/`) — product documentation, experiment log, architecture reference. Static site, static content. Already live.
+- **Interactive frontend** (`frontend/`) — resume upload, search interface, ranked results. Talks to the FastAPI backend. Planned for Phase 7.
+
+The demo page in the docs site will link to the interactive frontend once it's built.
+
+### Site Updates
+
+When adding a new experiment, create the new page under `site/experiments/`, add it to the nav in `mkdocs.yml`, and rebuild. When completing a new phase, update the status table in `site/index.md`.
+
+---
+
 ## Phase 8: CI/CD Pipeline
 
 **Duration:** 2–3 hours
+**Status:** 🟡 Docs site deploy live; test + Docker build pipeline not started
 
-### Step 8.0 — GitHub Actions Workflow
+### Step 8.0 — Docs Site Deployment (✅ Complete)
+
+`.github/workflows/docs.yml` — auto-deploys the documentation site to GitHub Pages on every push to `main`/`master` using Zensical. See [Phase 7b](#phase-7b-integrated-documentation-site) for details.
+
+### Step 8.1 — Test + Build Pipeline (Planned)
 - `.github/workflows/ci.yml`
 - Jobs: test (pytest), build-docker (verify image builds)
 - Trigger: push to main, pull requests
 - Status badge in README
 
-### Step 8.1 — Automated Deployment (Optional)
+### Step 8.2 — Automated Deployment (Optional)
 - If using Cloud Run or Lightsail with easy CI integration
 - Deploy on successful build of main branch
 - Otherwise: document manual deployment steps in README
@@ -800,17 +895,18 @@ GET  /jobs/{id}        # Single job details
 
 ## Overall Timeline
 
-| Phase | Description | Hours |
-|---|---|---|
-| 1 | Preprocessing & Embedding Optimization | 13–15 |
-| 2 | Data Collection & Ingestion | 4–6 |
-| 3 | Embedding Pipeline & Similarity Engine | 4–6 |
-| 4 | FastAPI Backend | 3–5 |
-| 5 | Docker Containerization | 2–3 |
-| 6 | Cloud Deployment | 3–5 |
-| 7 | Frontend | 4–6 |
-| 8 | CI/CD Pipeline | 2–3 |
-| 9 | Documentation & Polish | 3–4 |
+| Phase | Description | Hours | Status |
+|---|---|---|---|
+| 1 | Preprocessing & Embedding Optimization | 13–15 | 🟡 3 experiments done |
+| 2 | Data Collection & Ingestion | 4–6 | 🟡 27 postings, golden set |
+| 3 | Embedding Pipeline & Similarity Engine | 4–6 | 🟡 Cosine sim functional |
+| 4 | FastAPI Backend | 3–5 | 🔴 Not started |
+| 5 | Docker Containerization | 2–3 | 🔴 Not started |
+| 6 | Cloud Deployment | 3–5 | 🔴 Not started |
+| 7 | Frontend | 4–6 | 🔴 Not started |
+| 7b | Integrated Documentation Site | 3–4 | ✅ Deployed |
+| 8 | CI/CD Pipeline | 2–3 | 🟡 Docs deploy live |
+| 9 | Documentation & Polish | 3–4 | 🔴 Not started |
 | **Total** | | **38–53 hours** |
 
 At 2–3 hours/day: **13–26 days** of focused work.
