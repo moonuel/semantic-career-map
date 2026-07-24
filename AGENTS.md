@@ -81,6 +81,7 @@ Use file-scoped variant when changing a single file:
 
 ## Do NOT
 
+- Do not install any packages — this includes `pip install`, `uv pip install`, `uv add`, or any other package manager. The user manages all dependencies manually.
 - Do not add GPU dependencies (cupy, cudf) unless explicitly requested — this project targets CPU-first deployment
 - Do not add new frameworks (Django, Flask, Streamlit) unless explicitly discussed — stick to FastAPI
 - Do not modify `docs/initial-project-idea.md` — it's a historical reference document
