@@ -13,3 +13,4 @@ data/golden_set.json
 *.egg-info
 .env
 _build/
+.kilo/
