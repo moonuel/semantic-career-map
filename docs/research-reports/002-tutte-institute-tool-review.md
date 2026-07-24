@@ -7,11 +7,11 @@
 
 ## Table of Contents
 
-1. [Background: What Is the Tutte Institute?](#background-what-is-the-tutte-institute)
-2. [Tool Catalog](#tool-catalog)
-3. [Relevance Analysis by Project Phase](#relevance-analysis-by-project-phase)
-4. [Recommended Integrations](#recommended-integrations)
-5. [Licensing & Installation](#licensing--installation)
+1. [Background: What Is the Tutte Institute?](#1-background-what-is-the-tutte-institute)
+2. [Tool Catalog](#2-tool-catalog)
+3. [Relevance Analysis by Project Phase](#3-relevance-analysis-by-project-phase)
+4. [Recommended Integrations](#4-recommended-integrations)
+5. [Licensing & Installation](#5-licensing-installation)
 
 ---
 
