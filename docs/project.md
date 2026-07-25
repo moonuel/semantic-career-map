@@ -10,6 +10,12 @@ It also fills an experience gap I've been looking to fill, by deploying an **end
 
 ---
 
+## Hypothesis
+
+The underlying hypothesis of this work is that **rigorous use of LLMs** for data cleaning and feature engineering can turn unstructured job postings and resumes into **strong semantic signals** that can be **effectively clustered** and used for classification and ranking with classical ML and dimensionality reduction.
+
+---
+
 ## Goals
 
 <!-- ### Primary -->
