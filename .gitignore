@@ -14,3 +14,4 @@ data/golden_set.json
 .env
 _build/
 .kilo/
+data/.*cache*.json
