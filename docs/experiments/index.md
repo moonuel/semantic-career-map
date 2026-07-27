@@ -9,7 +9,7 @@ Experiment log tracking the development of the semantic embedding pipeline for j
     3. Document results and discussion
     4. Write concrete conclusions and next-steps
 
-## Planned progression:
+<!-- ## Planned progression:
 
 ### Job posting embeddings
 ```
@@ -19,7 +19,7 @@ Raw text baseline → LLM text extraction → Feature engineering → Clustering
 ### User input embeddings
 ```
 Raw user input baseline → LLM feature engineering → Embedding optimization → Classification and ranking
-```
+``` -->
 
 ## Completed Experiments
 
