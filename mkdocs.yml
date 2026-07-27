@@ -49,6 +49,7 @@ nav:
     - "001 - Baseline Embedding": experiments/001-baseline-embedding.md
     - "002 - Boilerplate Removal": experiments/002-boilerplate-removal.md
     - "003 - LLM Extraction": experiments/003-llm-extraction.md
+    - "004 - GPT vs DeepSeek Speed": experiments/004-gpt-deepseek-benchmark.md
   - Research Reports:
     - Overview: research-reports/index.md
     - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md

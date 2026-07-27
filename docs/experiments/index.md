@@ -29,19 +29,25 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
     **2026-07-22**
 
-    Initial pipeline established — 27 postings, weak clustering, noisy text from boilerplate contamination.
+    Initial pipeline established. 27 postings collected; weak embedding clusters; likely noisy text from boilerplate contamination.
 
 -   [**002 — Regex boilerplate Removal**](002-boilerplate-removal.md){ .md-button }
 
     **2026-07-22**
 
-    Improved separation gap (+0.0203, 3.4×) but brittle regex approach expected to fail on varied posting formats.
+    Improved separation of clusters (+0.0203, 3.4×) but brittle regex approach expected to fail on more general job posting formats.
 
 -   [**003 — LLM Extraction**](003-llm-extraction.md){ .md-button }
 
     **2026-07-23**
 
-    **Best results:** +0.0493 separation gap (8.2×), 100% self-retrieval, zero hallucinations on 5 datasets. Generality on further postings to be tested, as well as LLM evals. 
+    +0.0493 separation gap of clusters (8.2×), no embedding degeneracy, zero hallucinations on 5 datasets. Generality on further postings to be tested, as well as LLM evals. 
+
+-   [**004 — GPT vs DeepSeek Speed Benchmark**](004-gpt-deepseek-benchmark.md){ .md-button }
+
+    **2026-07-27**
+
+    `deepseek-v4-flash` is competitive with `gpt-5.4-nano` on speed and cheaper. Likely top candidate for cost-sensitive text extraction work.
 
 </div>
 
@@ -51,13 +57,14 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 |---|---|---|---|
 | 001 — Baseline | +0.0060 | 100.0% | Boilerplate dilutes semantic signal |
 | 002 — Boilerplate | +0.0203 | 100.0% | Regex too brittle for production |
-| 003 — LLM | +0.0493 | 100.0% | LLM extraction is robust and effective | -->
+| 003 — LLM | +0.0493 | 100.0% | LLM extraction is robust and effective |
+| 004 — GPT vs DeepSeek | — | — | DeepSeek V4 Flash is competitive on speed at half cost | -->
 
 ## Planned Experiments
 
 | # | Title | Variable | Step |
 |---|---|---|---|
-| 004 | Proxy Metrics | Formalize self-retrieval + separation gap, NN audit | 1.3 |
+| 005 | Proxy Metrics | Formalize self-retrieval + separation gap, NN audit | 1.3 |
 | ? | Skill Extraction | spaCy PhraseMatcher with 200-term ML vocabulary | 1.6 |
 | ? | Weighted Concatenation | Title 3×, skills 2×, body 1× vs multi-field fusion | 1.7 |
 | ? | Golden Set Evaluation | pytrec_eval: Precision@5, MRR, NDCG | 1.9 |
