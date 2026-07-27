@@ -2,8 +2,8 @@
 """Dump raw and clean text for diffs.
 
 Usage:
-    python scripts/diff_vscode.py              # concatenate all postings into one diff pair
-    python scripts/diff_vscode.py <posting-id>  # single posting diff
+    python scripts/002_boilerplate/diff_raw_vs_clean.py              # concatenate all postings into one diff pair
+    python scripts/002_boilerplate/diff_raw_vs_clean.py <posting-id>  # single posting diff
 """
 
 from __future__ import annotations

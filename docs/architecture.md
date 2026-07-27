@@ -24,7 +24,7 @@ VS --> JP
 | Embedding Model | Dense text representations (384d) | `sentence-transformers/all-MiniLM-L6-v2` |
 | Vector Index | Cosine similarity search | NumPy arrays (L2-normalized) |
 | API | User interface for queries and uploads | FastAPI, `backend/api.py` |
-| Evaluation | Metrics computation, experiment tracking | `scripts/comp_embedding_variants.py` |
+| Evaluation | Metrics computation, experiment tracking | `scripts/003_llm_extraction/compare_variants.py` |
 | Data Store | Job posting storage, metadata | JSON files in `data/` |
 
 ## Data Flow
@@ -53,10 +53,15 @@ semantic-career-map/
 │   ├── golden_cleaned.json     # Hand-cleaned reference texts
 │   └── selected-job-postings/  # 27 raw markdown postings
 ├── scripts/                    # Data pipeline, experiments, evaluation
-│   ├── parse_and_embed_quickstart.py
-│   ├── comp_embedding_variants.py
-│   ├── extract_clean_text.py
-│   ├── eval_llm_cleaning.py
+│   ├── 001_baseline/
+│   │   └── bootstrap.py
+│   ├── 002_boilerplate/
+│   │   ├── remove_boilerplate.py
+│   │   └── diff_raw_vs_clean.py
+│   ├── 003_llm_extraction/
+│   │   ├── extract_clean_text.py
+│   │   ├── eval_cleaning.py
+│   │   └── compare_variants.py
 │   └── augment_jobs.py         # Planned
 ├── tests/                      # pytest tests
 ├── site/                       # This documentation site

@@ -5,7 +5,7 @@ self-retrieval accuracy, NN audit, and separation metrics, then saves
 a UMAP comparison plot showing all three variants side by side.
 
 Usage:
-    python scripts/comp_embedding_variants.py
+    python scripts/003_llm_extraction/compare_variants.py
 """
 
 from __future__ import annotations

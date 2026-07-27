@@ -12,7 +12,7 @@ Three scripts were generated to automate:
 - Judge the quality of extraction against manually-tuned "golden sets" of text
 - Test self-retrieval accuracy when embedded
 
-### `extract_clean_text.py`
+### `scripts/003_llm_extraction/extract_clean_text.py`
 
 LLM extraction pipeline for boilerplate removal.
 
@@ -51,7 +51,7 @@ Output only the cleaned text. No headers, prefixes, explanations, or formatting.
     - `gpt-5.4-nano`
     - `deepseek-v4-flash`
 
-### `eval_llm_cleaning.py`
+### `scripts/003_llm_extraction/eval_cleaning.py`
 
 Evaluation script comparing LLM output against "golden sets" — hand-cleaned reference texts for accuracy assessment.
 
@@ -77,7 +77,7 @@ Evaluation script comparing LLM output against "golden sets" — hand-cleaned re
     - The set difference of the manually tuned "golden words" minus the llm-cleaned text is used to count how many words are missing
     - Calculated as the ratio of set cardinalities: the above set difference divided by the golden words.
 
-### `comp_embedding_variants.py`
+### `scripts/003_llm_extraction/compare_variants.py`
 
 Script for comparing different embedding variants (raw text, section-cleaned text, LLM-cleaned text) for cluster separation and self-retrieval accuracy.
 

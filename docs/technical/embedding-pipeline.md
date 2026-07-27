@@ -91,7 +91,7 @@ Rotates embeddings into principal-component space and divides by sqrt variance. 
 
 ## Implementation
 
-From `scripts/comp_embedding_variants.py:49–54`:
+From `scripts/003_llm_extraction/compare_variants.py:49–54`:
 
 ```python
 def embed_texts(texts: list[str], model: SentenceTransformer) -> np.ndarray:

@@ -75,7 +75,7 @@ uv venv && uv sync
 uv run spacy download en_core_web_sm
 
 # Parse all postings, embed, and visualize
-uv run python scripts/parse_and_embed_quickstart.py
+uv run python scripts/001_baseline/bootstrap.py
 
 # Run tests (after tests are written)
 uv run pytest tests/ -v

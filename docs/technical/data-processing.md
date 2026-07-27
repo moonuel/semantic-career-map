@@ -39,7 +39,7 @@ graph LR
 
 ### Step 1: Metadata Extraction
 
-The `parse_and_embed_quickstart.py` script extracts structured metadata from each posting:
+The `scripts/001_baseline/bootstrap.py` script extracts structured metadata from each posting:
 
 ```json
 {
@@ -65,7 +65,7 @@ The `parse_and_embed_quickstart.py` script extracts structured metadata from eac
 
 ### Step 2: LLM Cleaning
 
-The `extract_clean_text.py` script processes each posting through gpt-5.4-nano with a system prompt instructing the model to extract only:
+The `scripts/003_llm_extraction/extract_clean_text.py` script processes each posting through gpt-5.4-nano with a system prompt instructing the model to extract only:
 
 - Job responsibilities and day-to-day tasks
 - Required qualifications and experience levels
@@ -76,7 +76,7 @@ Content systematically removed: company descriptions, salary/compensation, benef
 
 ### Step 3: Quality Validation
 
-The `eval_llm_cleaning.py` script evaluates LLM output against 5 hand-cleaned golden set reference texts using:
+The `scripts/003_llm_extraction/eval_cleaning.py` script evaluates LLM output against 5 hand-cleaned golden set reference texts using:
 
 | Metric | Definition |
 |---|---|

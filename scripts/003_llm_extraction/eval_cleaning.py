@@ -4,7 +4,7 @@ Phase 1.4b — Compares llm_clean_text output to the golden_cleaned.json referen
 Checks for boilerplate retention, skill deletion, and word-level similarity.
 
 Usage:
-    python scripts/eval_llm_cleaning.py
+    python scripts/003_llm_extraction/eval_cleaning.py
 """
 
 import json

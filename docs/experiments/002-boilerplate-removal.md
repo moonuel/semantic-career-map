@@ -17,7 +17,7 @@ This experiment tests the effect of removing non-essential content (company cult
     ```
 - The same embedding pipeline is used as in the baseline experiment (all-MiniLM-L6-v2, L2-normalized), but applied to the cleaned text.
 - UMAP, PCA and t-SNE visualizations are generated for direct comparison against the baseline embeddings.
-- `diff_vscode.py` is used to generate raw and clean_text files diff-able with VSCode.
+- `scripts/002_boilerplate/diff_raw_vs_clean.py` is used to generate raw and clean_text files diff-able with VSCode.
 
 ## Results
 

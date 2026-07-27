@@ -21,7 +21,7 @@ Proxy metrics provide rapid feedback during the experiment loop without requirin
 
 A degeneracy check verifying that every posting maps to a unique vector. If any two postings produce identical embeddings, the embedding space has collapsed.
 
-**Implementation** (`scripts/comp_embedding_variants.py:57–70`):
+**Implementation** (`scripts/003_llm_extraction/compare_variants.py:57–70`):
 
 ```python
 def self_retrieval(embeddings: np.ndarray, labels: list[str]) -> float:
@@ -46,7 +46,7 @@ Scoring: full credit (1.0) if diagonal is top result, half credit (0.5) if secon
 
 Measures how well embeddings separate by role category. Computed as `mean(within-role cosine similarity) − mean(cross-role cosine similarity)`.
 
-**Implementation** (`scripts/comp_embedding_variants.py:73–88`):
+**Implementation** (`scripts/003_llm_extraction/compare_variants.py:73–88`):
 
 ```python
 def separation_gap(embeddings: np.ndarray, roles: list[str]) -> float:

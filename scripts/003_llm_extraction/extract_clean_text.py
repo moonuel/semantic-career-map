@@ -5,7 +5,7 @@ Phase 1.4b — Feeds raw_full_text to an LLM to extract only job-signal content
 EEO statements, and recruiter boilerplate.
 
 Usage:
-    python scripts/extract_clean_text.py
+    python scripts/003_llm_extraction/extract_clean_text.py
 """
 
 import hashlib

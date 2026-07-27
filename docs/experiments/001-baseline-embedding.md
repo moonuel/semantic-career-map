@@ -9,7 +9,7 @@ AI was used for rapid prototyping.
 ## Experimental Design
 
 - 27 job postings were selected from LinkedIn (and 1 from Indeed) and their content pasted into markdown files in `data/selected-job-postings`.
-- A baseline embedding and visualization was implemented in `parse_and_embed_quickstart.py`, which extracts key metadata from each posting with the following schema:
+- A baseline embedding and visualization was implemented in `scripts/001_baseline/bootstrap.py`, which extracts key metadata from each posting with the following schema:
 
 ```
 "id": posting_id,
