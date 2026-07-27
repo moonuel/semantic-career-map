@@ -35,7 +35,6 @@ theme:
 nav:
   - Home: index.md
   - Project Overview: project.md
-  - TODO: TODO.md
   - Demo: demo.md
   - Architecture: architecture.md
   - Technical Details:
@@ -55,6 +54,7 @@ nav:
     - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md
     - "002 - Tutte Institute Visualization Tools": research-reports/002-tutte-institute-tool-review.md
     - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
+  - TODO: TODO.md
 markdown_extensions:
   - abbr
   - admonition
