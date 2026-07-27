@@ -19,15 +19,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 JOBS_PATH = PROJECT_ROOT / "data" / "jobs.json"
-CACHE_PATH = PROJECT_ROOT / "data" / ".llm_clean_cache.json"
+CACHE_PATH = PROJECT_ROOT / "data" / ".llm_clean_cache_v2.json"
 
 API_KEY = os.getenv("KILO_API_KEY")
 BASE_URL = "https://api.kilo.ai/api/gateway/chat/completions"
 # MODEL = "google/gemini-2.5-flash"
+# MODEL = "openai/gpt-5.4-nano"
 MODEL = "openai/gpt-5.4-nano"
-# MODEL = "deepseek/deepseek-v4-flash"
 TEMPERATURE = 0.0
 MAX_TOKENS = 2048
 RATE_LIMIT_SECONDS = 1.0
@@ -38,7 +38,9 @@ preferred/nice-to-have skills. Remove everything else.
 
 Categories to strip completely:
 - Company description, "About Us", mission statements, values
-- Team descriptions (what the team does, team structure, team culture)
+- Team descriptions: what the team does, team structure, team culture, team function, team domain, team mission within the organization
+- Role-purpose narratives: "About the Role" descriptions that frame the role in terms of team context rather than specific duties
+- If a sentence describes both the team's domain/function AND specific duties, remove the entire sentence — keep responsibilities pure
 - Salary ranges, pay grades, equity, compensation details
 - Benefits: health/dental/vision, vacation/PTO, parental leave, wellness
 - EEO/diversity statements, "equal opportunity employer" boilerplate
@@ -47,7 +49,7 @@ Categories to strip completely:
 - Perks, "why you'll love working here", employee testimonials
 
 Preserve verbatim (do not summarize, paraphrase, or invent):
-- All job duties, responsibilities, and day-to-day tasks
+- All job duties, responsibilities, and day-to-day tasks (not domain-framing, but the actual work)
 - All technical skills, tools, frameworks, languages, platforms
 - All required qualifications and experience levels
 - All preferred/nice-to-have qualifications

@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 JOBS_PATH = PROJECT_ROOT / "data" / "jobs.json"
 GOLDEN_PATH = PROJECT_ROOT / "data" / "golden_cleaned.json"
 
@@ -50,7 +50,7 @@ def main() -> None:
         jobs = {j["id"]: j for j in json.load(f)}
     with open(GOLDEN_PATH) as f:
         golden_list = json.load(f)
-    golden = {g["posting_id"]: g["text"] for g in golden_list}
+    golden = {g["posting_id"]: g.get("req-context", g.get("text", "")) for g in golden_list}
 
     print(f"{'=' * 80}")
     print(f"LLM CLEANING EVALUATION — Golden Set ({len(golden)} postings)")
