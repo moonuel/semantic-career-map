@@ -63,3 +63,9 @@ Anyways `deepseek-v4-flash` performed well enough for me to want to potentially 
 - It was consistently slower than `gpt-5.4-nano`, but still competitive in many metrics.
 - The 9 second outlier for `gpt-5.4-nano` suggests some instability that I won't worry too much about due to the very small sample size. Could just be bad luck. 
 - I will probably prefer `deepseek-v4-flash` for text extraction work due to its lower cost and competitive performance.
+
+## UPDATE:
+
+For some reason `deepseek-v4-flash` hangs for extended periods of times on text extraction tasks. 
+This happened the first time as well; verified after a second try.
+I didn't carefully check why, but will just revert back to `gpt-5.4-nano` for now.
