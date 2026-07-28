@@ -8,7 +8,8 @@
 - One of the most immediate core ideas to validate is whether the role taxonomy is effective for clustering similar postings.
 - Likely I will need more postings (or synthetic data) to benchmark it properly. 
 ---
-- Then some reading of standard feature engineering will probably be good. 
+- Some reading of standard feature engineering will probably be good.
+
 ---
 ## July 25:
 - I think the next major experiment will tie together a few open threads.
@@ -25,10 +26,12 @@
 - To do this at scale is still something I can't imagine doing without some LLMs and evals. 
 - I might stick to small samples for now and solve the scale problem later. 
 - Then some reading of standard feature engineering will probably be good.
+
 ---
 ## July 26:
 - Ohhh you know what would be fire. Have the demo use some variations of my resume, embed them all, and see how different variations map to different job groups.
 - I've done so much more than what can fit on a single resume sheet, this would be such a flex to also demonstrate my breadth 
+
 ---
 ## July 27
 - Boilerplate removal should probably be its own pipeline step.
