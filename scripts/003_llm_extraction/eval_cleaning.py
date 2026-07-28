@@ -50,7 +50,7 @@ def main() -> None:
         jobs = {j["id"]: j for j in json.load(f)}
     with open(GOLDEN_PATH) as f:
         golden_list = json.load(f)
-    golden = {g["posting_id"]: g.get("req-context", g.get("text", "")) for g in golden_list}
+    golden = {g["posting_id"]: g["text"] for g in golden_list}
 
     print(f"{'=' * 80}")
     print(f"LLM CLEANING EVALUATION — Golden Set ({len(golden)} postings)")
