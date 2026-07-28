@@ -65,7 +65,7 @@ The `scripts/001_baseline/bootstrap.py` script extracts structured metadata from
 
 ### Step 2: LLM Cleaning
 
-The `scripts/003_llm_extraction/extract_clean_text.py` script processes each posting through gpt-5.4-nano with a system prompt instructing the model to extract only:
+The `scripts/003_llm_extraction/extract_clean_text.py` script processes each posting through `gpt-5.4-nano` with a system prompt instructing the model to extract only:
 
 - Job responsibilities and day-to-day tasks
 - Required qualifications and experience levels
@@ -74,7 +74,16 @@ The `scripts/003_llm_extraction/extract_clean_text.py` script processes each pos
 
 Content systematically removed: company descriptions, salary/compensation, benefits, EEO statements, recruiter notes, office locations, and employee testimonials.
 
-### Step 3: Quality Validation
+### Step 3: Semantic Partitioning (New)
+
+Experiment 005 introduced a two-pass LLM partitioning approach that separates job postings into two semantic dimensions:
+
+- **Job-context** (Pass A): duties, skills, and qualifications — "what is this job?"
+- **Role-context** (Pass B): team mission, role scope, organizational impact — "what purpose does this role serve?"
+
+Both passes use `gpt-5.4-nano` with distinct system prompts, preserving original wording verbatim. Job-context extraction achieves high fidelity (mean Jaccard 0.9720 vs golden); role-context shows moderate fidelity (mean Jaccard 0.7851). The two partitions are semantically disjoint (mean overlap 0.1932) and collectively exhaustive (mean coverage 0.9653) of the source text.
+
+### Step 4: Quality Validation
 
 The `scripts/003_llm_extraction/eval_cleaning.py` script evaluates LLM output against 5 hand-cleaned golden set reference texts using:
 

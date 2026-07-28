@@ -26,6 +26,7 @@
 | Metric | Primary Definition | Summary Pages | Experiment Pages |
 |---|---|---|---|
 | Separation gap: +0.0060 (raw), +0.0203 (regex), +0.0493 (LLM) | `technical/evaluation.md:77-81` | `results.md:29-35` (commented-out), `experiments/index.md:48-54` (commented-out), `research-reports/index.md:28-34` (commented-out) | `experiments/003-llm-extraction.md:222-226` |
+| Semantic partitioning gap: +0.0255 (golden job), +0.0588 (golden role), +0.0385 (LLM job), -0.0074 (LLM role) | `technical/evaluation.md:78-82` | `results.md:10-13` | `experiments/005-semantic-partitioning.md:251-259` |
 | Self-retrieval: 100% (all) | `technical/evaluation.md:24-43` | `results.md:29-35` (commented-out) | `experiments/003-llm-extraction.md:222-226` |
 | LLM extraction quality (Jaccard, boilerplate, hallucinations, over-deletion) | `technical/data-processing.md:79-87` | `results.md:39-49` (commented-out) | `experiments/003-llm-extraction.md:144-150` |
 | LLM model tested (gpt-5.4-nano) | `technical/data-processing.md:68` | `results.md:41` (commented-out) | `experiments/003-llm-extraction.md:138` |

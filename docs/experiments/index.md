@@ -49,6 +49,15 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
     `deepseek-v4-flash` is competitive with `gpt-5.4-nano` on speed and cheaper. Likely top candidate for cost-sensitive text extraction work.
 
+-   [**005 — Semantic Partitioning**](005-semantic-partitioning.md){ .md-button }
+
+    **2026-07-27**
+
+    Can LLMs partition text into distinct semantic dimensions?
+    This experiment suggests a positive result, using manually-tuned test sets and LLM-generated partitions. 
+    Job-context can be effectively extracted, but role-context struggles.
+    Clustering analysis reinforces the partitioning results. 
+
 </div>
 
 <!-- ## Results at a Glance
@@ -64,7 +73,6 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
 | # | Title | Variable | Step |
 |---|---|---|---|
-| 005 | Proxy Metrics | Formalize self-retrieval + separation gap, NN audit | 1.3 |
 | ? | Skill Extraction | spaCy PhraseMatcher with 200-term ML vocabulary | 1.6 |
 | ? | Weighted Concatenation | Title 3×, skills 2×, body 1× vs multi-field fusion | 1.7 |
 | ? | Golden Set Evaluation | pytrec_eval: Precision@5, MRR, NDCG | 1.9 |

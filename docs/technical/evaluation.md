@@ -79,6 +79,12 @@ Higher values indicate better cluster separation. Analogous to Fisher's linear d
 | Raw (`raw_full_text`) | 100.0% | +0.0060 | 0.4045 |
 | Section-Cleaned (`clean_text`) | 100.0% | +0.0203 | 0.4298 |
 | **LLM-Cleaned (`llm_clean_text`)** | **100.0%** | **+0.0493** | 0.5280 |
+| Job-context (golden) | 100.0% | +0.0255 | 0.4912 |
+| Role-context (golden) | 100.0% | +0.0588 | 0.4149 |
+| Job-context (LLM) | 100.0% | +0.0385 | 0.4783 |
+| Role-context (LLM) | 100.0% | -0.0074 | 0.4037 |
+
+Experiment 005 demonstrated that semantic partitioning of job postings into job-context and role-context dimensions is feasible. Golden role-context achieves the highest separation gap (+0.0588, 8.5× raw), while LLM-extracted role-context shows a negative separation gap (-0.0074), indicating this dimension is harder to extract cleanly via LLM prompting.
 
 ---
 
