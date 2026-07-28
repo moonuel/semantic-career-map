@@ -29,3 +29,7 @@
 ## July 26:
 - Ohhh you know what would be fire. Have the demo use some variations of my resume, embed them all, and see how different variations map to different job groups.
 - I've done so much more than what can fit on a single resume sheet, this would be such a flex to also demonstrate my breadth 
+---
+## July 27
+- Boilerplate removal should probably be its own pipeline step.
+- It would fall under pre-processing - the boilerplate-cleaned text minus the raw text should always be empty (no hallucination)
