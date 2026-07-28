@@ -73,6 +73,12 @@ Use file-scoped variant when changing a single file:
 - **`docs/mvp-project-idea.md`** defines the project finish line — scope is locked to deliverables listed there
 - **`docs/embedding-optimization-research.md`** contains the research background for preprocessing decisions
 
+## Experiment Scripts — Immutable Artifacts
+
+- `scripts/` contains numbered experiment directories (e.g., `scripts/003_llm_extraction/`). These are static artifacts paired with their corresponding experiment reports in `docs/experiments/`.
+- **Do NOT modify existing experiment scripts unless explicitly instructed.** Experiment scripts are immutable records of what was run — changing them and reusing them violates scientific integrity.
+- When functionality from an experiment script needs to be reused, extract and modularize it into `backend/` as a reusable module. The original experiment script stays untouched.
+
 ## When Adding a New Script
 
 - Add an entry to `requirements.txt` if it imports a new third-party package
