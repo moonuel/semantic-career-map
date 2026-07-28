@@ -11,18 +11,18 @@ However, the existing `llm_clean_text` field is **contaminated**: the current ex
 ## What Changes
 
 ### Data & Evaluation
-- The golden set (`data/golden_cleaned.json`) has been manually split: each posting now has `org-context` (team function, domain, mission) and `req-context` (pure responsibilities, qualifications) fields
-- Re-evaluate the existing `llm_clean_text` against the new `req-context` golden set field
+- The golden set (`data/golden_cleaned.json`) has been manually split: each posting now has `role-context` (team function, domain, mission) and `job-context` (pure responsibilities, qualifications) fields
+- Re-evaluate the existing `llm_clean_text` against the new `job-context` golden set field
 
 ### LLM Extraction — Tighten existing pass
 - Update the `llm_clean_text` extraction prompt to explicitly strip org context (team function, domain, mission) even when interleaved with responsibilities
 - Re-run extraction on all 27 postings with the tightened prompt
-- Re-evaluate against the `req-context` golden set field
+- Re-evaluate against the `job-context` golden set field
 
 ### LLM Extraction — New pass
 - Add a new LLM extraction pass that extracts "organizational context" from raw job postings — text describing the team's function, domain, and mission within the company
 - Store the extracted context as a new `llm_org_context` field in `data/jobs.json`
-- Evaluate against the `org-context` golden set field
+- Evaluate against the `role-context` golden set field
 
 ### A/B Comparison
 - Run a three-way comparison of embedding variants:
@@ -34,17 +34,17 @@ However, the existing `llm_clean_text` field is **contaminated**: the current ex
 ## Capabilities
 
 ### New Capabilities
-- `org-context-extraction`: LLM-based extraction of organizational context (team function/domain) from unstructured job posting text, with golden-set evaluation
+- `role-context-extraction`: LLM-based extraction of organizational context (team function/domain) from unstructured job posting text, with golden-set evaluation
 
 ### Modified Capabilities
 - None — no existing specs
 
 ## Impact
 
-- `data/golden_cleaned.json`: `org-context` and `req-context` fields added (already done)
+- `data/golden_cleaned.json`: `role-context` and `job-context` fields added (already done)
 - `data/jobs.json`: `llm_clean_text` field regenerated, new `llm_org_context` field added
 - `scripts/005_org_context/extract_clean_text.py` prompt (via 003 pipeline): updated to strip org context more aggressively
 - `scripts/005_org_context/`: new extraction and evaluation scripts for org context pass
-- `scripts/003_llm_extraction/eval_cleaning.py`: updated to evaluate against `req-context` field
+- `scripts/003_llm_extraction/eval_cleaning.py`: updated to evaluate against `job-context` field
 - `scripts/005_org_context/compare_variants.py`: embedding comparison script handling three text variants
 - No changes to backend or API code

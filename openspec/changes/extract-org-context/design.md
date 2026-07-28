@@ -2,14 +2,14 @@
 
 We have 27 job postings in `data/jobs.json`, each with `raw_full_text` and `llm_clean_text` (the output of Experiment 003's LLM extraction pass). The existing extraction prompt strips all text that isn't a direct responsibility, qualification, or requirement — but inconsistently preserves org context mixed in with responsibilities.
 
-The golden set (`data/golden_cleaned.json`) has been manually split: each of the 5 evaluation postings now has `org-context` (team function, domain, mission) and `req-context` (pure responsibilities, qualifications) fields. The original unsplit `text` field remains for backward reference.
+The golden set (`data/golden_cleaned.json`) has been manually split: each of the 5 evaluation postings now has `role-context` (team function, domain, mission) and `job-context` (pure responsibilities, qualifications) fields. The original unsplit `text` field remains for backward reference.
 
 Experiment 003 showed that LLM cleaning improved separation gap by title from +0.0060 to +0.0493. We need to test whether adding the stripped organizational context back improves clustering by function (the 12-category taxonomy). This requires clean, separated fields and golden sets.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Tighten the `llm_clean_text` extraction prompt to explicitly strip org context, re-run, and re-evaluate against the `req-context` golden set field
+- Tighten the `llm_clean_text` extraction prompt to explicitly strip org context, re-run, and re-evaluate against the `job-context` golden set field
 - Extract a clean `llm_org_context` field from every posting's raw text using a new LLM pass
 - Define a clear boundary: org context = team function, domain, mission; responsibilities = specific daily tasks and requirements
 - Handle the mixed zone by leaning toward org context (keeping responsibilities pure)
@@ -32,7 +32,7 @@ Experiment 003 showed that LLM cleaning improved separation gap by title from +0
 - Rationale: lean toward keeping `llm_clean_text` pure responsibility text. The A/B test will reveal whether the domain signal helps or hurts.
 
 **3. Golden set — already split**
-- The 5 golden-set postings in `data/golden_cleaned.json` have been manually split with `org-context` and `req-context` fields added to each entry
+- The 5 golden-set postings in `data/golden_cleaned.json` have been manually split with `role-context` and `job-context` fields added to each entry
 - Same 5 postings from Experiment 003: BMO Data Scientist, Affirm ML Engineer 2, HelloFresh ML Engineer, Mastercard Data Scientist 2, Scribd Data Scientist 2
 - Evaluation metrics: Jaccard similarity, hallucination detection, over-deletion rate (same approach as eval_cleaning.py), evaluated separately against each field
 
