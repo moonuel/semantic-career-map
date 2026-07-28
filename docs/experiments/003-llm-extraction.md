@@ -141,18 +141,18 @@ Each of the three scripts was run in sequence, with `MiniLM-L6-v2` used as the e
 
 The per-model performance over 5 postings is summarized below:
 
-| Posting | Jaccard vs Golden | Boilerplate | Hallucinations | Over-deletion |
-|---|---|---|---|---|
-| BMO Data Scientist | 0.801 | CLEAN | CLEAN | 19.9% |
-| Affirm ML Engineer 2 | 1.000 | CLEAN | CLEAN | 0.0% |
-| HelloFresh ML Engineer | 0.775 | CLEAN | CLEAN | 22.5% |
-| Mastercard Data Scientist 2 | 0.610 | CLEAN | CLEAN | 29.9% |
-| Scribd Data Scientist 2 | 0.614 | CLEAN | CLEAN | 38.6% |
+| Posting | Jaccard vs Golden | Boilerplate | Hallucinations | Over-deletion | Golden Words | LLM Words |
+|---|---|---|---|---|---|---|---|
+| BMO Data Scientist | 0.801 | CLEAN | CLEAN | 19.9% | 333 | 248 |
+| Affirm ML Engineer 2 | 0.872 | CLEAN | CLEAN | 12.8% | 386 | 311 |
+| HelloFresh ML Engineer | 0.775 | CLEAN | CLEAN | 22.5% | 338 | 245 |
+| Mastercard Data Scientist 2 | 0.592 | CLEAN | CLEAN | 30.7% | 534 | 400 |
+| Scribd Data Scientist 2 | 0.606 | CLEAN | CLEAN | 39.4% | 403 | 205 |
 
 - No boilerplate or hallucinations were detected in any golden posting, suggesting that a low temperature and simple model is enough for this scale of text extraction.
     - Larger experiment sizes may be ideal for validating these results.
-- gpt-5.4-nano achieves 100% reproduction of the **Affirm ML Engineer 2** golden set, but might strip too aggressively on other postings.
-    - **System prompt tuning might be helpful for improving evals.**
+- gpt-5.4-nano strips aggressively across all postings, with over-deletion ranging from 12.8% (Affirm) to 39.4% (Scribd).
+    - **System prompt tuning may be needed to reduce over-deletion while preserving boilerplate removal.**
 
 ### Overdeletion: Mastercard Data Scientist 2
 
@@ -209,24 +209,25 @@ The set intersection reflects the roles and responsibilities as desired, suggest
 
 The set difference `golden − llm` again shows the LLM removed text that describes the role of the position within the context of the organization. Definitely will be storing this information since it seems to be semantically meaningful.
 
-### No Deletion: Affirm ML Engineer 2
+### Affirm ML Engineer 2 — Unexpected Over-Deletion
 
-As a contrasting case, let's investigate what the LLM did to the 100% match case.
+This posting was initially thought to be a near-perfect match, but the actual results show 12.8% over-deletion (Jaccard 0.872) — the LLM output is 311 words compared to a 386-word golden set.
 
-The set intersection shows the same pattern — the requirements and responsibilities are kept, but the LLM included team-related context this time: "On the Servicing ML team,...". Some system prompt tuning and storage of the team-related content is definitely warranted.
+The set intersection shows the same pattern — the requirements and responsibilities are kept, but meaningfully more content was removed than previously reported. This case now aligns with the other postings in showing that the LLM strips too aggressively.
 
 ### Embedding Comparison (raw vs section-cleaned vs LLM-cleaned, MiniLM-L6-v2 and gpt-5.4-nano)
 
 Regardless, the LLM-cleaned text achieved the highest separation gap, and a significant improvement over the raw embedded text. This suggests an improvement of semantic signaling by removing boilerplate and non-essential content.
 
-| Variant | Self-Retrieval | Separation Gap | Mean CosSim |
-|---|---|---|---|
-| Raw (`raw_full_text`) | 100.0% | +0.0060 | 0.4045 |
-| Section-Cleaned (`clean_text`) | 100.0% | +0.0203 | 0.4298 |
-| **LLM-Cleaned (`llm_clean_text`)** | **100.0%** | **+0.0493** | 0.5280 |
+| Variant | Self-Retrieval | Separation Gap | Mean CosSim | Max CosSim |
+|---|---|---|---|---|
+| Raw (`raw_full_text`) | 100.0% | +0.0060 | 0.4045 | 0.7443 |
+| Section-Cleaned (`clean_text`) | 100.0% | +0.0203 | 0.4298 | 0.7652 |
+| **LLM-Cleaned (`llm_clean_text`)** | **100.0%** | **+0.0485** | 0.5284 | 0.7903 |
 
 - None of the text variants were collapsed in the embedding space, reflected by the 100% self-retrieval score.
 - The separation gap was greatest for the LLM-cleaned variant, reflecting the improved semantic separation between role categories.
+- Max CosSim is lowest for raw text (0.7443) and highest for LLM-cleaned (0.7903), consistent with reduced variance after boilerplate removal.
 
 ![UMAP comparison](../assets/images/llm_cleaning_comparison.png)
 

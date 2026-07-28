@@ -209,7 +209,7 @@ def main() -> None:
             f"{result.name:<20} {sr:>5.1f}%         {gap:>+.4f}        {sim.mean():>.4f}        {sim.max():>.4f}"
         )
 
-    plot_umap_comparison(results, OUTPUT_DIR / "llm_cleaning_comparison.png")
+    plot_umap_comparison(results, OUTPUT_DIR / "003-llm_cleaning_comparison.png")
     print("\nDone.")
 
 
