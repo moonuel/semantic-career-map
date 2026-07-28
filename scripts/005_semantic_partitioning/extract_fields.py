@@ -21,8 +21,8 @@ load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 GOLDEN_PATH = PROJECT_ROOT / "data" / "golden_cleaned.json"
-OUTPUT_PATH = PROJECT_ROOT / "data" / "005-semantic_partitions.json"
-CACHE_PATH = PROJECT_ROOT / "data" / ".005-semantic_partition_cache.json"
+OUTPUT_PATH = PROJECT_ROOT / "data" / "005_semantic_partitions.json"
+CACHE_PATH = PROJECT_ROOT / "data" / ".005_semantic_partition_cache.json"
 
 API_KEY = os.getenv("KILO_API_KEY")
 BASE_URL = "https://api.kilo.ai/api/gateway/chat/completions"
