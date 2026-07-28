@@ -281,7 +281,10 @@ However, the comparatively high overlap (mean 0.1932) suggests that the LLM part
 The clustering tests reveal a complex story. 
 The maximum pairwise cosine similarity indicates that no two postings overlap significantly, with the highest similarity observed at 0.6856 for the LLM-extracted job-context variant, BUT its consistency across variants suggests that the semantic space is inherently overlapping for these job domains.
 
-The regression of the LLM-extracted role-context embeddings (negative separation gap of -0.0074) was quite surprising given the high performance of the LLM job-context extraction (mean Jaccard 0.9720).
+The regression of the LLM-extracted role-context embeddings (negative separation gap of -0.0074) was quite surprising given the high separation gap for the manually-tuned role-contexts. 
+**This may simply reflect the difficulty of extracting strategic context from operational details using LLM prompting alone.**
+
+The consistent separation gap performance of job-context embeddings suggests that operational responsibilities provide a more stable semantic signal for role classification.
 
 A detailed investigation of the clustering behaviour may be warranted.
 
