@@ -36,3 +36,20 @@
 ## July 27
 - Boilerplate removal should probably be its own pipeline step.
 - It would fall under pre-processing - the boilerplate-cleaned text minus the raw text should always be empty (no hallucination)
+---
+## July 29
+- Read about Siamese network / adversarial / dual-decoder models for better semantic partitioning 
+---
+## August 03
+- An interesting future direction could be some kind of counterfactual analysis
+- Suppose a user (me) embeds their resume and clicks on a job posting. 
+- Calculate the set difference of words and run the skill extraction pipeline. 
+- Add those skills back to the resume to see if it improves match scores.
+- This can be used to identify critical missing skills that are hindering job matching.
+- Something like a personalized recommendation system for skill development and career path optimization.
+---
+- An interesting idea came up during a planning session using Deepseek. 
+- A k-NN clustering metric can be defined by taking the k-nearest neighbours to any given job posting \(P\) and counting whether it shares a tag with \(P\).
+- This requires the tag generation using the [taxonomy](research-reports/003-ml-ai-responsibility-taxonomy.md) to assign consistent labels to postings.
+- Interesting clustering metric that would improve upon the very naive within-group/between-groups ratio.
+- Although I do like the existing metric too because the discriminant is simple and interpretable.
