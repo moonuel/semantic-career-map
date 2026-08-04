@@ -100,7 +100,7 @@ scribd-data-scientist-2                  Golden: ['classical-ml', 'deep-learning
 
 **Recall: 4/5 (80.0%)**
 
-Bmo remains the single mismatch: the posting explicitly mentions "Generative AI/Deep Learning models," "Reinforcement Learning," and "algorithmic trading performance," and the LLM correctly identifies these as its primary function. The bmo golden label (`classical-ml`, `analytics-storytelling`) does not include `deep-learning` or `reinforcement-learning` — if these were added, bmo would match. Hellofresh is now an exact 3-tag match between golden and LLM output. Scribd's golden label added `classical-ml`, which the LLM already assigns — match preserved.
+BMO remains the single mismatch: the posting explicitly mentions "Generative AI/Deep Learning models," "Reinforcement Learning," and "algorithmic trading performance," and the LLM correctly identifies these as its primary function. The BMO golden label (`classical-ml`, `analytics-storytelling`) does not include `deep-learning` or `reinforcement-learning` — if these were added, BMO would match. Hellofresh is now an exact 3-tag match between golden and LLM output. Scribd's golden label added `classical-ml`, which the LLM already assigns — match preserved.
 
 ### Label Distribution
 
@@ -196,9 +196,9 @@ The UMAP plot colors each posting by its full tag set combination (22 unique col
 
 ## Discussion
 
-The 13-category taxonomy stabilized with this run. The golden set refinements (adding `mlops-production` to Mastercard, `ml-platform` to Hellofresh, `classical-ml` to Scribd, `analytics-storytelling` to Bmo) produced tighter matches overall — Hellofresh now achieves an exact 3-tag match between golden and LLM output. Scribd's golden refinement (adding `classical-ml` alongside `deep-learning` and `llm-information-retrieval`) accurately reflects what the LLM was already seeing in the posting.
+The 13-category taxonomy stabilized with this run. The golden set refinements (adding `mlops-production` to Mastercard, `ml-platform` to Hellofresh, `classical-ml` to Scribd, `analytics-storytelling` to BMO) produced tighter matches overall — Hellofresh now achieves an exact 3-tag match between golden and LLM output. Scribd's golden refinement (adding `classical-ml` alongside `deep-learning` and `llm-information-retrieval`) accurately reflects what the LLM was already seeing in the posting.
 
-Bmo remains the holdout: the LLM consistently tags it `deep-learning` + `reinforcement-learning` because the posting explicitly describes "Generative AI/Deep Learning models" and "Reinforcement Learning" applied to "algorithmic trading performance." The golden label (`classical-ml`, `analytics-storytelling`) captures the traditional ML and analytics dimensions but misses the DL and RL signals that dominate the posting's text. This isn't an LLM error — it's a golden label gap.
+BMO remains the holdout: the LLM consistently tags it `deep-learning` + `reinforcement-learning` because the posting explicitly describes "Generative AI/Deep Learning models" and "Reinforcement Learning" applied to "algorithmic trading performance." The golden label (`classical-ml`, `analytics-storytelling`) captures the traditional ML and analytics dimensions but misses the DL and RL signals that dominate the posting's text. This isn't an LLM error — it's a golden label gap.
 
 `deep-learning` has become the dominant category: 9 generated titles, appearing in 15 of 22 tag sets. It co-occurs with `mlops-production` in 10 of 27 postings — the strongest pair in the taxonomy. The original 12-category taxonomy's blind spot is now its strongest signal.
 
@@ -214,7 +214,7 @@ The flattening of the tag set distribution (from 4-post triplet to 2-post ceilin
 
 2. **Golden set refinements improved alignment.** Hellofresh achieved an exact 3-tag match. Scribd's golden label now reflects the posting's actual content (`classical-ml` + `deep-learning` + `llm-information-retrieval`). Mastercard's golden label added `mlops-production`, matching what the LLM already saw.
 
-3. **Bmo is the persistent golden gap.** The LLM consistently identifies `deep-learning` and `reinforcement-learning` in the bmo posting, which explicitly describes "Generative AI/Deep Learning models" and "Reinforcement Learning" for "algorithmic trading performance." The golden label (`classical-ml`, `analytics-storytelling`) captures traditional ML and analytics dimensions but misses the DL/RL signals. This is a golden label issue, not an LLM error — the golden should include `deep-learning` and `reinforcement-learning` to match the posting text.
+3. **BMO is the persistent golden gap.** The LLM consistently identifies `deep-learning` and `reinforcement-learning` in the BMO posting, which explicitly describes "Generative AI/Deep Learning models" and "Reinforcement Learning" for "algorithmic trading performance." The golden label (`classical-ml`, `analytics-storytelling`) captures traditional ML and analytics dimensions but misses the DL/RL signals. This is a golden label issue, not an LLM error — the golden should include `deep-learning` and `reinforcement-learning` to match the posting text.
 
 4. **The tag set distribution flattened with the expanded vocabulary.** 22 unique tag sets (vs 21 in the previous run, 19 in the 12-category run), with no single triplet above 2 postings. The taxonomy is producing more discriminating assignments. A 4-tag assignment also emerged — the LLM exceeded the 1-3 tag guidance for one posting, suggesting the richer vocabulary encourages more honest multi-labeling.
 
@@ -232,7 +232,7 @@ The flattening of the tag set distribution (from 4-post triplet to 2-post ceilin
 
 - **KNN audit**: for each posting, retrieve its top-k nearest neighbors in embedding space and inspect whether they share function tags — a direct test of whether the embeddings and taxonomy agree at the instance level
 
-- **Expand golden set**: bmo remains the persistent golden mismatch because the golden label doesn't include `deep-learning` and `reinforcement-learning` despite the posting explicitly describing these functions. Consider adding `deep-learning` and `reinforcement-learning` to bmo's golden label, or expanding to 8-10 postings for better coverage.
+- **Expand golden set**: BMO remains the persistent golden mismatch because the golden label doesn't include `deep-learning` and `reinforcement-learning` despite the posting explicitly describing these functions. Consider adding `deep-learning` and `reinforcement-learning` to bmo's golden label, or expanding to 8-10 postings for better coverage.
 
 ## Appendix
 
