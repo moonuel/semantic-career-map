@@ -1,0 +1,320 @@
+[
+  {
+    "posting_id": "affirm-ai-solutions-engineer",
+    "original_title": "AI Solutions Engineer",
+    "original_category": "AI Engineer",
+    "function_tags": [
+      "agentic-ai",
+      "mlops-production",
+      "data-engineering"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The role focuses on building and maintaining AI agents and production systems (agents, APIs, applications) with full lifecycle ownership including CI/CD, monitoring, containerization, and production incident fixes. It also requires integrating governed employee data across systems and building data/infrastructure connections (Workday, Snowflake, case tools, dbt models), aligning with production ML operations plus data engineering."
+  },
+  {
+    "posting_id": "affirm-ml-engineer-2",
+    "original_title": "ML Engineer 2",
+    "original_category": "ML Engineer",
+    "function_tags": [
+      "llm-information-retrieval",
+      "mlops-production"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The role focuses on building LLM-powered evidence extraction workflows (structured outputs from unstructured data), along with integrating LLM APIs and orchestration. It also explicitly includes driving best-performing approaches into production with risk controls and using ML lifecycle tooling for training orchestration, experimentation, and monitoring."
+  },
+  {
+    "posting_id": "bmo-associate-data-scientist",
+    "original_title": "Data Scientist",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "classical-ml",
+      "mlops-production",
+      "analytics-storytelling"
+    ],
+    "generated_title": "Classical ML Engineer",
+    "rationale": "The role centers on developing predictive trading models (including time series analysis, deep learning, and reinforcement learning) and extracting insights from large datasets, which maps primarily to classical ML and analytics. It also explicitly calls for reproducible ML pipelines for production plus familiarity with MLOps for deployment and monitoring, warranting an ML operations tag."
+  },
+  {
+    "posting_id": "cerebras-ml-performance-benchmarking-engineer",
+    "original_title": "ML Performance Benchmarking Engineer",
+    "original_category": "ML Engineer",
+    "function_tags": [
+      "mlops-production",
+      "analytics-storytelling"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The role focuses on designing end-to-end inference observability/telemetry and building benchmarking infrastructure for measuring performance before and after deployment, which aligns with ML operations and production monitoring. It also emphasizes performance analysis with actionable insights that influence feature decisions, matching analytics-focused responsibilities."
+  },
+  {
+    "posting_id": "clario-ai-engineer",
+    "original_title": "AI Engineer",
+    "original_category": "AI Engineer",
+    "function_tags": [
+      "agentic-ai",
+      "mlops-production",
+      "data-engineering"
+    ],
+    "generated_title": "Agentic AI Engineer",
+    "rationale": "The role emphasizes Agentic AI/AI Agents, tool-use workflows, and multi-step orchestration layers to build scalable AI-enabled applications and services. It also covers full lifecycle deployment and monitoring in cloud environments, plus development/optimization of data pipelines for training, retrieval, evaluation, and monitoring."
+  },
+  {
+    "posting_id": "clio-ml-engineer",
+    "original_title": "ML Engineer",
+    "original_category": "ML Engineer",
+    "function_tags": [
+      "llm-information-retrieval",
+      "llm-fine-tuning",
+      "mlops-production"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The role focuses on developing LLM-based solutions and transformer/NLP models using structured and unstructured data, which aligns with LLM application development and potential retrieval/grounding needs (llm-information-retrieval) as well as adapting models (llm-fine-tuning). It also explicitly requires collaboration with MLOps engineering and working across ML development projects in an agile environment, indicating an operational/deployment involvement consistent with mlops-production."
+  },
+  {
+    "posting_id": "coca-cola-data-scientist",
+    "original_title": "Data Scientist",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "classical-ml",
+      "analytics-storytelling",
+      "data-engineering"
+    ],
+    "generated_title": "Classical ML Engineer",
+    "rationale": "The role centers on building statistical and machine learning models for demand forecasting, price elasticity, promotion/trade spend optimization, and scenario modeling. It also requires SQL/Python on large datasets and creating Power BI/Tableau visualizations to communicate insights and recommendations to stakeholders."
+  },
+  {
+    "posting_id": "dayforce-product-ai-intern",
+    "original_title": "Product & AI Intern",
+    "original_category": "Other",
+    "function_tags": [
+      "data-engineering",
+      "analytics-storytelling",
+      "llm-information-retrieval"
+    ],
+    "generated_title": "Analytics Engineer",
+    "rationale": "The role emphasizes building product analytics and usage insights using Pendo and Databricks, including developing/refining product analytics to inform the roadmap. It also includes annotated dataset creation and evaluation for multilingual LLM outputs, which aligns with retrieval/grounding and practical LLM system assessment, alongside data work for downstream analysis."
+  },
+  {
+    "posting_id": "deloitte-ai-ml-models-consultant-analyst",
+    "original_title": "Analyst/Consultant, AI/ML Models",
+    "original_category": "Other",
+    "function_tags": [
+      "llm-fine-tuning",
+      "llm-information-retrieval",
+      "research"
+    ],
+    "generated_title": "LLM Fine-Tuning Engineer",
+    "rationale": "The posting emphasizes developing and fine-tuning LLMs and evaluating/benchmarking different model/toolchains, including familiarity with extraction and generation. It also explicitly calls out LangChain and RAG for testing and benchmarking, and the broader exploration of quantitative analytical areas suggests a research/prototyping component beyond straightforward deployment."
+  },
+  {
+    "posting_id": "ebay-applied-researcher-1",
+    "original_title": "Applied Researcher 1",
+    "original_category": "Applied/Research",
+    "function_tags": [
+      "analytics-storytelling",
+      "data-engineering",
+      "classical-ml"
+    ],
+    "generated_title": "Analytics Engineer",
+    "rationale": "The role focuses on building and iterating ML models and data pipelines for ranking, recommendation, and advertising, along with defining problem statements and validating hypotheses via scientific experimentation and evaluation frameworks. Required skills emphasize big data tooling (Hadoop, SQL, Spark) and online experimentation, aligning with analytics/experimentation and data/ML model development for production-quality systems."
+  },
+  {
+    "posting_id": "fgf-brands-ai-engineer-new-grad",
+    "original_title": "AI Engineer New Grad",
+    "original_category": "AI Engineer",
+    "function_tags": [
+      "agentic-ai",
+      "llm-information-retrieval",
+      "llm-fine-tuning"
+    ],
+    "generated_title": "Agentic AI Engineer",
+    "rationale": "The role emphasizes building and shipping agentic solutions and internal automations/tools, indicating autonomous agent system work. It also explicitly calls for applying LLMs using RAG and fine-tuning, so information retrieval and model adaptation are additional core components."
+  },
+  {
+    "posting_id": "hellofresh-ml-engineer-operations-technology",
+    "original_title": "ML Engineer Operations Technology",
+    "original_category": "ML Engineer",
+    "function_tags": [
+      "agentic-ai",
+      "mlops-production",
+      "ml-platform"
+    ],
+    "generated_title": "Agentic AI Engineer",
+    "rationale": "The role centers on developing an agentic GenAI system with LLM orchestration and image generation integrated into an existing content pipeline, plus building agent evaluations for quality and reliability. It also explicitly requires production-grade ML systems and contributions to an MLOps platform using Databricks, MLflow, Prefect, with monitoring/drift detection and CI/CD."
+  },
+  {
+    "posting_id": "huawei-ai-ml-researcher",
+    "original_title": "AI ML Researcher",
+    "original_category": "Applied/Research",
+    "function_tags": [
+      "research",
+      "llm-information-retrieval",
+      "mlops-production"
+    ],
+    "generated_title": "AI Research Scientist",
+    "rationale": "The role focuses on designing, prototyping, evaluating deep learning and generative AI/foundation model capabilities and translating research into prototypes and product-ready solutions, which aligns with research. It also requires end-to-end workflows including training, evaluation, optimization, and deployment (including on-device/in the cloud), plus comfort with distributed training and MLOps tooling."
+  },
+  {
+    "posting_id": "industrial-and-commercial-bank-of-china-data-science-analyst",
+    "original_title": "Data Science Analyst",
+    "original_category": "Other",
+    "function_tags": [
+      "data-engineering",
+      "analytics-storytelling"
+    ],
+    "generated_title": "Data Engineer",
+    "rationale": "The role focuses on developing Python/Oracle procedures/Java for analytical data mining and business reporting, plus handling data requirements and investigation of application/reporting issues. It also includes gathering business requirements and documenting use cases and business rules, aligning with analytics/data work more than model building or ML deployment."
+  },
+  {
+    "posting_id": "intact-data-scientist-2",
+    "original_title": "Data Scientist 2",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "analytics-storytelling",
+      "mlops-production",
+      "data-engineering"
+    ],
+    "generated_title": "Analytics Engineer",
+    "rationale": "The role emphasizes building analytics/ML solutions and translating complex data into insights, including experiment design, validation, evaluation, and stakeholder success metrics. It also calls for production-quality, maintainable code and maintaining/improving data science tools and platforms, indicating a mix of ML operations and supporting data tooling."
+  },
+  {
+    "posting_id": "kinaxis-data-analytics-coop-intern",
+    "original_title": "Data Analytics Co-op Intern",
+    "original_category": "Other",
+    "function_tags": [
+      "data-engineering",
+      "analytics-storytelling"
+    ],
+    "generated_title": "Data Engineer",
+    "rationale": "The posting emphasizes building and integrating data pipelines, data validation/cleansing, modernizing legacy systems with cloud tools, and using pipeline technologies like Airflow and dbt, which aligns with data-engineering. It also includes creating simple data models and BI dashboards (Power BI/Looker), supporting analytics-storytelling, though the primary focus is on data engineering."
+  },
+  {
+    "posting_id": "mastercard-data-scientist-2",
+    "original_title": "Data Scientist II",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "classical-ml",
+      "data-engineering",
+      "mlops-production"
+    ],
+    "generated_title": "Classical ML Engineer",
+    "rationale": "The role focuses on analyzing transaction/merchant data for patterns/anomalies, building merchant registry/profiling, and prototyping ML and analytical solutions with feature engineering, entity resolution, and evaluation. It also includes scalable Spark/Databricks workflows and supporting model monitoring/benchmarking for iterative improvement, aligning with data engineering and ML operations."
+  },
+  {
+    "posting_id": "motion-recruitment-ml-engineer",
+    "original_title": "ML Engineer",
+    "original_category": "ML Engineer",
+    "function_tags": [
+      "mlops-production",
+      "data-engineering",
+      "classical-ml"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The role emphasizes scaling and deploying ML systems with MLOps practices such as CI/CD, MLflow/Kubeflow/SageMaker, and container orchestration (Docker/Kubernetes), indicating a strong ML operations focus. It also includes substantial data engineering/pipeline development (Python, pandas/numpy, SQL/NoSQL) and hands-on model development with scikit-learn/LightGBM/PyTorch."
+  },
+  {
+    "posting_id": "ontario-teachers-pension-plan-data-scientist",
+    "original_title": "Data Scientist",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "mlops-production",
+      "llm-information-retrieval",
+      "classical-ml"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The posting emphasizes an end-to-end lifecycle including deployment, monitoring, and continuous improvement, alongside LLM engineering practices like RAG, embeddings, vector search, and evaluation. It also includes building predictive decision-making and optimization-based analytical models, indicating classical ML/optimization work in addition to LLM retrieval systems."
+  },
+  {
+    "posting_id": "pinterest-ml-engineer-2",
+    "original_title": "ML Engineer 2",
+    "original_category": "ML Engineer",
+    "function_tags": [
+      "classical-ml",
+      "data-engineering",
+      "mlops-production"
+    ],
+    "generated_title": "Classical ML Engineer",
+    "rationale": "The role focuses on building and improving ML models for personalization and candidate retrieval/ranking across product surfaces, indicating primarily classical ML/recommender systems work. It also requires end-to-end data processing pipelines, large-scale/big data technologies, and scalable real-time stream processing, which strongly ties into data engineering and ML production concerns."
+  },
+  {
+    "posting_id": "rbc-data-scientist-ai-model-risk",
+    "original_title": "Data Scientist AI Model Risk",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "ai-safety-governance",
+      "research",
+      "mlops-production"
+    ],
+    "generated_title": "AI Safety Engineer",
+    "rationale": "The role centers on validating LLM-based applications and agentic AI systems by challenging models to identify conceptual/empirical risks (fairness, privacy, explainability, uncertainty, reproducibility) and advocating controls and best practices. It also includes reading research papers and enhancing validation approaches, plus collaboration on MLOps tooling and IT infrastructure."
+  },
+  {
+    "posting_id": "scotiabank-ai-ml-data-scientist",
+    "original_title": "AI ML Data Scientist",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "data-engineering",
+      "computer-vision",
+      "mlops-production"
+    ],
+    "generated_title": "Data Engineer",
+    "rationale": "The role emphasizes building and maintaining Python data pipelines to ingest, clean, and preprocess large volumes of structured and unstructured documents (often including OCR/form data), aligning strongly with data infrastructure. It also requires deploying document-understanding models into reliable production environments, which adds an MLOps production component."
+  },
+  {
+    "posting_id": "scribd-data-scientist-2",
+    "original_title": "Data Scientist 2",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "classical-ml",
+      "data-engineering",
+      "mlops-production"
+    ],
+    "generated_title": "Classical ML Engineer",
+    "rationale": "The role is centered on developing machine learning models for content classification using classical ML (Scikit-learn/NumPy) as well as deep learning/LLM-based approaches, indicating primary classical-ml work. It also emphasizes building ML pipelines and processing large-scale data with Python/SQL/Spark, plus experience deploying to production environments, which aligns with data-engineering and mlops-production."
+  },
+  {
+    "posting_id": "tactable-data-engineer",
+    "original_title": "Data Engineer",
+    "original_category": "Data Engineer",
+    "function_tags": [
+      "data-engineering",
+      "mlops-production"
+    ],
+    "generated_title": "Data Engineer",
+    "rationale": "The posting centers on building and maintaining production-grade ETL/ELT pipelines, integrating sources, ensuring data quality/observability, and migrating cloud-native data architectures—core data-engineering work. It also explicitly calls for CI/CD pipelines, infrastructure-as-code, and containerized deployments (Docker/Kubernetes), aligning with ML/AI production engineering practices."
+  },
+  {
+    "posting_id": "td-applied-ml-scientist-1",
+    "original_title": "Applied ML Scientist 1",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "mlops-production",
+      "classical-ml",
+      "llm-information-retrieval"
+    ],
+    "generated_title": "ML Operations Engineer",
+    "rationale": "The role emphasizes building production-ready ML pipelines, deploying models, and handling ongoing monitoring, A/B testing, documentation, and lifecycle management. It also includes developing predictive models (classical-ml) and practical GenAI/chatbot use cases that commonly require retrieval components (llm-information-retrieval)."
+  },
+  {
+    "posting_id": "thumbtack-data-scientist-2-monetization-pricing",
+    "original_title": "Data Scientist 2 Monetization Pricing",
+    "original_category": "Data Scientist",
+    "function_tags": [
+      "analytics-storytelling",
+      "data-engineering"
+    ],
+    "generated_title": "Analytics Engineer",
+    "rationale": "The role focuses on quantitative research, designing and analyzing experiments for causal inference, monitoring key metrics, and communicating findings to product decisions. It also includes building and maintaining accessible data tables to support the company’s data culture, indicating a strong data/analytics engineering component."
+  },
+  {
+    "posting_id": "venterra-realty-data-decision-scientist",
+    "original_title": "Data Decision Scientist",
+    "original_category": "Other",
+    "function_tags": [
+      "agentic-ai",
+      "llm-information-retrieval",
+      "classical-ml"
+    ],
+    "generated_title": "Agentic AI Engineer",
+    "rationale": "The role emphasizes designing, building, and deploying AI agents and multi-agent workflows, and contributing to an agentic AI/LLM strategy. It also explicitly requires LLM-powered applications using RAG (embeddings/vector search, LLM evaluation) and combines this with predictive modeling and advanced statistics for business use cases like pricing and forecasting."
+  }
+]
