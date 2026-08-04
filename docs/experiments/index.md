@@ -58,6 +58,12 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
     Job-context can be effectively extracted, but role-context struggles.
     Clustering analysis reinforces the partitioning results. 
 
+-   [**006 — Taxonomy-Driven Role Labeling**](006-taxonomy-role-labeling.md){ .md-button }
+
+    **2026-08-04**
+
+    LLM assigns fine-grained function tags from a 13-category ML/AI responsibility taxonomy to 27 job postings. 22 unique tag sets with 80% golden recall. `deep-learning` + `mlops-production` is the dominant pair (10 co-occurrences). Qualitative UMAP evaluation shows tag-set-colored clusters align with embedding similarity.
+
 </div>
 
 <!-- ## Results at a Glance

@@ -90,7 +90,7 @@ FastAPI backend + Docker + Cloud deployment
 |---|---|---|
 | 1 | Data Ingestion Pipeline | 🟡 27 postings collected, expanding |
 | 2 | Embedding Pipeline | ✅ all-MiniLM-L6-v2, L2-normalized |
-| 3 | Embedding Optimization & Feature Engineering | 🟡 4 experiments complete, more planned |
+| 3 | Embedding Optimization & Feature Engineering | 🟡 6 experiments complete, more planned |
 | 4 | Clustering and Similarity Scoring | 🟡 Cosine distance implemented |
 | 5 | FastAPI Backend | 🔴 Not started |
 | 6 | Docker Containerization | 🔴 Not started |

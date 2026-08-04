@@ -86,6 +86,8 @@ Higher values indicate better cluster separation. Analogous to Fisher's linear d
 
 Experiment 005 demonstrated that semantic partitioning of job postings into job-context and role-context dimensions is feasible. Golden role-context achieves the highest separation gap (+0.0588, 8.5× raw), while LLM-extracted role-context shows a negative separation gap (-0.0074), indicating this dimension is harder to extract cleanly via LLM prompting.
 
+Experiment 006 introduced function-based role labeling using a 13-category ML/AI responsibility taxonomy. LLM-assigned function tags provide a more honest clustering target than noisy title-based labels. Tag-set-colored UMAP visualization qualitatively confirms that function-based clusters align with embedding similarity. The taxonomy enables richer evaluation beyond the surface-level title proxy used by separation gap.
+
 ---
 
 ## IR Metrics (Planned — Phase 1.9)

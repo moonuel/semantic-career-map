@@ -12,6 +12,7 @@ As of July 27, 2026:
 - Using LLM-based (`gpt-5.4-nano`) text cleaning appears to significantly improve separation of embedded vectors, compared to raw and regex-based cleaning methods.
 - Job postings can be semantically partitioned into "what is this job?" and "what purpose does this role serve?" dimensions with high fidelity for job-context (mean Jaccard 0.9720) and moderate fidelity for role-context (mean Jaccard 0.7851).
 - LLM-extracted job-context improves separation gap by 5.6× over raw text, but LLM-extracted role-context shows a negative separation gap (-0.0074), suggesting this dimension is harder to extract cleanly.
+- LLM-driven taxonomy labeling (13 categories) produces 22 unique tag sets across 27 postings with 80% golden recall. `deep-learning` + `mlops-production` is the dominant co-occurrence pair (10/27 postings). Tag-set-colored UMAP visualization confirms that function-based clusters align with embedding similarity, enabling honest clustering evaluation beyond noisy title labels.
 
 <!-- 
 ## Summary Dashboard
@@ -115,7 +116,7 @@ Baseline PCA/UMAP/t-SNE findings from Experiment 001:
 
 - **LLM over-deletion of organizational context (19–39%).** Team role context carries semantic signal that helps distinguish similar-sounding roles
 - **LLM role-context extraction shows moderate fidelity (mean Jaccard 0.7851) and negative separation gap (-0.0074).** Organizational mission extraction is harder than job-duty extraction; prompt refinement or different LLM models may improve this
-- **Title-based role labels are noisy.** Function-based labeling (12-category taxonomy) is needed for honest clustering evaluation
+- **Title-based role labels are noisy.** Function-based labeling (13-category taxonomy, validated in Exp 006) enables honest clustering evaluation
 - **Small dataset (27 postings).** Data augmentation (template-based synthetic postings) planned to densify the embedding space
 
 ### Next Steps

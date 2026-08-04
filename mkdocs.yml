@@ -51,6 +51,7 @@ nav:
     - "003 - LLM Extraction": experiments/003-llm-extraction.md
     - "004 - GPT vs DeepSeek Speed": experiments/004-gpt-deepseek-benchmark.md
     - "005 - Semantic Partitioning": experiments/005-semantic-partitioning.md
+    - "006 - Taxonomy-Driven Role Labeling": experiments/006-taxonomy-role-labeling.md
   - Research Reports:
     - Overview: research-reports/index.md
     - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md

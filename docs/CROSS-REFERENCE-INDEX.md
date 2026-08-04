@@ -100,7 +100,7 @@ Adding a research report requires updating:
 | PCA whitening (deferred) | `technical/embedding-pipeline.md:89-90`, `research-reports/001-embedding-optimization-research.md:107-131` |
 | HDBSCAN cluster validation | `technical/evaluation.md:123-135`, `research-reports/002-tutte-institute-tool-review.md:83-103` |
 | DataMapPlot visualization upgrade | `research-reports/002-tutte-institute-tool-review.md:48-49, 78, 139-153` |
-| Function-based taxonomy (12-category) | `research-reports/003-ml-ai-responsibility-taxonomy.md:86-436` |
+| Function-based taxonomy (13-category) | `research-reports/003-ml-ai-responsibility-taxonomy.md:86-436` |
 
 ---
 

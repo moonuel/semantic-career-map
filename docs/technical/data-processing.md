@@ -103,7 +103,7 @@ See [Evaluation](evaluation.md) for detailed metric definitions and results.
 - No duplicates detected in 27 postings
 - All postings have non-empty `about_role`, `responsibilities`, and `qualifications` sections
 - LLM over-deletion of organizational context (19–39%) — team role descriptions are inconsistently stripped
-- Title-based role labels are noisy — function-based labels (12 categories) planned for honest clustering evaluation
+- Title-based role labels are noisy — function-based labels (13 categories, validated in Exp 006) available for honest clustering evaluation
 
 ### Planned Improvements
 
