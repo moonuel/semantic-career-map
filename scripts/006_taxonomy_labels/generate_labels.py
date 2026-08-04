@@ -106,7 +106,14 @@ model exploration.
 Ensures AI systems are safe, fair, and auditable. Core activities: Bias \
 detection and fairness auditing, explainability (SHAP, LIME), model cards \
 and system cards, adversarial robustness testing, AI compliance \
-(EU AI Act), privacy-preserving ML."""
+(EU AI Act), privacy-preserving ML.
+
+## 13. deep-learning — Neural Network Engineering
+Designs and trains neural network architectures. Core activities: Model \
+architecture design (MLPs, CNNs, RNNs, transformers, GANs, VAEs), training \
+loop engineering (PyTorch, TensorFlow, JAX), hyperparameter tuning and \
+experiment tracking, GPU optimization and distributed training, transfer \
+learning and pre-training from foundation models."""
 
 TITLE_VOCABULARY = {
     "agentic-ai": "Agentic AI Engineer",
@@ -121,30 +128,31 @@ TITLE_VOCABULARY = {
     "reinforcement-learning": "Reinforcement Learning Engineer",
     "research": "AI Research Scientist",
     "ai-safety-governance": "AI Safety Engineer",
+    "deep-learning": "Deep Learning Engineer",
 }
 
 GOLDEN_LABELS: dict[str, list[str]] = {
-    "bmo-associate-data-scientist": ["classical-ml"],
-    "affirm-ml-engineer-2": ["classical-ml", "mlops-production"],
-    "hellofresh-ml-engineer-operations-technology": ["agentic-ai", "mlops-production"],
-    "mastercard-data-scientist-2": ["classical-ml"],
-    "scribd-data-scientist-2": ["llm-fine-tuning", "llm-information-retrieval"],
+    "bmo-associate-data-scientist": ["classical-ml","analytics-storytelling",],
+    "affirm-ml-engineer-2": ["classical-ml","mlops-production",],
+    "hellofresh-ml-engineer-operations-technology": ["agentic-ai","mlops-production","ml-platform",],
+    "mastercard-data-scientist-2": ["classical-ml","mlops-production",],
+    "scribd-data-scientist-2": ["classical-ml","deep-learning","llm-information-retrieval",],
 }
 
 SYSTEM_PROMPT = f"""You are a job posting classifier. Analyze the provided job \
-posting text and classify it according to the 12-category ML/AI function \
+posting text and classify it according to the 13-category ML/AI function \
 taxonomy below.
 
 {TAXONOMY_DEFINITIONS}
 
 Assign function_tags: a list of 1-3 category names selected STRICTLY from the \
-12 categories above. Valid values are: agentic-ai, llm-fine-tuning, \
+13 categories above. Valid values are: agentic-ai, llm-fine-tuning, \
 llm-information-retrieval, classical-ml, mlops-production, data-engineering, \
 analytics-storytelling, computer-vision, ml-platform, reinforcement-learning, \
-research, ai-safety-governance. Do NOT invent new category names. Include all \
-that match — do not force a single label if multiple apply. If the posting \
-clearly blends two functions (e.g., trains models AND deploys to production), \
-include both.
+research, ai-safety-governance, deep-learning. Do NOT invent new category \
+names. Include all that match — do not force a single label if multiple \
+apply. If the posting clearly blends two functions (e.g., trains models AND \
+deploys to production), include both.
 
 Assign generated_title: a functional title from this controlled vocabulary: \
 {json.dumps(TITLE_VOCABULARY, indent=2)}
@@ -157,7 +165,7 @@ Provide rationale: a 1-2 sentence explanation of why these tags and title \
 were chosen, referencing specific duties from the posting.
 
 Output a JSON object with exactly three fields:
-- function_tags: list of strings (1-3 taxonomy category names from the 12 listed)
+- function_tags: list of strings (1-3 taxonomy category names from the 13 listed)
 - generated_title: string (exactly one title from the vocabulary above)
 - rationale: string (1-2 sentence explanation)
 

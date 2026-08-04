@@ -15,8 +15,9 @@ title but almost nothing else in their daily work. For clustering evaluation, we
 labels that reflect *function* — what the job actually does — not what it's called.
 
 This report synthesizes 2025–2026 job market research, career comparison guides, real
-job postings, and engineering practice literature to produce a 12-category function
-taxonomy suitable for labeling 27 hand-collected job postings.
+job postings, and engineering practice literature to produce a 13-category function
+taxonomy suitable for labeling 27 hand-collected job postings. (The 13th category,
+`deep-learning`, was added by Experiment 006 after initial results revealed neural network engineering had no explicit taxonomic home.)
 
 **Key finding:** The industry has converged on a three-way conceptual split (Data
 Scientists answer questions, ML Engineers build systems, AI Engineers ship products),
@@ -189,7 +190,45 @@ data, often with interpretable models and feature-level reasoning. The skills
 (statistics, feature engineering on tables, experiment design with structured data)
 are distinct from neural network design.
 
-### 3.5 `mlops-production` — Production ML Operations
+### 3.5 `deep-learning` — Neural Network Engineering
+
+**`deep-learning` — added after Experiment 006 initial results.**
+
+Designs and trains neural network architectures to solve prediction, classification,
+and generation tasks. Applies to general DL engineering that is not specifically
+limited to LLM fine-tuning, computer vision, or reinforcement learning.
+
+Core activities:
+- Model architecture design: MLPs, CNNs, RNNs, transformers, GANs, VAEs
+- Training loop engineering: PyTorch, TensorFlow, JAX
+- Hyperparameter tuning, experiment tracking, ablation studies
+- GPU optimization and distributed training: CUDA, NCCL, FSDP, DeepSpeed
+- Transfer learning and pre-training from foundation models
+- Dataset preparation, augmentation, and synthetic data generation for training
+
+Deliverable: Trained neural network models. The PyTorch/TF pipeline kind of work —
+designing architectures, writing training loops, tuning hyperparameters. The craft is
+model building, not the specific application domain.
+
+Distinction from `classical-ml` (section 3.4): Classical ML operates on structured
+tabular data with interpretable models (XGBoost, random forests). Deep learning
+operates on neural networks with gradient descent. The tools, data types, and
+engineering practices are fundamentally different.
+
+Distinction from `llm-fine-tuning` (section 3.2): Fine-tuning adapts an EXISTING
+LLM's weights (LoRA, DPO). Deep-learning covers building and training architectures
+that are NOT pre-existing LLMs — from scratch or transfer-learned from foundation
+models other than LLMs specifically.
+
+Distinction from `computer-vision` (section 3.9): CV applies DL techniques
+specifically to image/video tasks. Deep-learning is the underlying general capability;
+CV is the application domain. This is the same relationship as `classical-ml` to
+`analytics-storytelling` — a general technique vs. a domain application. A posting
+that trains PyTorch models for text classification gets `deep-learning`; a posting
+that builds YOLO-based object detectors gets BOTH `deep-learning` AND
+`computer-vision`.
+
+### 3.6 `mlops-production` — Production ML Operations
 
 **Puts models into production and keeps them running reliably.**
 
@@ -207,7 +246,7 @@ Deliverable: Reliable production ML systems. Not a trained model — the system 
 makes the model *usable at scale with guarantees.*
 
 Distinction from ML platform engineering: MLOps operates *specific models in
-production*. ML Platform builds *shared infrastructure* that MLOps teams use (see §3.9).
+production*. ML Platform builds *shared infrastructure* that MLOps teams use (see §3.10).
 
 Sources:
 - [TensorBlue: MLOps Best Practices 2025: CI/CD & Model
@@ -217,7 +256,7 @@ Sources:
 - [Whileresume: AI ML Engineer Job Description: Roles, Skills &
   Responsibilities](https://whileresume.com/article/ai-ml-engineer-job-description)
 
-### 3.6 `data-engineering` — Data Infrastructure
+### 3.7 `data-engineering` — Data Infrastructure
 
 **Builds the pipes that feed everything else.**
 
@@ -233,7 +272,7 @@ Core activities:
 Deliverable: Reliable, clean data at scale. No models. No dashboards. Foundation layer
 that everything else depends on.
 
-### 3.7 `analytics-storytelling` — Insights & Communication
+### 3.8 `analytics-storytelling` — Insights & Communication
 
 **Turns data into decisions humans can act on.**
 
@@ -255,7 +294,7 @@ Distinction from classical ML: EDA is investigative (describing what happened), 
 predictive (guessing what will happen). The analytics engineer's deliverable is a
 narrative; the ML engineer's deliverable is a model artifact.
 
-### 3.8 `computer-vision` — Visual Understanding Systems
+### 3.9 `computer-vision` — Visual Understanding Systems
 
 **Δ New from research.** Builds systems that interpret images and video.
 
@@ -285,7 +324,7 @@ Sources:
 - [Slava Dubrov: The Definitive Guide to OCR in
   2026](https://slavadubrov.github.io/blog/2026/03/04/ocr-guide)
 
-### 3.9 `ml-platform` — Shared ML Infrastructure
+### 3.10 `ml-platform` — Shared ML Infrastructure
 
 **Δ New from research.** Builds the tools and platforms that other ML teams use.
 
@@ -321,7 +360,7 @@ Sources:
 - [ML Academy: Feature Store, Experiment Tracking & Model
   Registry](https://www.mlacademy.ai/articles/free-mlops-course-feature-store-model-registry-and-experiment-tracking)
 
-### 3.10 `reinforcement-learning` — Sequential Decision Making
+### 3.11 `reinforcement-learning` — Sequential Decision Making
 
 **Δ New from research.** Trains agents to learn optimal behavior through trial,
 error, and reward.
@@ -359,7 +398,7 @@ Sources:
   Guide](https://ajing.github.io/posts/2025-12-31-rlhf-engineering-implementation)
   (PPO, GRPO, DPO from an engineering perspective)
 
-### 3.11 `research` — Novel Investigation
+### 3.12 `research` — Novel Investigation
 
 **Explores the unknown. May never ship to production.**
 
@@ -381,7 +420,7 @@ products. They work on problems that may not have known solutions and may take m
 or years to bear fruit. This is not the same as an ML engineer doing experimentation
 in service of a product goal.
 
-### 3.12 `ai-safety-governance` — Responsible AI
+### 3.13 `ai-safety-governance` — Responsible AI
 
 **Δ New from research.** Ensures AI systems are safe, fair, and auditable.
 
@@ -420,19 +459,20 @@ Sources:
 ## 4. Taxonomy Summary Table
 
 | # | Category | Domain | Ships | Distinct from |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | 1 | `agentic-ai` | LLM/AI | Decision-making systems | RAG, fine-tuning |
 | 2 | `llm-fine-tuning` | LLM/AI | Adapted model weights | Agentic systems |
 | 3 | `llm-information-retrieval` | LLM/AI | Retrieval quality | Agentic decisions |
 | 4 | `classical-ml` | Classical ML | Predictive models (tabular) | Deep learning, analytics |
-| 5 | `mlops-production` | ML Ops | Reliable production ML | ML Platform (builds for others) |
-| 6 | `data-engineering` | Data | Clean data at scale | All model/insight work |
-| 7 | `analytics-storytelling` | Analytics | Insights & recommendations | Model training |
-| 8 | `computer-vision` | CV | Visual understanding | NLP, tabular ML |
-| 9 | `ml-platform` | ML Infra | Shared tools for ML teams | MLOps (per-model ops) |
-| 10 | `reinforcement-learning` | RL | Policies that learn from rewards | Supervised/unsupervised ML |
-| 11 | `research` | Research | Knowledge & prototypes | Applied product work |
-| 12 | `ai-safety-governance` | Safety | Guardrails & assurance | Runtime guardrails |
+| 5 | `deep-learning` | DL | Trained neural networks | Classical ML, LLM fine-tuning |
+| 6 | `mlops-production` | ML Ops | Reliable production ML | ML Platform (builds for others) |
+| 7 | `data-engineering` | Data | Clean data at scale | All model/insight work |
+| 8 | `analytics-storytelling` | Analytics | Insights & recommendations | Model training |
+| 9 | `computer-vision` | CV | Visual understanding | NLP, tabular ML |
+| 10 | `ml-platform` | ML Infra | Shared tools for ML teams | MLOps (per-model ops) |
+| 11 | `reinforcement-learning` | RL | Policies that learn from rewards | Supervised/unsupervised ML |
+| 12 | `research` | Research | Knowledge & prototypes | Applied product work |
+| 13 | `ai-safety-governance` | Safety | Guardrails & assurance | Runtime guardrails |
 
 ---
 
@@ -443,6 +483,7 @@ Sources:
 | Category | Expected count | Confidence |
 |---|---|---|
 | `classical-ml` | 5–7 | High — banks, insurance, Thumbtack monetization |
+| `deep-learning` | 3–5 | Added by Experiment 006 — PyTorch/TF NN engineering |
 | `analytics-storytelling` | 4–5 | High — Coca-Cola, Thumbtack, some "Other" |
 | `mlops-production` | 3–4 | Medium — Affirm, JPMorgan, Stripe |
 | `agentic-ai` | 2–3 | Medium — Clio, possibly Scribd, JPMorgan AI |
@@ -457,17 +498,21 @@ Sources:
 
 ### 5.2 Multi-Label Rule
 
-A single posting may carry 1–2 function tags. Guidelines:
+A single posting may carry 1–3 function tags. Guidelines:
 
 - **1 tag:** The posting is clearly dominated by one function (e.g., pure analytics,
   pure DE, pure CV).
 - **2 tags:** The posting blends two functions meaningfully (e.g., "train model AND
   deploy to production" → `classical-ml` + `mlops-production`; "build RAG pipeline AND
   orchestrate agents" → `llm-information-retrieval` + `agentic-ai`).
+- **3 tags:** The posting spans three distinct functions (e.g., "build neural networks,
+  maintain data pipelines, AND deploy to production" → `deep-learning` +
+  `data-engineering` + `mlops-production`). This pattern is common for ML Engineer
+  postings that blend modeling, infrastructure, and operations.
 
 ### 5.3 Clustering Evaluation Strategy
 
-With 27 postings and 12 possible labels (many sparse), the evaluation approach:
+With 27 postings and 13 possible labels (many sparse), the evaluation approach:
 
 1. **Separation gap:** Compute for each label that has ≥2 postings. The `function`
    separation gap is the primary metric — same-function postings should be closer
