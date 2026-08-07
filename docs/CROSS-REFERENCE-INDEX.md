@@ -67,15 +67,17 @@ Adding a research report requires updating:
 
 | Decision | Where Documented |
 |---|---|
-| Why L2 normalization | `architecture.md:72` (design decision), `technical/embedding-pipeline.md:69-82`, `research-reports/001-embedding-optimization-research.md:78-96` |
-| Why all-MiniLM-L6-v2 | `architecture.md:76-79`, `technical/embedding-pipeline.md:57-65`, `technical/tech-choices.md:19` |
-| Why precomputed embeddings | `architecture.md:83` |
-| Why CPU-only | `architecture.md:91`, `technical/tech-choices.md:10` |
-| Why stateless API | `architecture.md:87` |
-| Why LLM-based boilerplate removal | `architecture.md` (commented-out), `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
+| All 7 design decisions (pipeline stages, dense embedding, L2 norm, precomputed, stateless API, LLM extraction, immutable scripts) | `architecture.md#design-decisions` |
+| Why L2 normalization | `architecture.md`, `technical/embedding-pipeline.md:69-82`, `research-reports/001-embedding-optimization-research.md:78-96` |
+| Why all-MiniLM-L6-v2 | `architecture.md`, `technical/embedding-pipeline.md:57-65`, `technical/tech-choices.md:19` |
+| Why precomputed embeddings | `architecture.md` |
+| Why CPU-only | `architecture.md`, `technical/tech-choices.md:10` |
+| Why stateless API | `architecture.md` |
+| Why LLM-based boilerplate removal | `architecture.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
 | Model comparison table (all-MiniLM-L6-v2 vs bge-small-en-1.5 vs mpnet-base-v2) | `technical/embedding-pipeline.md:59-63`, `technical/tech-choices.md:18-21` |
 | Alternatives considered (FAISS, pgvector, Elasticsearch, ONNX, CUDA, hybrid BM25) | `technical/tech-choices.md:17-28` |
 | Optimization layers table | `technical/tech-choices.md:32-38` |
+| Pipeline capability specs (canonical requirements) | `openspec/specs/data-ingestion`, `openspec/specs/llm-text-extraction`, `openspec/specs/embedding-pipeline`, `openspec/specs/semantic-partitioning`, `openspec/specs/taxonomy-label-generation` |
 
 ---
 
@@ -85,7 +87,7 @@ Adding a research report requires updating:
 |---|---|
 | Dataset properties (27 postings, LinkedIn, July 2026) | `technical/data-processing.md:5-13` |
 | Role breakdown (8 DS, 5 MLE, 3 AIE, etc.) | `technical/data-processing.md:18-22`, `project.md:99` (commented-out) |
-| Processing pipeline steps (parse → validate → LLM clean → embed → viz) | `technical/data-processing.md:28-38`, `architecture.md:30-37` (commented-out) |
+| Processing pipeline steps (parse → LLM clean → embed → visualize) | `technical/data-processing.md:28-38` |
 | LLM cleaning details (system prompt, gpt-5.4-nano) | `technical/data-processing.md:66-75` |
 | Quality validation metrics | `technical/data-processing.md:77-87` |
 | Data augmentation plan (template-based, 27→350+, slot vocabularies) | `technical/data-processing.md:105-126` |

@@ -1,96 +1,143 @@
 # Architecture
 
-!!! info "Architecture doc coming soon!"
-    The system design doc will be formalized once methods and designs settle from initial research and validation.
+## System Context
 
-
-<!-- ## System Overview
-
-```mermaid
-graph TD
-User[User] --> API[API Server<br/>FastAPI]
-API --> ES[Embedding Service<br/>all-MiniLM-L6-v2]
-API --> VS[Vector Store<br/>numpy arrays]
-ES --> DP[Document Pipeline<br/>preprocessing]
-DP --> JP[Job Postings<br/>data/jobs.json]
-VS --> JP
-```
-
-## Components
-
-| Component | Responsibility | Implementation |
-|---|---|---|
-| Data Pipeline | Cleaning, section extraction, skill tagging | `scripts/`, `backend/preprocessing.py` |
-| Embedding Model | Dense text representations (384d) | `sentence-transformers/all-MiniLM-L6-v2` |
-| Vector Index | Cosine similarity search | NumPy arrays (L2-normalized) |
-| API | User interface for queries and uploads | FastAPI, `backend/api.py` |
-| Evaluation | Metrics computation, experiment tracking | `scripts/003_llm_extraction/compare_variants.py` |
-| Data Store | Job posting storage, metadata | JSON files in `data/` |
-
-## Data Flow
-
-1. **Documents ingested** from LinkedIn (27 postings, markdown files)
-2. **Text parsed** into structured sections: title, company, responsibilities, qualifications, skills
-3. **Text cleaned** via LLM extraction (remove boilerplate: company culture, benefits, EEO statements)
-4. **Embeddings computed** (all-MiniLM-L6-v2, L2-normalized to unit norm)
-5. **Vectors stored** in NumPy arrays for fast cosine similarity
-6. **Queries processed**: text → embedding → dot product → ranked results
-
-## Repository Structure
+The Semantic Career Map is an information extraction and retrieval system that transforms unstructured job postings into a structured semantic representation suitable for search, analysis, and career exploration. Job postings from LinkedIn are processed through a multi-stage pipeline — parsing, LLM extraction, normalization, embedding — producing dense vector representations that capture semantic similarity between roles based on actual responsibilities rather than job titles.
 
 ```
-semantic-career-map/
-├── backend/                    # FastAPI app, embeddings, retrieval
-│   ├── api.py                  # Planned
-│   ├── embeddings.py           # Embedding generation + L2 normalization
-│   ├── retrieval.py            # Planned: similarity search + precision@k
-│   ├── preprocessing.py        # Planned: text prep, skill extraction, weighting
-│   └── resume_parser.py        # Planned
-├── data/                       # Job postings, embeddings, golden set
-│   ├── jobs.json               # Normalized job postings (27)
-│   ├── jobs_augmented.json     # Planned: real + synthetic postings
-│   ├── embeddings.npy           # Precomputed embeddings
-│   ├── golden_cleaned.json     # Hand-cleaned reference texts
-│   └── selected-job-postings/  # 27 raw markdown postings
-├── scripts/                    # Data pipeline, experiments, evaluation
-│   ├── 001_baseline/
-│   │   └── bootstrap.py
-│   ├── 002_boilerplate/
-│   │   ├── remove_boilerplate.py
-│   │   └── diff_raw_vs_clean.py
-│   ├── 003_llm_extraction/
-│   │   ├── extract_clean_text.py
-│   │   ├── eval_cleaning.py
-│   │   └── compare_variants.py
-│   └── augment_jobs.py         # Planned
-├── tests/                      # pytest tests
-├── site/                       # This documentation site
-├── docs/                       # Planning and research documents
-├── pyproject.toml              # Python dependency management (uv)
-└── zensical.toml               # Zensical site configuration
+┌──────────────┐     ┌─────────────────────┐     ┌───────────┐
+│ Linkedin Job │────▶│ Semantic Career Map  │────▶│   Users   │
+│  Postings    │     │                     │     │           │
+└──────────────┘     │ ingestion → pipeline │     │ Search &  │
+                     │ → embeddings → query │     │ Visualize │
+                     └─────────────────────┘     └───────────┘
 ```
+
+**Non-goals** — what this system deliberately does not do:
+
+- Real-time inference on streaming job feeds
+- Multi-language NLP beyond English
+- User authentication, accounts, or persistence
+- Production-grade rate limiting or auth middleware
+- Mobile or web client (CLI/API only)
+- Resume parsing or document scanning
+- Automated job recommendations or alerting
+
+These boundaries keep the architecture focused on the core problem: transforming free-form job descriptions into a semantically searchable space backed by measurable quality signals.
+
+---
+
+## Pipeline
+
+The data pipeline is a chain of composable, independently testable stages — each stage changes one variable and is evaluated against the same golden set.
+
+```
+┌──────────────────────┐
+│    Raw Job Posting   │  (Markdown from LinkedIn)
+└──────────┬───────────┘
+           ▼
+┌──────────────────────┐
+│    Data Ingestion    │  ✅ Built — Exp 001
+└──────────┬───────────┘
+           ▼
+┌──────────────────────┐
+│  LLM Text Extraction │  ✅ Built — Exp 003
+│  (boilerplate removal│
+│   + signal extraction)│
+└──────────┬───────────┘
+           ▼
+┌──────────────────────┐
+│ Semantic Partitioning│  ⚠️ Research — Exp 005
+└──────────┬───────────┘
+           ▼
+┌──────────────────────┐
+│  Taxonomy Labeling   │  ⚠️ Research — Exp 006
+└──────────┬───────────┘
+           ▼
+┌──────────────────────┐
+│ Embedding Generation │  ✅ Built — Exp 001
+│  (L2-Normalization)  │
+└──────────┬───────────┘
+           ▼
+┌──────────────────────┐
+│   Vector Storage     │  ✅ Built — NumPy arrays
+└──────────────────────┘
+```
+
+Each stage has a corresponding capability spec in `openspec/specs/` defining its requirements. Experiment numbers reference the validation artifacts — see [Experiment Log](../experiments/index.md).
+
+---
 
 ## Design Decisions
 
-### Why cosine similarity on L2-normalized vectors?
+Each decision records a deliberate trade-off with measurable justification.
 
-After L2 normalization, cosine similarity reduces to dot product — the fastest similarity metric on every vector engine. Unnormalized vectors distort similarity by vector magnitude: longer documents produce higher-magnitude embeddings, causing short but highly relevant documents to rank below verbose but weakly relevant ones. Normalizing both at write time (indexing) and query time eliminates this bias.
+### Pipeline stages over end-to-end model
 
-### Why all-MiniLM-L6-v2?
+**Context:** An end-to-end model could theoretically map raw job text → embedding in one pass, eliminating the multi-stage pipeline.
 
-- **384 dimensions** — smallest viable embedding space that preserves semantic similarity
-- **80 MB model size** — fits in any deployment context without model registry infrastructure
-- **~20 ms inference on CPU** — well below user-perceptible threshold
-- **Proven on semantic similarity tasks** — 1B+ sentence pairs training data
+**Decision:** Deliberately separate parsing, cleaning, extraction, and embedding into independently testable stages.
 
-### Why precomputed embeddings?
+**Rationale:** Each stage changes one variable. When separation gap improves by 8.2×, you know exactly why — the LLM extraction stage changed, nothing else. End-to-end models make this impossible. Composability is also a practical concern: swapping the embedding model (e.g., MiniLM → E5) should not require retuning the extraction prompt.
 
-Generated once during setup, not at inference time. Faster queries, simpler deployment. Job postings are static — real-time re-embedding adds latency with no benefit. The embedding matrix is loaded into memory at startup and queried via dot product.
+### Dense embedding model for semantic similarity
 
-### Why stateless API?
+**Context:** Modern embedding models span dense and sparse architectures with quality benchmarks heavily favoring larger models.
 
-No user accounts, no persistence layer. Reduces deployment complexity and operational surface area. Every request is self-contained — the user sends text, the API returns results. Can be extended with persistence if needed later.
+**Decision:** Use a dense sentence-transformer model as the embedding backbone.
 
-### Why CPU-only?
+**Rationale:** Dense embeddings encode semantic structure — postings with similar responsibilities cluster together regardless of title differences. The current model (all-MiniLM-L6-v2, 384 dimensions, 80 MB) was chosen for three practical constraints: (1) CPU-only deployment — encodes a posting in ~20 ms, well below any user-perceptible threshold; (2) small model fits anywhere — no model registry, no GPU infrastructure, no container sprawl; (3) proven generalization — trained on 1B+ sentence pairs, it captures semantic similarity reliably on domains it wasn't explicitly fine-tuned for. The embedding model is a configuration choice, not an architectural commitment — swapping to a different dense model is a one-line change.
 
-`all-MiniLM-L6-v2` encodes a posting in ~20 ms on CPU — well below any user-perceptible threshold. GPU adds cost and complexity without meaningful query-time benefit at this scale. GPU would matter if a cross-encoder reranker were added to the retrieval pipeline (deferred to future work).  -->
+### L2 normalization with dot product over raw cosine similarity
+
+**Context:** Two mathematically equivalent ways to compute cosine similarity: normalize vectors then dot product, or compute cosine directly on unnormalized vectors.
+
+**Decision:** L2-normalize all embeddings at write time, use dot product at query time.
+
+**Rationale:** L2 normalization eliminates vector magnitude bias — longer documents produce higher-magnitude embeddings, causing short but relevant documents to rank below verbose but weakly relevant ones. Normalizing both write-time (indexing) and query-time removes this artifact entirely. Dot product on normalized vectors is the fastest similarity operation on every vector engine — a single matrix multiply.
+
+### Precomputed embeddings over on-the-fly inference
+
+**Context:** Embeddings can be generated at query time (encode the query + every document on each request) or precomputed once and loaded at startup.
+
+**Decision:** Precompute embeddings during the data pipeline, load the matrix into memory at startup.
+
+**Rationale:** Job postings are static — re-embedding them at query time adds latency with no benefit. The embedding matrix (27 postings × 384 dimensions) occupies under 50 KB — trivially loaded and queried. Precomputation also enables batch inference optimization (GPU throughput on build, CPU dot-product on query) if the pipeline moves to GPU in the future. At tens of thousands of postings, approximate nearest neighbor indices would replace brute-force dot product, but precomputation remains the correct pattern — the index is built once, not per query.
+
+### Stateless API over session state
+
+**Context:** A query API could maintain user sessions, search history, and preference profiles.
+
+**Decision:** The API is stateless — every request is self-contained.
+
+**Rationale:** No user accounts, no persistence layer, no session management. This eliminates the most complex operational concern (state consistency) while gaining the simplest possible deployment model (scale horizontally with zero coordination). Search relevance depends on the embedding quality, not on user history — the core value proposition (mapping interests to job families by skills, not title) works without personalization. Persistence can be added later if needed, but removing it later is impossible.
+
+### LLM extraction over regex cleaning
+
+**Context:** Experiment 002 demonstrated regex-based boilerplate removal (3.4× separation gap improvement), but the regex approach was brittle — company-specific formatting, legal disclaimers embedded in qualification paragraphs, and varied heading structures all caused failures.
+
+**Decision:** Replace regex cleaning with LLM-based text extraction.
+
+**Rationale:** LLM extraction achieves an 8.2× separation gap improvement over raw text (2.4× over regex) with zero hallucinations across the golden set. Brittleness is eliminated — the LLM generalizes across posting formats without pattern maintenance. The cost (API calls per posting) is paid once during the pipeline, not at query time. Caching by content hash makes the cost effectively zero after the first run.
+
+### Immutable experiment scripts over reusable notebooks
+
+**Context:** Jupyter notebooks are the default for ML experimentation. They support iterative exploration but produce non-reproducible artifact chains.
+
+**Decision:** Experiments are standalone Python scripts in `scripts/` with deterministic outputs and SHA-256 content caching. Scripts are immutable after the experiment is complete — reusable logic is extracted into `backend/`, not backported into experiment scripts.
+
+**Rationale:** Scientists don't alter published papers. Experiment scripts are the same — immutable records of what was run and what it produced. Re-running an experiment 6 months later (with a different model or on a different dataset) should produce either identical results (via cache) or a meaningfully different comparison (on new data). Notebooks make both outcomes unreliable.
+
+---
+
+## Design Decision Summary
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Pipeline architecture | Composable stages | Single-variable isolation; swappable components |
+| Embedding model type | Dense sentence-transformer | Semantic similarity encoding; configuration, not commitment |
+| Similarity metric | L2 norm + dot product | Eliminates magnitude bias; fastest operation |
+| Embedding strategy | Precomputed | Static data; zero query-time latency |
+| API design | Stateless | Simplest deployment; no persistence needed |
+| Text cleaning | LLM extraction | 8.2× improvement over raw; zero hallucinations |
+| Experiment scripts | Immutable artifacts | Reproducibility; scientific integrity |
