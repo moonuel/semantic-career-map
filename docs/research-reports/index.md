@@ -23,4 +23,10 @@ Research log for exploratory reports that fuel experiments and the final design.
 
     I'm working with the hypothesis that jobs are more accurately grouped by responsibilities rather than title. An audit of ML/AI responsibilities was conducted and a taxonomy of roles constructed from that.
 
+-   [**004 — LLM Evaluations**](004-llm-evals-report.md){ .md-button }
+
+    **2026-08-06**
+
+    Practical guide to LLM evals synthesized from Airbnb's Eval-Driven Development, Airbnb's From Weeks to a Day, and Hamel Husain's LLM Evals FAQ — error analysis, binary pass/fail evals, and LLM-as-judge.
+
 </div>
