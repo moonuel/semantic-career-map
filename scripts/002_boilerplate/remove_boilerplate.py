@@ -143,8 +143,18 @@ def plot_pca_scatter_comparison(
     fig, axes = plt.subplots(1, 2, figsize=(22, 9))
 
     for ax, coords, var, title in [
-        (axes[0], raw_coords, raw_var, f"Raw Full Text — PCA (PC1: {raw_var[0]:.1%}, PC2: {raw_var[1]:.1%})"),
-        (axes[1], clean_coords, clean_var, f"Boilerplate Removed — PCA (PC1: {clean_var[0]:.1%}, PC2: {clean_var[1]:.1%})"),
+        (
+            axes[0],
+            raw_coords,
+            raw_var,
+            f"Raw Full Text — PCA (PC1: {raw_var[0]:.1%}, PC2: {raw_var[1]:.1%})",
+        ),
+        (
+            axes[1],
+            clean_coords,
+            clean_var,
+            f"Boilerplate Removed — PCA (PC1: {clean_var[0]:.1%}, PC2: {clean_var[1]:.1%})",
+        ),
     ]:
         _scatter_role_category(ax, coords, jobs, roles_sorted)
         _annotate_labels(ax, coords, jobs)
@@ -181,7 +191,14 @@ def plot_pca_scree_comparison(
     ]:
         var = pca.explained_variance_ratio_
         ax.bar(components, var, color="#1f77b4", alpha=0.7)
-        ax.plot(components, np.cumsum(var), "o-", color="#d62728", linewidth=2, label="Cumulative")
+        ax.plot(
+            components,
+            np.cumsum(var),
+            "o-",
+            color="#d62728",
+            linewidth=2,
+            label="Cumulative",
+        )
         ax.set_title(title)
         ax.set_xlabel("Principal Component")
         ax.set_ylabel("Explained Variance Ratio")
@@ -205,12 +222,18 @@ def plot_tsne_comparison(
 
     perplexity = min(5, len(jobs) - 1)
     raw_coords = TSNE(
-        n_components=2, metric="cosine", perplexity=perplexity,
-        random_state=RANDOM_SEED, n_jobs=1,
+        n_components=2,
+        metric="cosine",
+        perplexity=perplexity,
+        random_state=RANDOM_SEED,
+        n_jobs=1,
     ).fit_transform(raw_emb)
     clean_coords = TSNE(
-        n_components=2, metric="cosine", perplexity=perplexity,
-        random_state=RANDOM_SEED, n_jobs=1,
+        n_components=2,
+        metric="cosine",
+        perplexity=perplexity,
+        random_state=RANDOM_SEED,
+        n_jobs=1,
     ).fit_transform(clean_emb)
 
     roles_sorted = sorted({j["role_category"] for j in jobs})
@@ -218,7 +241,11 @@ def plot_tsne_comparison(
 
     for ax, coords, title in [
         (axes[0], raw_coords, f"Raw Full Text — t-SNE (perplexity={perplexity})"),
-        (axes[1], clean_coords, f"Boilerplate Removed — t-SNE (perplexity={perplexity})"),
+        (
+            axes[1],
+            clean_coords,
+            f"Boilerplate Removed — t-SNE (perplexity={perplexity})",
+        ),
     ]:
         _scatter_role_category(ax, coords, jobs, roles_sorted)
         _annotate_labels(ax, coords, jobs)
@@ -287,7 +314,9 @@ def print_comparison(raw: dict, clean: dict) -> None:
         cv = clean[key]
         delta = cv - rv
         print(f"{label:<35s} {rv:>10.4f} {cv:>10.4f} {delta:>+10.4f}")
-    print(f"{'Self-retrieval @0':<35s} {raw['self_retrieval_rank_0']}/{raw['self_retrieval_total']:>6} {clean['self_retrieval_rank_0']}/{clean['self_retrieval_total']:>6}")
+    print(
+        f"{'Self-retrieval @0':<35s} {raw['self_retrieval_rank_0']}/{raw['self_retrieval_total']:>6} {clean['self_retrieval_rank_0']}/{clean['self_retrieval_total']:>6}"
+    )
 
 
 def print_section_sizes(jobs: list[dict]) -> None:
@@ -301,7 +330,7 @@ def print_section_sizes(jobs: list[dict]) -> None:
         excluded = [k for k in job["sections"] if k not in KEEP_SECTIONS]
         print(
             f"{job['id']:<50s} {raw_len:>6d} {clean_len:>6d} "
-            f"{clean_len/max(raw_len,1):>5.0%}  {','.join(excluded) if excluded else '(none)':>12s}"
+            f"{clean_len / max(raw_len, 1):>5.0%}  {','.join(excluded) if excluded else '(none)':>12s}"
         )
 
 
@@ -336,10 +365,18 @@ def main() -> None:
     print_comparison(raw_metrics, clean_metrics)
 
     print("\n── Visualizing ──")
-    plot_umap_comparison(raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_umap.png")
-    plot_pca_scatter_comparison(raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_pca.png")
-    plot_pca_scree_comparison(raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_scree.png")
-    plot_tsne_comparison(raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_tsne.png")
+    plot_umap_comparison(
+        raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_umap.png"
+    )
+    plot_pca_scatter_comparison(
+        raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_pca.png"
+    )
+    plot_pca_scree_comparison(
+        raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_scree.png"
+    )
+    plot_tsne_comparison(
+        raw_emb, clean_emb, jobs, PLOTS_DIR / "exp_boilerplate_tsne.png"
+    )
 
     print("\nDone.")
 

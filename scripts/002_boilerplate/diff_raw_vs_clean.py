@@ -38,13 +38,17 @@ def write_single(job: dict) -> None:
     print(f"Company: {job['company']}")
     print(f"Title:   {job['title_raw']}")
     print(f"Excluded: {excluded if excluded else '(none)'}")
-    print(f"Size:    {len(raw)} chars → {len(clean)} chars ({len(raw) - len(clean)} removed)")
+    print(
+        f"Size:    {len(raw)} chars → {len(clean)} chars ({len(raw) - len(clean)} removed)"
+    )
     print()
     print(f"Wrote:   {RAW_PATH}")
     print(f"Wrote:   {CLEAN_PATH}")
     print()
     print("To diff in VS Code:")
-    print("  Select both files in Explorer (Ctrl+click) → right-click → 'Compare Selected'")
+    print(
+        "  Select both files in Explorer (Ctrl+click) → right-click → 'Compare Selected'"
+    )
 
 
 def write_all(jobs: list[dict]) -> None:
@@ -59,7 +63,9 @@ def write_all(jobs: list[dict]) -> None:
         excluded = sorted(set(job["sections"]) - KEEP_SECTIONS)
 
         if raw == clean:
-            header += "  (no boilerplate sections detected — raw and clean are identical)\n"
+            header += (
+                "  (no boilerplate sections detected — raw and clean are identical)\n"
+            )
         else:
             header += (
                 f"  Excluded sections: {excluded if excluded else '(none)'}\n"
@@ -74,24 +80,34 @@ def write_all(jobs: list[dict]) -> None:
 
         n_removed = len(raw) - len(clean)
         excluded_label = ",".join(excluded) if excluded else "(none)"
-        print(f"{job['id']:<50s} {len(raw):>5d} → {len(clean):>5d}  {-n_removed:>+5d}  {excluded_label}")
+        print(
+            f"{job['id']:<50s} {len(raw):>5d} → {len(clean):>5d}  {-n_removed:>+5d}  {excluded_label}"
+        )
 
     RAW_PATH.write_text("\n".join(raw_parts), encoding="utf-8")
     CLEAN_PATH.write_text("\n".join(clean_parts), encoding="utf-8")
 
     total_raw = sum(len(j["raw_full_text"]) for j in jobs)
     total_clean = sum(len(build_clean_text(j["sections"])) for j in jobs)
-    n_changed = sum(1 for j in jobs if j["raw_full_text"] != build_clean_text(j["sections"]))
+    n_changed = sum(
+        1 for j in jobs if j["raw_full_text"] != build_clean_text(j["sections"])
+    )
 
     print()
-    print(f"{len(jobs)} postings — {n_changed} changed, {len(jobs) - n_changed} unchanged")
-    print(f"Total: {total_raw} chars → {total_clean} chars ({total_raw - total_clean} removed)")
+    print(
+        f"{len(jobs)} postings — {n_changed} changed, {len(jobs) - n_changed} unchanged"
+    )
+    print(
+        f"Total: {total_raw} chars → {total_clean} chars ({total_raw - total_clean} removed)"
+    )
     print()
     print(f"Wrote:   {RAW_PATH}")
     print(f"Wrote:   {CLEAN_PATH}")
     print()
     print("To diff in VS Code:")
-    print("  Select both files in Explorer (Ctrl+click) → right-click → 'Compare Selected'")
+    print(
+        "  Select both files in Explorer (Ctrl+click) → right-click → 'Compare Selected'"
+    )
 
 
 def main() -> None:

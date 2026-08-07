@@ -61,7 +61,7 @@ def main() -> None:
 
     # ── Phase 1: Golden partition validation ──
     header("Phase 1 — Golden Partition Validation")
-    print(f'{"Posting":<45s} {"Overlap":>8s} {"Coverage":>9s}')
+    print(f"{'Posting':<45s} {'Overlap':>8s} {'Coverage':>9s}")
     print(f"{'-' * 64}")
     golden_overlaps = []
     golden_coverages = []
@@ -74,92 +74,62 @@ def main() -> None:
         )
         golden_overlaps.append(overlap)
         golden_coverages.append(coverage)
-        print(f'{r["posting_id"]:<45s} {overlap:>8.4f} {coverage:>8.4f}')
+        print(f"{r['posting_id']:<45s} {overlap:>8.4f} {coverage:>8.4f}")
     print(f"{'-' * 64}")
     print(
-        f'{"MEAN":<45s} '
+        f"{'MEAN':<45s} "
         f"{sum(golden_overlaps) / len(golden_overlaps):>8.4f} "
         f"{sum(golden_coverages) / len(golden_coverages):>8.4f}"
     )
 
     # ── Phase 2: Job-context extraction quality ──
     header("Phase 2 — Job-Context Extraction Quality (Pass A)")
-    print(
-        f'{"Posting":<45s} '
-        f'{"Jacc(job,golden)":>18s} '
-        f'{"Cross-contam":>13s}'
-    )
+    print(f"{'Posting':<45s} {'Jacc(job,golden)':>18s} {'Cross-contam':>13s}")
     print(f"{'-' * 80}")
     job_jaccards = []
     job_cross = []
     for r in results:
-        jacc = jaccard_similarity(
-            r["llm_job_context"], r["golden_job_context"]
-        )
-        cross = jaccard_similarity(
-            r["llm_job_context"], r["golden_role_context"]
-        )
+        jacc = jaccard_similarity(r["llm_job_context"], r["golden_job_context"])
+        cross = jaccard_similarity(r["llm_job_context"], r["golden_role_context"])
         job_jaccards.append(jacc)
         job_cross.append(cross)
-        print(
-            f'{r["posting_id"]:<45s} '
-            f"{jacc:>18.4f} "
-            f"{cross:>13.4f}"
-        )
+        print(f"{r['posting_id']:<45s} {jacc:>18.4f} {cross:>13.4f}")
     print(f"{'-' * 80}")
     print(
-        f'{"MEAN":<45s} '
+        f"{'MEAN':<45s} "
         f"{sum(job_jaccards) / len(job_jaccards):>18.4f} "
         f"{sum(job_cross) / len(job_cross):>13.4f}"
     )
 
     # ── Phase 3: Role-context extraction quality ──
     header("Phase 3 — Role-Context Extraction Quality (Pass B)")
-    print(
-        f'{"Posting":<45s} '
-        f'{"Jacc(role,golden)":>19s} '
-        f'{"Cross-contam":>13s}'
-    )
+    print(f"{'Posting':<45s} {'Jacc(role,golden)':>19s} {'Cross-contam':>13s}")
     print(f"{'-' * 81}")
     role_jaccards = []
     role_cross = []
     for r in results:
-        jacc = jaccard_similarity(
-            r["llm_role_context"], r["golden_role_context"]
-        )
-        cross = jaccard_similarity(
-            r["llm_role_context"], r["golden_job_context"]
-        )
+        jacc = jaccard_similarity(r["llm_role_context"], r["golden_role_context"])
+        cross = jaccard_similarity(r["llm_role_context"], r["golden_job_context"])
         role_jaccards.append(jacc)
         role_cross.append(cross)
-        print(
-            f'{r["posting_id"]:<45s} '
-            f"{jacc:>19.4f} "
-            f"{cross:>13.4f}"
-        )
+        print(f"{r['posting_id']:<45s} {jacc:>19.4f} {cross:>13.4f}")
     print(f"{'-' * 81}")
     print(
-        f'{"MEAN":<45s} '
+        f"{'MEAN':<45s} "
         f"{sum(role_jaccards) / len(role_jaccards):>19.4f} "
         f"{sum(role_cross) / len(role_cross):>13.4f}"
     )
 
     # ── Phase 4: LLM partition integrity ──
     header("Phase 4 — LLM Partition Integrity")
-    print(
-        f'{"Posting":<45s} '
-        f'{"Overlap":>8s} '
-        f'{"Coverage":>9s}'
-    )
+    print(f"{'Posting':<45s} {'Overlap':>8s} {'Coverage':>9s}")
     print(f"{'-' * 66}")
     llm_overlaps = []
     llm_coverages = []
     for r in results:
         if not r["llm_job_context"] or not r["llm_role_context"]:
             continue
-        overlap = partition_overlap(
-            r["llm_job_context"], r["llm_role_context"]
-        )
+        overlap = partition_overlap(r["llm_job_context"], r["llm_role_context"])
         coverage = partition_coverage(
             r["llm_job_context"],
             r["llm_role_context"],
@@ -167,15 +137,11 @@ def main() -> None:
         )
         llm_overlaps.append(overlap)
         llm_coverages.append(coverage)
-        print(
-            f'{r["posting_id"]:<45s} '
-            f"{overlap:>8.4f} "
-            f"{coverage:>8.4f}"
-        )
+        print(f"{r['posting_id']:<45s} {overlap:>8.4f} {coverage:>8.4f}")
     if llm_overlaps:
         print(f"{'-' * 66}")
         print(
-            f'{"MEAN":<45s} '
+            f"{'MEAN':<45s} "
             f"{sum(llm_overlaps) / len(llm_overlaps):>8.4f} "
             f"{sum(llm_coverages) / len(llm_coverages):>8.4f}"
         )
@@ -201,19 +167,13 @@ def main() -> None:
             else "CLEAN"
         )
 
-        print(f'  [{r["posting_id"]}]')
+        print(f"  [{r['posting_id']}]")
         print(f"    Job-context (Pass A):  {status_job}")
         if job_hallucinations:
-            print(
-                f"      Sample: "
-                f"{sorted(job_hallucinations)[:10]}"
-            )
+            print(f"      Sample: {sorted(job_hallucinations)[:10]}")
         print(f"    Role-context (Pass B): {status_role}")
         if role_hallucinations:
-            print(
-                f"      Sample: "
-                f"{sorted(role_hallucinations)[:10]}"
-            )
+            print(f"      Sample: {sorted(role_hallucinations)[:10]}")
 
     # ── Phase 6: Per-posting detail ──
     header("Phase 6 — Per-Posting Detail")

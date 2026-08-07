@@ -68,28 +68,73 @@ CATEGORY_COLORS: dict[str, str] = {
 }
 
 SECTION_PATTERNS: list[tuple[str, str]] = [
-    (r"(?i)^about\s+(the\s+)?(role|job|this\s+opportunity|the\s+data\s+science\s+team)\b", "about_role"),
-    (r"(?i)^(summary|overview|role\s+overview|the\s+role|role\s+details|the\s+opportunity):?\s*$", "about_role"),
+    (
+        r"(?i)^about\s+(the\s+)?(role|job|this\s+opportunity|the\s+data\s+science\s+team)\b",
+        "about_role",
+    ),
+    (
+        r"(?i)^(summary|overview|role\s+overview|the\s+role|role\s+details|the\s+opportunity):?\s*$",
+        "about_role",
+    ),
     (r"(?i)^(job\s+description|additional\s+job\s+description)\b", "about_role"),
-    (r"(?i)^what\s+you('ll|\u2019ll|\u2019ll| will)\s+(do|accomplish|be\s+doing|get\s+to\s+do|do\s+here)", "responsibilities"),
+    (
+        r"(?i)^what\s+you('ll|\u2019ll|\u2019ll| will)\s+(do|accomplish|be\s+doing|get\s+to\s+do|do\s+here)",
+        "responsibilities",
+    ),
     (r"(?i)^what\s+you('ll|\u2019ll|\u2019ll)\s+do\b", "responsibilities"),
     (r"(?i)^(key\s+responsibilities|primary\s+responsibilities)", "responsibilities"),
-    (r"(?i)^(a\s+day\s+in\s+the\s+life|what\s+your\s+typical\s+day)", "responsibilities"),
-    (r"(?i)^(job\s+description\s+and\s+responsibilities|scope\s+of\s+the\s+team)", "responsibilities"),
-    (r"(?i)^(what\s+you('ll|\u2019ll|\u2019ll| will)\s+bring|what\s+you\s+bring)", "qualifications"),
-    (r"(?i)^(what\s+we('re|\u2019re|\u2019re| are)\s+looking\s+for|what\s+we\s+look\s+for)", "qualifications"),
-    (r"(?i)^(qualifications|requirements|skills\s*(&|and)\s*(qualifications|experience|we\s+value))", "qualifications"),
-    (r"(?i)^(job\s+requirements|must-?have\s+experience|required\s+(skills|experience))", "qualifications"),
-    (r"(?i)^(you\s+are\s+someone\s+with|what\s+you\s+need|what\s+you\s+may\s+have)", "qualifications"),
-    (r"(?i)^(in\s+order\s+to\s+be\s+successful|do\s+you\s+have\s+the\s+skills|essential\s+skills)", "qualifications"),
-    (r"(?i)^(nice\s+to\s+have|preferred\s+skills|assets\s*\(|bonus\s+points|desired\s+skills)", "nice_to_have"),
+    (
+        r"(?i)^(a\s+day\s+in\s+the\s+life|what\s+your\s+typical\s+day)",
+        "responsibilities",
+    ),
+    (
+        r"(?i)^(job\s+description\s+and\s+responsibilities|scope\s+of\s+the\s+team)",
+        "responsibilities",
+    ),
+    (
+        r"(?i)^(what\s+you('ll|\u2019ll|\u2019ll| will)\s+bring|what\s+you\s+bring)",
+        "qualifications",
+    ),
+    (
+        r"(?i)^(what\s+we('re|\u2019re|\u2019re| are)\s+looking\s+for|what\s+we\s+look\s+for)",
+        "qualifications",
+    ),
+    (
+        r"(?i)^(qualifications|requirements|skills\s*(&|and)\s*(qualifications|experience|we\s+value))",
+        "qualifications",
+    ),
+    (
+        r"(?i)^(job\s+requirements|must-?have\s+experience|required\s+(skills|experience))",
+        "qualifications",
+    ),
+    (
+        r"(?i)^(you\s+are\s+someone\s+with|what\s+you\s+need|what\s+you\s+may\s+have)",
+        "qualifications",
+    ),
+    (
+        r"(?i)^(in\s+order\s+to\s+be\s+successful|do\s+you\s+have\s+the\s+skills|essential\s+skills)",
+        "qualifications",
+    ),
+    (
+        r"(?i)^(nice\s+to\s+have|preferred\s+skills|assets\s*\(|bonus\s+points|desired\s+skills)",
+        "nice_to_have",
+    ),
     (r"(?i)^what\s+would\s+really\s+make\s+you\s+stand\s+out", "nice_to_have"),
-    (r"(?i)^what\s+(we\s+offer|you('ll|\u2019ll|\u2019ll| will)\s+love|you\s+will\s+find)", "what_we_offer"),
-    (r"(?i)^(what('s|\u2019s|\u2019s| is)\s+in\s+it\s+for\s+you|why\s+you('ll|\u2019ll|\u2019ll)\s+love)", "what_we_offer"),
+    (
+        r"(?i)^what\s+(we\s+offer|you('ll|\u2019ll|\u2019ll| will)\s+love|you\s+will\s+find)",
+        "what_we_offer",
+    ),
+    (
+        r"(?i)^(what('s|\u2019s|\u2019s| is)\s+in\s+it\s+for\s+you|why\s+you('ll|\u2019ll|\u2019ll)\s+love)",
+        "what_we_offer",
+    ),
     (r"(?i)^(total\s+rewards|compensation|why\s+join|benefits)$", "what_we_offer"),
     (r"(?i)^about\s+(the\s+)?(team|us|pinterest|kinaxis|the\s+company)", "about_team"),
     (r"(?i)^(our\s+(team|purpose|mission)|what\s+your\s+team\s+does)", "about_team"),
-    (r"(?i)^(who\s+you('ll|\u2019ll|\u2019ll| will)\s+work\s+with|about\s+the\s+ideal\s+candidate)", "about_team"),
+    (
+        r"(?i)^(who\s+you('ll|\u2019ll|\u2019ll| will)\s+work\s+with|about\s+the\s+ideal\s+candidate)",
+        "about_team",
+    ),
 ]
 
 EXPLICIT_TITLE_PATTERNS = [
@@ -141,9 +186,22 @@ def _extract_title(text: str, filepath: Path) -> str:
     stem = filepath.stem
     parts = stem.split("-")
     keywords = [
-        "data", "scientist", "analyst", "engineer", "researcher",
-        "intern", "consultant", "ml", "ai", "applied", "machine",
-        "learning", "solutions", "product", "benchmarking", "decision",
+        "data",
+        "scientist",
+        "analyst",
+        "engineer",
+        "researcher",
+        "intern",
+        "consultant",
+        "ml",
+        "ai",
+        "applied",
+        "machine",
+        "learning",
+        "solutions",
+        "product",
+        "benchmarking",
+        "decision",
         "performance",
     ]
     title_parts = []
@@ -151,7 +209,9 @@ def _extract_title(text: str, filepath: Path) -> str:
         if part.replace("1", "").replace("2", "").isdigit():
             continue
         if part.lower() in keywords or part.lower() in {"new", "grad", "coop", "co-op"}:
-            title_parts.append(part.upper() if part.lower() in {"ml", "ai"} else part.title())
+            title_parts.append(
+                part.upper() if part.lower() in {"ml", "ai"} else part.title()
+            )
         elif title_parts:
             title_parts.append(part.title())
     if not title_parts:
@@ -251,8 +311,12 @@ def embed_postings(jobs: list[dict], model: SentenceTransformer) -> np.ndarray:
         show_progress_bar=True,
     )
     norms = np.linalg.norm(embeddings, axis=1)
-    assert np.allclose(norms, 1.0, atol=1e-5), f"L2 norm check failed: min={norms.min():.6f} max={norms.max():.6f}"
-    print(f"Embedded {len(jobs)} postings → shape {embeddings.shape}, L2 norms ∈ [{norms.min():.6f}, {norms.max():.6f}]")
+    assert np.allclose(norms, 1.0, atol=1e-5), (
+        f"L2 norm check failed: min={norms.min():.6f} max={norms.max():.6f}"
+    )
+    print(
+        f"Embedded {len(jobs)} postings → shape {embeddings.shape}, L2 norms ∈ [{norms.min():.6f}, {norms.max():.6f}]"
+    )
     return embeddings.astype(np.float32)
 
 
@@ -283,16 +347,31 @@ def plot_tsne(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> Non
     for role in sorted(set(j["role_category"] for j in jobs)):
         mask = np.array([j["role_category"] == role for j in jobs])
         ax.scatter(
-            coords[mask, 0], coords[mask, 1],
-            c=_role_color(role), label=role, s=100, alpha=0.85, edgecolors="white", linewidth=0.5,
+            coords[mask, 0],
+            coords[mask, 1],
+            c=_role_color(role),
+            label=role,
+            s=100,
+            alpha=0.85,
+            edgecolors="white",
+            linewidth=0.5,
         )
     for i, job in enumerate(jobs):
         label = f"{job['company'].split(' (')[0].split(' ')[0][:8]}\n{job['title_raw'][:20]}"
-        ax.annotate(label, (coords[i, 0], coords[i, 1]), fontsize=6, alpha=0.8,
-                    textcoords="offset points", xytext=(5, 4))
+        ax.annotate(
+            label,
+            (coords[i, 0], coords[i, 1]),
+            fontsize=6,
+            alpha=0.8,
+            textcoords="offset points",
+            xytext=(5, 4),
+        )
 
-    ax.set_title("t-SNE — Embedding Space (cosine metric, perplexity={})".format(
-        min(5, len(jobs) - 1)))
+    ax.set_title(
+        "t-SNE — Embedding Space (cosine metric, perplexity={})".format(
+            min(5, len(jobs) - 1)
+        )
+    )
     ax.set_xlabel("t-SNE 1")
     ax.set_ylabel("t-SNE 2")
     ax.legend(fontsize=8, loc="best")
@@ -324,13 +403,25 @@ def plot_pca(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> None
     for role in sorted(set(j["role_category"] for j in jobs)):
         mask = np.array([j["role_category"] == role for j in jobs])
         ax.scatter(
-            coords[mask, 0], coords[mask, 1],
-            c=_role_color(role), label=role, s=80, alpha=0.85, edgecolors="white", linewidth=0.5,
+            coords[mask, 0],
+            coords[mask, 1],
+            c=_role_color(role),
+            label=role,
+            s=80,
+            alpha=0.85,
+            edgecolors="white",
+            linewidth=0.5,
         )
     for i, job in enumerate(jobs):
         label = job["company"].split(" (")[0].split(" ")[0][:8]
-        ax.annotate(label, (coords[i, 0], coords[i, 1]), fontsize=7, alpha=0.7,
-                    textcoords="offset points", xytext=(4, 3))
+        ax.annotate(
+            label,
+            (coords[i, 0], coords[i, 1]),
+            fontsize=7,
+            alpha=0.7,
+            textcoords="offset points",
+            xytext=(4, 3),
+        )
 
     var = pca.explained_variance_ratio_
     ax.set_title(f"PCA — 2 Components (PC1: {var[0]:.1%}, PC2: {var[1]:.1%})")
@@ -342,7 +433,14 @@ def plot_pca(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> None
     ax2 = axes[1]
     components = range(1, len(var) + 1)
     ax2.bar(components, var, color="#1f77b4", alpha=0.7)
-    ax2.plot(components, np.cumsum(var), "o-", color="#d62728", linewidth=2, label="Cumulative")
+    ax2.plot(
+        components,
+        np.cumsum(var),
+        "o-",
+        color="#d62728",
+        linewidth=2,
+        label="Cumulative",
+    )
     ax2.set_title("Explained Variance per Component")
     ax2.set_xlabel("Principal Component")
     ax2.set_ylabel("Explained Variance Ratio")
@@ -367,8 +465,11 @@ def plot_umap(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> Non
     import umap
 
     reducer = umap.UMAP(
-        n_neighbors=5, min_dist=0.15, metric="cosine",
-        random_state=RANDOM_SEED, n_jobs=1,
+        n_neighbors=5,
+        min_dist=0.15,
+        metric="cosine",
+        random_state=RANDOM_SEED,
+        n_jobs=1,
     )
     coords = reducer.fit_transform(embeddings)
 
@@ -376,13 +477,25 @@ def plot_umap(embeddings: np.ndarray, jobs: list[dict], output_dir: Path) -> Non
     for role in sorted(set(j["role_category"] for j in jobs)):
         mask = np.array([j["role_category"] == role for j in jobs])
         ax.scatter(
-            coords[mask, 0], coords[mask, 1],
-            c=_role_color(role), label=role, s=100, alpha=0.85, edgecolors="white", linewidth=0.5,
+            coords[mask, 0],
+            coords[mask, 1],
+            c=_role_color(role),
+            label=role,
+            s=100,
+            alpha=0.85,
+            edgecolors="white",
+            linewidth=0.5,
         )
     for i, job in enumerate(jobs):
         label = f"{job['company'].split(' (')[0].split(' ')[0][:8]}\n{job['title_raw'][:20]}"
-        ax.annotate(label, (coords[i, 0], coords[i, 1]), fontsize=6, alpha=0.8,
-                    textcoords="offset points", xytext=(5, 4))
+        ax.annotate(
+            label,
+            (coords[i, 0], coords[i, 1]),
+            fontsize=6,
+            alpha=0.8,
+            textcoords="offset points",
+            xytext=(5, 4),
+        )
 
     ax.set_title("UMAP — Embedding Space (cosine metric, n_neighbors=5)")
     ax.set_xlabel("UMAP 1")
@@ -417,7 +530,14 @@ def print_summary(jobs: list[dict], embeddings: np.ndarray) -> None:
     print(f"  Min pairwise cosine sim:  {sim_matrix.min():.4f}")
 
     print("\n── Section coverage ──")
-    section_keys = {"about_role", "responsibilities", "qualifications", "nice_to_have", "what_we_offer", "about_team"}
+    section_keys = {
+        "about_role",
+        "responsibilities",
+        "qualifications",
+        "nice_to_have",
+        "what_we_offer",
+        "about_team",
+    }
     for key in sorted(section_keys):
         count = sum(1 for j in jobs if j["sections"].get(key, "").strip())
         print(f"  {key}: {count}/{len(jobs)}")

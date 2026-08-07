@@ -132,11 +132,28 @@ TITLE_VOCABULARY = {
 }
 
 GOLDEN_LABELS: dict[str, list[str]] = {
-    "bmo-associate-data-scientist": ["classical-ml","analytics-storytelling",],
-    "affirm-ml-engineer-2": ["classical-ml","mlops-production",],
-    "hellofresh-ml-engineer-operations-technology": ["agentic-ai","mlops-production","ml-platform",],
-    "mastercard-data-scientist-2": ["classical-ml","mlops-production",],
-    "scribd-data-scientist-2": ["classical-ml","deep-learning","llm-information-retrieval",],
+    "bmo-associate-data-scientist": [
+        "classical-ml",
+        "analytics-storytelling",
+    ],
+    "affirm-ml-engineer-2": [
+        "classical-ml",
+        "mlops-production",
+    ],
+    "hellofresh-ml-engineer-operations-technology": [
+        "agentic-ai",
+        "mlops-production",
+        "ml-platform",
+    ],
+    "mastercard-data-scientist-2": [
+        "classical-ml",
+        "mlops-production",
+    ],
+    "scribd-data-scientist-2": [
+        "classical-ml",
+        "deep-learning",
+        "llm-information-retrieval",
+    ],
 }
 
 SYSTEM_PROMPT = f"""You are a job posting classifier. Analyze the provided job \

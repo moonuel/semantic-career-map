@@ -30,9 +30,7 @@ DEFAULT_RUNS = 3
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PROMPTS_FILE = PROJECT_ROOT / "data" / "golden_cleaned.json"
 
-SYSTEM_PROMPT = (
-    "Be a precise, helpful assistant. Answer concisely and accurately."
-)
+SYSTEM_PROMPT = "Be a precise, helpful assistant. Answer concisely and accurately."
 
 DEFAULT_PROMPTS = [
     "Explain what a Python context manager is and give a short code example.",
@@ -154,16 +152,14 @@ class ModelBenchmark:
 
         return data, latency, ttft, prompt_tokens, completion_tokens
 
-    def run(
-        self, prompts: list[str], runs: int, stream: bool = True
-    ) -> list[dict]:
+    def run(self, prompts: list[str], runs: int, stream: bool = True) -> list[dict]:
         """Run benchmark across prompts × runs and return per-request metrics."""
         results: list[dict] = []
         for i, prompt in enumerate(prompts):
             for r in range(runs):
                 print(
-                    f"  [{self.model}] prompt {i+1}/{len(prompts)}, "
-                    f"run {r+1}/{runs} ...",
+                    f"  [{self.model}] prompt {i + 1}/{len(prompts)}, "
+                    f"run {r + 1}/{runs} ...",
                     end=" ",
                     flush=True,
                 )
@@ -229,7 +225,9 @@ def load_prompts(path: str) -> list[str]:
                 for key in ("raw_full_text", "clean_text", "about_role", "text"):
                     val = item.get(key)
                     if val and isinstance(val, str) and len(val) > 20:
-                        prompts.append(f"Summarize this job description:\n\n{val[:3000]}")
+                        prompts.append(
+                            f"Summarize this job description:\n\n{val[:3000]}"
+                        )
                         break
             elif isinstance(item, str) and len(item) > 20:
                 prompts.append(item)
@@ -271,8 +269,7 @@ def summarize(results: list[dict], model: str) -> dict:
     price_in, price_out = MODEL_PRICING.get(model, (0.0, 0.0))
     total_prompt = sum(prompt_tokens)
     total_cost = (
-        total_prompt * price_in / 1_000_000
-        + total_completion * price_out / 1_000_000
+        total_prompt * price_in / 1_000_000 + total_completion * price_out / 1_000_000
     )
 
     return {
@@ -382,9 +379,7 @@ def main() -> None:
     prompts = load_prompts(args.prompts_file)
     stream = not args.no_stream
     mode = "streaming" if stream else "non-streaming"
-    print(
-        f"Benchmarking {len(prompts)} prompts × {args.runs} runs each ({mode})\n"
-    )
+    print(f"Benchmarking {len(prompts)} prompts × {args.runs} runs each ({mode})\n")
 
     all_results: list[dict] = []
 

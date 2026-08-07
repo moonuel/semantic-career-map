@@ -82,7 +82,9 @@ Strip completely:
 Output only the extracted organizational purpose text. No headers, prefixes, \
 explanations, or formatting."""
 
-USER_MESSAGE_TEMPLATE = "Extract the relevant information from this job posting:\n\n---\n{text}"
+USER_MESSAGE_TEMPLATE = (
+    "Extract the relevant information from this job posting:\n\n---\n{text}"
+)
 
 MODEL_PRICING = {
     "google/gemini-2.5-flash": (0.15, 0.60),
@@ -92,9 +94,7 @@ MODEL_PRICING = {
 
 
 def build_pass_hash(prompt: str) -> str:
-    return hashlib.sha256(
-        (prompt + USER_MESSAGE_TEMPLATE).encode("utf-8")
-    ).hexdigest()
+    return hashlib.sha256((prompt + USER_MESSAGE_TEMPLATE).encode("utf-8")).hexdigest()
 
 
 class PartitionExtractor:
@@ -120,8 +120,7 @@ class PartitionExtractor:
             "role-context": ROLE_CONTEXT_PROMPT,
         }
         self.prompt_hashes = {
-            field: build_pass_hash(prompt)
-            for field, prompt in self.prompts.items()
+            field: build_pass_hash(prompt) for field, prompt in self.prompts.items()
         }
         self.cache: dict = self._load_cache()
 
@@ -134,9 +133,7 @@ class PartitionExtractor:
 
         cached_hashes = data.get("meta", {}).get("prompt_hashes", {})
         if cached_hashes != self.prompt_hashes:
-            print(
-                "Prompt hash mismatch detected. Invalidating cache."
-            )
+            print("Prompt hash mismatch detected. Invalidating cache.")
             data = {"meta": {}, "entries": {}}
 
         data["meta"] = {

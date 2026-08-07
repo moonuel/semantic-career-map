@@ -92,9 +92,7 @@ def separation_gap(embeddings: np.ndarray, roles: list[str]) -> float:
     return np.mean(same_role_sims) - np.mean(diff_role_sims)
 
 
-def plot_umap_dimensions(
-    results: list[EmbeddingResult], output_path: Path
-) -> None:
+def plot_umap_dimensions(results: list[EmbeddingResult], output_path: Path) -> None:
     import umap
 
     n_variants = len(results)
