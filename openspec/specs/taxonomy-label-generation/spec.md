@@ -7,11 +7,15 @@ TBD - See experiment 006 design for context.
 ## Requirements
 
 ### Requirement: LLM assigns taxonomy function tags and generates functional titles for job postings
-The system SHALL accept a job posting's `llm_clean_text` field and the 12-category ML/AI responsibility taxonomy definitions with a controlled title vocabulary, and produce a structured JSON output containing a list of applicable function tags, a generated functional title from the controlled vocabulary, and a rationale for the assignment.
+The system SHALL accept a job posting's `llm_clean_text` field and the 13-category ML/AI responsibility taxonomy definitions with a controlled title vocabulary, and produce a structured JSON output containing a list of applicable function tags, a generated functional title from the controlled vocabulary, and a rationale for the assignment.
 
 #### Scenario: Input from llm_clean_text
 - **WHEN** processing any job posting
 - **THEN** the system uses the posting's `llm_clean_text` field as the uniform input for taxonomy classification
+
+#### Scenario: Deep learning category available
+- **WHEN** a posting involves designing or training neural network architectures (CNNs, RNNs, transformers, GANs, VAEs) using PyTorch, TensorFlow, or JAX, not specifically limited to LLM fine-tuning, computer vision, or reinforcement learning
+- **THEN** the system SHALL be able to assign the `deep-learning` taxonomy category
 
 #### Scenario: Structured output format
 - **WHEN** the LLM processes a posting
@@ -19,7 +23,7 @@ The system SHALL accept a job posting's `llm_clean_text` field and the 12-catego
 
 #### Scenario: Controlled title vocabulary
 - **WHEN** the LLM generates a functional title
-- **THEN** the title SHALL be selected from a predefined mapping of taxonomy categories to title descriptors (e.g., `classical-ml` → "Classical ML Engineer", `agentic-ai` → "Agentic AI Engineer"), ensuring the same function type always maps to the same title
+- **THEN** the title SHALL be selected from a predefined mapping of taxonomy categories to title descriptors (e.g., `classical-ml` → "Classical ML Engineer", `deep-learning` → "Deep Learning Engineer"), ensuring the same function type always maps to the same title
 
 #### Scenario: Multi-label assignment
 - **WHEN** a posting's responsibilities span multiple taxonomy categories
@@ -43,6 +47,13 @@ The system SHALL compare LLM-assigned function tags against a manually labeled g
 #### Scenario: Golden subset precision reporting
 - **WHEN** the LLM assigns function tags that differ from the golden labels
 - **THEN** the system SHALL report the posting ID, golden label set, LLM-assigned tag set, and LLM rationale for manual audit
+
+### Requirement: Golden subset reflects deep learning category
+The system SHALL update the 5-posting golden subset labels to include `deep-learning` where the posting's llm_clean_text contains explicit deep learning signals (PyTorch, TensorFlow, JAX, "deep learning", "neural network") at a level that makes it a primary function, not just a passing mention.
+
+#### Scenario: Scribd golden label updated
+- **WHEN** the golden subset is loaded for validation
+- **THEN** the Scribd posting (scribd-data-scientist-2) SHALL have golden labels `["deep-learning", "llm-information-retrieval"]`, replacing the previous `["llm-fine-tuning", "llm-information-retrieval"]`
 
 ### Requirement: Tag-set-colored UMAP visualization for qualitative evaluation
 The system SHALL generate a UMAP scatter plot where each posting is colored by its full function_tags combination, enabling visual inspection of whether taxonomy-based groupings align with embedding-space clusters.
