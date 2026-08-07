@@ -1,20 +1,26 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Tech stack: Python 3.12+, Sentence Transformers (all-MiniLM-L6-v2, 384d), NumPy, scikit-learn, UMAP-learn, spaCy. FastAPI and Docker planned.
+  Domain: ML/AI career mapping — semantic search matching resumes/interests to job families by skills, not titles.
+  Key dataset: 27 LinkedIn job postings (July 2026), parsed to structured JSON, LLM-cleaned (gpt-5.4-nano), embedded and L2-normalized.
+  Architecture: composable pipeline stages (parse → LLM clean → embed → visualize). Experiment scripts in scripts/ and associated outputs in data/ are immutable artifacts; reusable code lives in backend/.
+  Evaluation: active proxy metrics are self-retrieval and separation gap. IR metrics (Precision@K, MRR, NDCG) planned but under research. 5-posting golden set for extraction quality at data/golden_cleaned.json.
+  Deployment: CPU-only inference. GPU not needed at current scale; may revisit if adopting LoRA or larger models.
+  Documentation boundary: openspec/specs/ is internal living specification; docs/ (mkdocs site) is public-facing narrative and experiment reports. They do not overlap.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Keep under 400 words
+    - Include "Why", "What Changes", and "Impact" sections
+    - List affected code, data, and docs
+  design:
+    - Reference existing architecture decisions in docs/architecture.md when relevant
+    - Document trade-offs considered and rationale
+  tasks:
+    - Break into chunks of max 2 hours
+    - Include verification step per task
+  specs:
+    - Requirements use SHALL for normative constraints
+    - Each requirement has at least one WHEN/THEN scenario
+    - Scenarios describe observable behavior, not implementation details
