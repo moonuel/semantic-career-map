@@ -3,6 +3,8 @@
 > **Purpose:** Map every piece of information in the docs to all pages where it appears, so that when a research report is added, an experiment is completed, or status advances, the maintainer knows exactly which files to update.
 >
 > **Rule:** If you change one, update them all. Stale references are misleading.
+>
+> **Note — openspec/specs/ is the canonical capability tracker.** The 6 OpenSpec capability specs (data-ingestion, llm-text-extraction, embedding-pipeline, evaluation-framework, semantic-partitioning, taxonomy-label-generation) define *what the system SHALL do*. The docs site describes *what we did and why*. Capability status is now tracked by which specs exist; deliverable status (project.md) tracks implementation progress. They do not overlap.
 
 ---
 
@@ -11,6 +13,7 @@
 | What | Files That Reference It |
 |---|---|
 | Active work-in-progress items | `TODO.md` |
+| Capability spec inventory (canonical) | `openspec/specs/` (6 specs: data-ingestion, llm-text-extraction, embedding-pipeline, evaluation-framework, semantic-partitioning, taxonomy-label-generation) |
 | Current phase / deliverable status table | `project.md:81-93`, `index.md:88-106` (commented-out) |
 | Experiment # and status (completed/planned) | `experiments/index.md:24-65`, `research-reports/index.md:36-44`, `project.md:81-93` |
 | Dataset size (27 postings) | `project.md:85`, `technical/data-processing.md:11-12`, `technical/evaluation.md:140`, `technical/embedding-pipeline.md:38`, `results.md:113`, `results.md:10` (date), `experiments/001-baseline-embedding.md:11`, `architecture.md:33` |
