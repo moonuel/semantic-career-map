@@ -22,6 +22,11 @@ jobs:
           python-version: 3.x
       - run: pip install zensical
       - run: zensical build --clean
+      - name: Verify build output
+        run: |
+          test -f _build/sitemap.xml || { echo "Error: sitemap.xml not found"; exit 1; }
+          test -f _build/robots.txt || { echo "Error: robots.txt not found"; exit 1; }
+          echo "Sitemap and robots.txt present"
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _build

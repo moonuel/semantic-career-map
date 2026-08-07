@@ -32,6 +32,10 @@ theme:
         icon: material/brightness-7
         name: Switch to light mode
 
+plugins:
+  # - search
+  - sitemap
+
 nav:
   - Home: index.md
   - Project Overview: project.md

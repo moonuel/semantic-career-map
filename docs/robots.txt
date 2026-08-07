@@ -1,0 +1,2 @@
+User-agent: *
+Sitemap: https://moonuel.github.io/semantic-career-map/sitemap.xml
