@@ -53,3 +53,44 @@
 - This requires the tag generation using the [taxonomy](research-reports/003-ml-ai-responsibility-taxonomy.md) to assign consistent labels to postings.
 - Interesting clustering metric that would improve upon the very naive within-group/between-groups ratio.
 - Although I do like the existing metric too because the discriminant is simple and interpretable.
+--- 
+## August 25
+
+Been away from this for a few weeks while I wrote my Master's thesis. 
+
+Trying to resume previous progress and solidify some steps into modules. 
+
+But this is getting into a larger discussion of system design. 
+
+Previously I had thought to encapsulate the embedding step, from raw data into vector, as a pipeline "unit".
+
+But this is incorrect since the cleaned data, produced within this step, is used for feature engineering (semantic partitioning). 
+
+The mature system designer formalizes structure from how it naturally appears from usage, and doesn't try to force or preempt it. 
+
+So the correct formalization is to capture the data cleaning and embedding steps separately. 
+
+More immediately, the data storage situation is okay for experiments but pitiful for production. 
+
+The raw data is stored as various .md files in a `data/` folder
+
+The intermediate representations are stored in a JSON file, queried by key. 
+
+The better first step is to formalize and capture this existing structure I think. SQL database perhaps, for the raw and important intermediate representations (like cleaned data and engineered features). 
+
+Planning for the future, ML systems require both data and experiment versioning. From Huyen (DSML), you want to capture the entire computational experiment that produced the data. 
+
+---
+## September 16
+
+Need to get back on this. Been busy with graduating, and I have more experiments in mind (testing of local smoothness), but at some point progress precedes rigor. 
+
+One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques.
+
+Plots on richer data will provide more useful validation, if informal. 
+
+Data versioning will become crucial. MinIO for S3-style object storage and versioning is straightforward, if still intimidating. Set it up ASAP. 
+
+Data engineering has tolerance for errors, as long as it is observable. Consider where "tolerance" can be tolerated. 
+
+On a wry note, I think I basically rediscovered the concept of a dev log. 
