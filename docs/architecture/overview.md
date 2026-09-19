@@ -2,17 +2,17 @@
 
 This section documents the system design of the Semantic Career Map: how the data pipeline is structured, why each design decision was made, and how data is laid out as the project moves toward a production, MLflow-tracked pipeline.
 
-<div class="grid cards" markdown>
+<!-- <div class="grid cards" markdown>
 
-<!-- -   [**Design Decisions**](design-decisions.md){ .md-button }
+-   [**Design Decisions**](design-decisions.md){ .md-button }
 
-    The seven deliberate trade-offs behind the pipeline — composable stages, dense embeddings, L2 normalization, precomputation, a stateless API, LLM extraction, and immutable experiment scripts. -->
+    The seven deliberate trade-offs behind the pipeline — composable stages, dense embeddings, L2 normalization, precomputation, a stateless API, LLM extraction, and immutable experiment scripts.
 
 -   [**Data Layout & Object Storage Naming**](data-layout.md){ .md-button }
 
     Proposed S3 bucket and object-key convention for raw postings, cleaned variants, derived artifacts, and embeddings — including provenance tracking, lifecycle, and MLflow alignment.
 
-</div>
+</div> -->
 
 ---
 
@@ -29,7 +29,7 @@ The Semantic Career Map is an information extraction and visualization system th
                       └──────────────────────┘     └───────────┘
 ```
 
-**Non-goals** — what this system deliberately does not do:
+<!-- **Non-goals** — what this system deliberately does not do:
 
 - Real-time inference on streaming job feeds
 - Multi-language NLP beyond English
@@ -39,7 +39,7 @@ The Semantic Career Map is an information extraction and visualization system th
 - Resume parsing or document scanning
 - Automated job recommendations or alerting
 
-These boundaries keep the architecture focused on the core problem: transforming free-form job descriptions into a semantically searchable space backed by measurable quality signals.
+These boundaries keep the architecture focused on the core problem: transforming free-form job descriptions into a semantically searchable space backed by measurable quality signals. -->
 
 ---
 
