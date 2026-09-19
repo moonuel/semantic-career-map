@@ -1,6 +1,6 @@
 # Backlog
 
-Forward-looking open threads, quoted verbatim from the [Developer Log](dev-log/index.md) and grouped by theme. The journal itself lives in [dev-log/2026.md](dev-log/2026.md); each item links back to its entry anchor.
+Items I'm still working on.
 
 ## Pipeline & Architecture
 
