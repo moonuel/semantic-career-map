@@ -75,7 +75,7 @@ Adding a research report requires updating:
 | Why CPU-only | `architecture/design-decisions.md`, `technical/tech-choices.md:10` |
 | Why stateless API | `architecture/design-decisions.md` |
 | Why LLM-based boilerplate removal | `architecture/design-decisions.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
-| Object storage layer taxonomy, bucket names, object-key templates, provenance, MLflow alignment | `architecture/data-layout.md` |
+| Object storage layer taxonomy, single-bucket prefixes, object-key templates, provenance, MLflow alignment | `architecture/data-layout.md` |
 | Model comparison table (all-MiniLM-L6-v2 vs bge-small-en-1.5 vs mpnet-base-v2) | `technical/embedding-pipeline.md:59-63`, `technical/tech-choices.md:18-21` |
 | Alternatives considered (FAISS, pgvector, Elasticsearch, ONNX, CUDA, hybrid BM25) | `technical/tech-choices.md:17-28` |
 | Optimization layers table | `technical/tech-choices.md:32-38` |

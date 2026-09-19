@@ -10,7 +10,7 @@ This section documents the system design of the Semantic Career Map: how the dat
 
 -   [**Data Layout & Object Storage Naming**](data-layout.md){ .md-button }
 
-    Proposed S3 bucket and object-key convention for raw postings, cleaned variants, derived artifacts, and embeddings — including provenance tracking, lifecycle, and MLflow alignment.
+    Proposed single-bucket S3 prefix and object-key convention for raw postings, cleaned variants, derived artifacts, and embeddings — including provenance tracking, lifecycle, and MLflow alignment.
 
 </div> -->
 
@@ -82,4 +82,4 @@ The data pipeline is a chain of composable, independently testable stages — ea
 
 Each stage has a corresponding capability spec in `openspec/specs/` defining its requirements. Experiment numbers reference the validation artifacts — see [Experiment Log](../experiments/index.md).
 
-As the pipeline is productionized, each stage's inputs and outputs move to versioned S3 object storage and are tracked as MLflow runs. The bucket and key convention for that migration is defined in [Data Layout & Object Storage Naming](data-layout.md).
+As the pipeline is productionized, each stage's inputs and outputs move to versioned S3 object storage and are tracked as MLflow runs. The single-bucket prefix and key convention for that migration is defined in [Data Layout & Object Storage Naming](data-layout.md).
