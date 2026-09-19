@@ -12,7 +12,8 @@
 
 | What | Files That Reference It |
 |---|---|
-| Active work-in-progress items | `TODO.md` |
+| Active work-in-progress items (backlog) | `TODO.md` |
+| Developer log (dated journal) | `dev-log/index.md`, `dev-log/2026.md` |
 | Capability spec inventory (canonical) | `openspec/specs/` (6 specs: data-ingestion, llm-text-extraction, embedding-pipeline, evaluation-framework, semantic-partitioning, taxonomy-label-generation) |
 | Current phase / deliverable status table | `project.md:81-93`, `index.md:88-106` (commented-out) |
 | Experiment # and status (completed/planned) | `experiments/index.md:24-65`, `research-reports/index.md:36-44`, `project.md:81-93` |
@@ -160,6 +161,12 @@ The architecture section is multi-page (like the Technical Details section): `ar
 2. Add to grid cards in `research-reports/index.md`
 3. Register in `mkdocs.yml` nav
 
+### Adding a dev log entry:
+1. Append the entry to `dev-log/<year>.md` (newest first), preserving the `## Month DD, YYYY` heading
+2. If a new year page is created, register it in `mkdocs.yml` `nav.Developer Log` and add a grid card in `dev-log/index.md`
+3. If the entry hardens a decision, promote it to the relevant `architecture/` or `technical/` page and link back to the entry
+4. Open threads → `TODO.md` backlog, quoted with a link to the entry anchor
+
 ### Changing architecture/technical decisions:
 1. Update the relevant page under `architecture/` (e.g. `architecture/design-decisions.md` for decisions, `architecture/data-layout.md` for storage layout)
 2. Update `technical/tech-choices.md` tables
@@ -180,3 +187,16 @@ The architecture section is multi-page (like the Technical Details section): `ar
 3. Update `technical/evaluation.md` limitations section
 4. Update all experiment pages that reference dataset size (001, 002, 003)
 5. Update `results.md` conclusions
+
+---
+
+## 11. Developer Log Registry
+
+The developer log is an append-only journal; decisions and metrics live canonically in `architecture/` and `technical/`, and the log links back to them.
+
+Adding a dev log entry (or year) requires updating:
+
+1. **`dev-log/<year>.md`** — the entry itself (append-only; only typo/link fixes are edits)
+2. **`dev-log/index.md`** — add a year card if a new year page is created
+3. **`mkdocs.yml`** — add the new year page to `nav.Developer Log`
+4. **`TODO.md`** — carry open threads forward, quoted with links to the entry anchors

@@ -66,7 +66,10 @@ nav:
     - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
     - "004 - LLM Evaluations": research-reports/004-llm-evals-report.md
     - "005 - Object Storage Naming Conventions": research-reports/005-object-storage-naming-conventions.md
-  - TODO: TODO.md
+  - Developer Log:
+    - Overview: dev-log/index.md
+    - "2026": dev-log/2026.md
+  # - Backlog: TODO.md  # re-added in Part B when TODO.md is recreated
 markdown_extensions:
   - abbr
   - admonition
