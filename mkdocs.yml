@@ -62,6 +62,7 @@ nav:
     - "002 - Tutte Institute Visualization Tools": research-reports/002-tutte-institute-tool-review.md
     - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
     - "004 - LLM Evaluations": research-reports/004-llm-evals-report.md
+    - "005 - Object Storage Naming Conventions": research-reports/005-object-storage-naming-conventions.md
   - TODO: TODO.md
 markdown_extensions:
   - abbr
