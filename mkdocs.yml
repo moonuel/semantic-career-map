@@ -69,7 +69,7 @@ nav:
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md
-  # - Backlog: TODO.md  # re-added in Part B when TODO.md is recreated
+  - Backlog: TODO.md
 markdown_extensions:
   - abbr
   - admonition

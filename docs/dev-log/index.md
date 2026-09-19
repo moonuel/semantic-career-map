@@ -1,6 +1,6 @@
 # Developer Log
 
-A live view of the mental work, the reasoning in the moment, ideas not yet experiments, and design reflections. Decisions harden into the [Architecture](../architecture/overview.md) and [Technical Details](../technical/overview.md) pages; open threads are tracked separately.
+A live view of the mental work, the reasoning in the moment, ideas not yet experiments, and design reflections. Decisions harden into the [Architecture](../architecture/overview.md) and [Technical Details](../technical/overview.md) pages; open threads are tracked in the [Backlog](../TODO.md).
 
 <div class="grid cards" markdown>
 
