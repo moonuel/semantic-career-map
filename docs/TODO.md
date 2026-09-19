@@ -89,7 +89,7 @@ One blocker is the limited data. Will plan to generate synthetic data, in lieu o
 
 Plots on richer data will provide more useful validation, if informal. 
 
-Data versioning will become crucial. MinIO for S3-style object storage and versioning is straightforward, if still intimidating. Set it up ASAP. 
+Data versioning will become crucial. Use S3 object store
 
 Data engineering has tolerance for errors, as long as it is observable. Consider where "tolerance" can be tolerated. 
 
