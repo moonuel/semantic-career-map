@@ -16,8 +16,8 @@
 | Capability spec inventory (canonical) | `openspec/specs/` (6 specs: data-ingestion, llm-text-extraction, embedding-pipeline, evaluation-framework, semantic-partitioning, taxonomy-label-generation) |
 | Current phase / deliverable status table | `project.md:81-93`, `index.md:88-106` (commented-out) |
 | Experiment # and status (completed/planned) | `experiments/index.md:24-65`, `research-reports/index.md:36-44`, `project.md:81-93` |
-| Dataset size (27 postings) | `project.md:85`, `technical/data-processing.md:11-12`, `technical/evaluation.md:140`, `technical/embedding-pipeline.md:38`, `results.md:113`, `results.md:10` (date), `experiments/001-baseline-embedding.md:11`, `architecture.md:33` |
-| Embedding model name | `index.md:61` (badge), `architecture.md:77` (design rationale), `technical/embedding-pipeline.md:44-57`, `technical/tech-choices.md:19`, `index.md:81` (commented-out), `experiments/001-baseline-embedding.md:24`, `experiments/002-boilerplate-removal.md:18` |
+| Dataset size (27 postings) | `project.md:85`, `technical/data-processing.md:11-12`, `technical/evaluation.md:140`, `technical/embedding-pipeline.md:38`, `results.md:113`, `results.md:10` (date), `experiments/001-baseline-embedding.md:11`, `architecture/design-decisions.md` (precomputed embeddings) |
+| Embedding model name | `index.md:61` (badge), `architecture/design-decisions.md` (design rationale), `technical/embedding-pipeline.md:44-57`, `technical/tech-choices.md:19`, `index.md:81` (commented-out), `experiments/001-baseline-embedding.md:24`, `experiments/002-boilerplate-removal.md:18` |
 | Tech stack badges (FastAPI/Docker "planned") | `index.md:63-64` |
 
 **When status changes:** Update `project.md`, then uncomment/update `index.md:88-106`. Update `experiments/index.md` and `research-reports/index.md` if experiments are affected.
@@ -67,17 +67,27 @@ Adding a research report requires updating:
 
 | Decision | Where Documented |
 |---|---|
-| All 7 design decisions (pipeline stages, dense embedding, L2 norm, precomputed, stateless API, LLM extraction, immutable scripts) | `architecture.md#design-decisions` |
-| Why L2 normalization | `architecture.md`, `technical/embedding-pipeline.md:69-82`, `research-reports/001-embedding-optimization-research.md:78-96` |
-| Why all-MiniLM-L6-v2 | `architecture.md`, `technical/embedding-pipeline.md:57-65`, `technical/tech-choices.md:19` |
-| Why precomputed embeddings | `architecture.md` |
-| Why CPU-only | `architecture.md`, `technical/tech-choices.md:10` |
-| Why stateless API | `architecture.md` |
-| Why LLM-based boilerplate removal | `architecture.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
+| All 7 design decisions (pipeline stages, dense embedding, L2 norm, precomputed, stateless API, LLM extraction, immutable scripts) | `architecture/design-decisions.md` |
+| Why L2 normalization | `architecture/design-decisions.md`, `technical/embedding-pipeline.md:69-82`, `research-reports/001-embedding-optimization-research.md:78-96` |
+| Why all-MiniLM-L6-v2 | `architecture/design-decisions.md`, `technical/embedding-pipeline.md:57-65`, `technical/tech-choices.md:19` |
+| Why precomputed embeddings | `architecture/design-decisions.md` |
+| Why CPU-only | `architecture/design-decisions.md`, `technical/tech-choices.md:10` |
+| Why stateless API | `architecture/design-decisions.md` |
+| Why LLM-based boilerplate removal | `architecture/design-decisions.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
+| Object storage layer taxonomy, bucket names, object-key templates, provenance, MLflow alignment | `architecture/data-layout.md` |
 | Model comparison table (all-MiniLM-L6-v2 vs bge-small-en-1.5 vs mpnet-base-v2) | `technical/embedding-pipeline.md:59-63`, `technical/tech-choices.md:18-21` |
 | Alternatives considered (FAISS, pgvector, Elasticsearch, ONNX, CUDA, hybrid BM25) | `technical/tech-choices.md:17-28` |
 | Optimization layers table | `technical/tech-choices.md:32-38` |
 | Pipeline capability specs (canonical requirements) | `openspec/specs/data-ingestion`, `openspec/specs/llm-text-extraction`, `openspec/specs/embedding-pipeline`, `openspec/specs/semantic-partitioning`, `openspec/specs/taxonomy-label-generation` |
+
+### Architecture Page Registry
+
+The architecture section is multi-page (like the Technical Details section): `architecture/overview.md` is the landing page and each note is a sibling page listed in the sidebar. Adding an architecture note requires updating:
+
+1. **`architecture/<slug>.md`** — the note itself
+2. **`architecture/overview.md`** — add a card in the grid cards block
+3. **`mkdocs.yml`** — add to the `nav.Architecture` list
+4. **`CROSS-REFERENCE-INDEX.md`** — add the note's subject to the §5 table above
 
 ---
 
@@ -129,7 +139,7 @@ Adding a research report requires updating:
 | `index.md` | Update badges (FastAPI, Docker from "planned" when built), uncomment "Current Status" section |
 | `project.md` | "Current Status" table — the canonical project progress tracker |
 | `demo.md` | Update when demo is built (currently all placeholder) |
-| `architecture.md` | Uncomment system overview, components table, data flow, repo structure when design settles |
+| `architecture/overview.md` (landing) + sub-pages | Uncomment system overview, components table, data flow, repo structure when design settles; register new notes in the overview grid and nav |
 
 ---
 
@@ -151,7 +161,7 @@ Adding a research report requires updating:
 3. Register in `mkdocs.yml` nav
 
 ### Changing architecture/technical decisions:
-1. Update `architecture.md` (uncomment sections, revise design decisions)
+1. Update the relevant page under `architecture/` (e.g. `architecture/design-decisions.md` for decisions, `architecture/data-layout.md` for storage layout)
 2. Update `technical/tech-choices.md` tables
 3. Update `technical/embedding-pipeline.md` if embedding strategy changes
 4. Update `technical/data-processing.md` if preprocessing changes
@@ -162,7 +172,7 @@ Adding a research report requires updating:
 2. Uncomment relevant sections in `index.md`
 3. Update `index.md` badges
 4. Update `technical/overview.md` when done
-5. Uncomment relevant sections in `architecture.md`
+5. Uncomment relevant sections in `architecture/overview.md`
 
 ### Changing the dataset:
 1. Update `technical/data-processing.md` dataset properties and role breakdown

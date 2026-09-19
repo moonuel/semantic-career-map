@@ -79,7 +79,7 @@ D --> E[Query API<br/>FastAPI]
 E --> F[Ranked Results]
 ```
 
-[:material-arrow-right: Full architecture documentation](architecture.md)
+[:material-arrow-right: Full architecture documentation](architecture/overview.md)
 
 ---
 

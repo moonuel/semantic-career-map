@@ -40,7 +40,10 @@ nav:
   - Home: index.md
   - Project Overview: project.md
   - Demo: demo.md
-  - Architecture: architecture.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    # - Design Decisions: architecture/design-decisions.md
+    - Data Layout & Object Storage: architecture/data-layout.md
   - Technical Details:
     - Overview: technical/overview.md
     # - Embedding Pipeline: technical/embedding-pipeline.md
