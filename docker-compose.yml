@@ -1,0 +1,13 @@
+services:
+  garage:
+    image: dxflrs/garage:v2.4.1
+    network_mode: "host"
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?set GARAGE_RPC_SECRET in .env}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?set GARAGE_ADMIN_TOKEN in .env}
+      GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN:?set GARAGE_METRICS_TOKEN in .env}
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - ./data/objectstore/garage/meta:/var/lib/garage/meta
+      - ./data/objectstore/garage/data:/var/lib/garage/data
