@@ -35,4 +35,21 @@ Research log for exploratory reports that fuel experiments and the final design.
 
     Bucket and object naming rules across AWS S3, Google Cloud Storage, Azure Blob Storage, and S3-compatible providers — best practices for consistency, discoverability, scalability, security, and lifecycle management.
 
+-   [**006 — Proposed System Architecture**](006-proposed-system-architecture.md){ .md-button }
+
+    **2026-09-25**
+
+    Proposed end-to-end architecture — data ingestion, object storage, evals, cloud inference, and visualizations — synthesized from Chip Huyen's *Designing Machine Learning Systems* and *AI Engineering*.
+
+-   [**007 — AnyJev & Jev: Calibrated LLM Classification**](007-anyjev-calibrated-classification.md){ .md-button }
+
+    **2026-09-28**
+
+    Nokia's AnyJev turns any open LLM into a typed, calibrated decision model (no training) — position-bias correction (L0), temperature scaling (L1), and closed-form hidden-state heads (L2). Relevant to taxonomy/role labeling and confidence-gated human review.
+
+-   [**008 — Contextual Retrieval**](008-contextual-retrieval.md){ .md-button }
+
+    **2026-09-28**
+
+    Anthropic's Contextual Retrieval — prepending an LLM-generated, chunk-specific preamble before embedding and BM25 indexing to restore context lost by chunking. Cuts retrieval failure rate up to 67% with reranking; directly applicable to job-postings context loss.
 </div>

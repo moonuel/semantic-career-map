@@ -66,6 +66,9 @@ nav:
     - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
     - "004 - LLM Evaluations": research-reports/004-llm-evals-report.md
     - "005 - Object Storage Naming Conventions": research-reports/005-object-storage-naming-conventions.md
+    - "006 - Proposed System Architecture": research-reports/006-proposed-system-architecture.md
+    - "007 - AnyJev & Jev: Calibrated LLM Classification": research-reports/007-anyjev-calibrated-classification.md
+    - "008 - Contextual Retrieval": research-reports/008-contextual-retrieval.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md
