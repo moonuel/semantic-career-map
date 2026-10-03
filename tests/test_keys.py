@@ -105,7 +105,8 @@ class TestConceptPlacement:
         assert keys.config(HASH).split("/")[0] == "configs"
 
     def test_embedding_model_leads_after_bucket(self) -> None:
-        assert keys.embedding(MODEL, VARIANT, "v1", ID).split("/")[1] == MODEL
+        # live/embeddings/<model>/... -> model at index 2
+        assert keys.embedding(MODEL, VARIANT, "v1", ID).split("/")[2] == MODEL
 
     def test_embedding_id_is_leaf_not_leading(self) -> None:
         parts = keys.embedding(MODEL, VARIANT, "v1", ID).split("/")
@@ -137,10 +138,10 @@ class TestRoundTrip:
     def test_embedding_recovers_model_variant_version_id(self) -> None:
         parts = keys.embedding(MODEL, VARIANT, "v4", ID).split("/")
         # live/embeddings/<model>/<variant>/v<N>/<id>.npy
-        assert parts[1] == MODEL
-        assert parts[2] == VARIANT
-        assert parts[3] == "v4"
-        assert parts[4] == f"{ID}.npy"
+        assert parts[2] == MODEL
+        assert parts[3] == VARIANT
+        assert parts[4] == "v4"
+        assert parts[5] == f"{ID}.npy"
 
     def test_raw_recovers_id(self) -> None:
         assert keys.raw_posting(ID).split("/")[2] == ID
@@ -224,6 +225,16 @@ class TestRejectMalformedKeys:
     def test_uppercase_outside_id_segment_is_rejected(self, key: str) -> None:
         with pytest.raises(ValueError):
             keys.validate_key(key)
+
+    @pytest.mark.parametrize(
+        "leaf",
+        ["K3hI-o7w4Qx_9m2N.txt", "K3hI-o7w4Qx_9m2N", "K3hI-o7w4Qx_9m2N.npy.npy"],
+        ids=["wrong-extension", "no-extension", "double-extension"],
+    )
+    def test_embedding_leaf_must_be_id_npy(self, leaf: str) -> None:
+        prefix = "live/embeddings/all-minilm-l6-v2/llm-clean-text/v1"
+        with pytest.raises(ValueError):
+            keys.validate_key(f"{prefix}/{leaf}")
 
 
 # --- 6. Bad builder inputs ---------------------------------------------------

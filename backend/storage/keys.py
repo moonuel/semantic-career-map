@@ -10,6 +10,10 @@ The ``eval`` branch and the deferred eval machinery are intentionally not
 built yet; the shapes are reserved by the layout and added here when those
 phases arrive.
 
+Posting ids are the first 16 characters of the unpadded base64url encoding of
+``sha256(source bytes)``. base64url (RFC 4648 §5) is **case-sensitive**, so an
+id segment may contain uppercase letters; every other segment stays lowercase.
+
 Public builders:
     - ``raw_posting(id)``        -> ``live/raw/<id>/source.md``
     - ``raw_metadata(id)``       -> ``live/raw/<id>/metadata.json``
@@ -37,7 +41,12 @@ _DERIVED_VARIANTS: frozenset[str] = frozenset(
     {"sections", "clean-text", "llm-clean-text", "llm-role-context", "labels"}
 )
 
-# Regex for a well-formed path segment: lowercase, digits, hyphens, `_`
+# Posting id: exactly 16 chars of base64url (RFC 4648 §5), unpadded.
+# ``[A-Za-z0-9_-]`` — case-sensitive by construction.
+_ID_LENGTH: int = 16
+_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16}$")
+
+# Regex for a well-formed non-id path segment: lowercase, digits, hyphens, `_`
 # (for `config-hash`), and `=` for `key=value` partition pairs
 # (e.g. `day=2026-09-23`, Report 005 §3.2). No leading/trailing hyphen.
 _SEGMENT_RE = re.compile(r"^[a-z0-9]+(?:[-_=][a-z0-9]+)*$")
@@ -58,7 +67,7 @@ _VERSION_RE = re.compile(r"^v[1-9][0-9]*$")
 
 
 def _check(segment: str, *, name: str) -> str:
-    """Return ``segment`` if it is a well-formed key segment, else raise."""
+    """Return ``segment`` if it is a well-formed non-id key segment, else raise."""
     if not segment:
         raise ValueError(f"{name} must be non-empty")
     if _SEGMENT_RE.fullmatch(segment) is None:
@@ -67,6 +76,21 @@ def _check(segment: str, *, name: str) -> str:
             f"(lowercase letters, digits, hyphens, underscores only)"
         )
     return segment
+
+
+def _check_id(id: str, *, name: str = "posting id") -> str:
+    """Return ``id`` if it is a well-formed posting id, else raise.
+
+    A posting id is exactly :data:`_ID_LENGTH` chars of base64url. base64url is
+    case-sensitive, so uppercase is legal **here only** (unlike every other
+    segment, which stays lowercase).
+    """
+    if _ID_RE.fullmatch(id) is None:
+        raise ValueError(
+            f"{name} {id!r} must be exactly {_ID_LENGTH} chars of base64url "
+            f"([A-Za-z0-9_-])"
+        )
+    return id
 
 
 def _check_version(version: str, *, name: str = "version") -> str:
@@ -94,7 +118,7 @@ def raw_posting(id: str) -> str:
 
     ``live/raw/<id>/source.md``
     """
-    return f"live/raw/{_check(id, name='posting id')}/source.md"
+    return f"live/raw/{_check_id(id)}/source.md"
 
 
 def raw_metadata(id: str) -> str:
@@ -102,7 +126,7 @@ def raw_metadata(id: str) -> str:
 
     ``live/raw/<id>/metadata.json``
     """
-    return f"live/raw/{_check(id, name='posting id')}/metadata.json"
+    return f"live/raw/{_check_id(id)}/metadata.json"
 
 
 def derived(id: str, variant: str, version: str = "v1") -> str:
@@ -112,7 +136,7 @@ def derived(id: str, variant: str, version: str = "v1") -> str:
 
     ``variant`` must be one of :data:`_DERIVED_VARIANTS`.
     """
-    _check(id, name="posting id")
+    _check_id(id)
     if variant not in _DERIVED_VARIANTS:
         raise ValueError(
             f"unknown derived variant {variant!r}; expected one of "
@@ -136,7 +160,7 @@ def embedding(model: str, variant: str, version: str, id: str) -> str:
     return (
         f"live/embeddings/{_check(model, name='model')}/"
         f"{_check(variant, name='variant')}/"
-        f"{_check_version(version)}/{_check(id, name='posting id')}.npy"
+        f"{_check_version(version)}/{_check_id(id)}.npy"
     )
 
 
@@ -162,13 +186,35 @@ def manifest(date: _dt.date) -> str:
 # --- Validators -------------------------------------------------------------
 
 
+def _id_index(rest: list[str]) -> int | None:
+    """Index in ``rest`` of the posting-id segment for this key shape, else None.
+
+    The id is identified *positionally* by the branch, not by its characters:
+
+    - ``raw/<id>/<file>``                        -> index 1
+    - ``derived/<id>/<variant>/<version-file>``  -> index 1
+    - ``embeddings/<model>/<variant>/<vN>/<id>.<ext>`` -> leaf (index ``-1``)
+    - ``meta/...`` and ``configs/...``           -> no id segment
+    """
+    if not rest:
+        return None
+    if rest[0] in {"raw", "derived"}:
+        return 1 if len(rest) > 1 else None
+    if rest[0] == "embeddings":
+        return len(rest) - 1
+    return None
+
+
 def validate_key(key: str) -> str:
     """Validate a key and return it unchanged, or raise ``ValueError``.
 
     Enforces the structural rules of ``data-layout.md``:
       - first segment is one of the known buckets (``eval``/``live``/``configs``);
       - every segment matches the safe-character rule (no ``..``, no trailing
-        slash, no uppercase, no reserved characters, no PII-like segments);
+        slash, no reserved characters);
+      - the posting-id segment — where the layout places one — is exactly
+        :data:`_ID_LENGTH` chars of base64url and may contain uppercase, while
+        every other segment stays lowercase;
       - no trailing slash; no leading slash.
     """
     if not key or key.startswith("/"):
@@ -187,30 +233,33 @@ def validate_key(key: str) -> str:
             f"expected one of {sorted(_BUCKETS)}"
         )
 
-    for index, segment in enumerate(rest):
+    for segment in rest:
         if segment in {".", ".."}:
-            raise ValueError(f"key {key!r} contains a path-normalization segment {segment!r}")
+            raise ValueError(
+                f"key {key!r} contains a path-normalization segment {segment!r}"
+            )
+
+    id_index = _id_index(rest)
+    for index, segment in enumerate(rest):
+        if index == id_index:
+            # Embeddings place the id at the leaf as ``<id>.npy``; the raw and
+            # derived branches place it as a bare segment.
+            id_segment = segment
+            if rest and rest[0] == "embeddings":
+                id_segment, matched, extension = segment.partition(".")
+                if not matched or extension != "npy":
+                    raise ValueError(
+                        f"key {key!r} must end in '<id>.npy', got {segment!r}"
+                    )
+            _check_id(id_segment)
+            continue
         is_last = index == len(rest) - 1
         pattern = _FILENAME_RE if is_last else _SEGMENT_RE
         if pattern.fullmatch(segment) is None:
             raise ValueError(
                 f"key {key!r} contains malformed segment {segment!r} "
-                f"(lowercase, digits, hyphens, underscores; dots only in the last segment)"
+                f"(lowercase letters, digits, hyphens, underscores; dots only "
+                f"in the last segment)"
             )
-        if _is_pii_like(segment):
-            raise ValueError(f"key {key!r} contains a PII-like segment {segment!r}")
 
     return key
-
-
-def _is_pii_like(segment: str) -> bool:
-    """Heuristic guard against obvious PII in a key segment.
-
-    Not a privacy control — keys should simply not *contain* PII. This flags
-    email-shaped, phone-shaped, or SSN-shaped segments as an early error.
-    """
-    return bool(
-        re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", segment)
-        or re.fullmatch(r"\+?[0-9][0-9 .\-()]{7,}", segment)
-        or re.fullmatch(r"\d{3}-\d{2}-\d{4}", segment)
-    )

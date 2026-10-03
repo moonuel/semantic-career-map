@@ -3,12 +3,13 @@
 ## 1. Buckets
 
 Data is organized into three top-level containers -- two domain branches plus one shared
-infrastructure bucket. The `eval`/`live` split separates the evaluation set from the live data. 
+infrastructure branch. The `eval`/`live` split separates the evaluation set from the live data. 
+Data lives inside a single S3 bucket until scope expands to justify separate ones. 
 
 | Bucket | Contents | Mutability |
 |---|---|---|
 | `eval/` | Human ground truth — grades LLM output against author intent | Authored, versioned, never regenerated |
-| `live/` | Pipeline inputs + derived artifacts | Regenerable |
+| `live/` | Raw data + derived artifacts | Regenerable |
 | `configs/` | Config manifest — hash -> generation parameters, shared by eval and live | Append-only |
 
 ```
