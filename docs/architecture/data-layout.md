@@ -15,7 +15,7 @@ Data lives inside a single S3 bucket until scope expands to justify separate one
 ```
 live/
   raw/<id>/
-    source.md           # raw job descriptions
+    source.md           # raw job descriptions (verbatim source)
     metadata.json       # e.g. employer, date of addition, etc.
   derived/<id>/
     <variant>/v1.json   # e.g. cleaned data, engineered features, etc.
@@ -33,6 +33,12 @@ configs/
   <config-hash>.json    # e.g. model used, temperature, system prompt, etc.
 ```
 
+Here `<id>` is the UUIDv7 posting id (see §2.1), `<variant>` is a derived-artifact
+name (e.g. `clean-text`, `llm-clean-text`, `labels`), `<model>` is an embedding
+model name, and `<config-hash>` is a 64-char lowercase hex SHA-256 (§2.3).
+Every segment is lowercase: `<id>` is a lowercase UUIDv7 (`[0-9a-f-]`), so the
+former "uppercase allowed in `<id>`" exception no longer exists.
+
 ## 2. Key Structure
 
 ### 2.1 The posting `id`
@@ -40,6 +46,9 @@ configs/
 The posting `id` is the only globally unique entity key and the only cross-branch join. 
 Refers to a single job posting across transformations.
 
+- Generated as a time-ordered UUIDv7 string.
+  - Provenance is stored in the accompanying `metadata.json`; employer, job title, date of ingestion, `sha256` content hash.
+  - Immutable entries 
 - `raw/`, `derived/`, `eval/postings/` — entity-centric, `id` at depth 3.
 - `embeddings/` — model-centric, `id` as the leaf; a vector is a row in a model's corpus space,
   not a posting's thing.
@@ -80,3 +89,11 @@ eval/references/     # cached references, keyed by sample + ref-config
 eval/judgments/      # judge scores, keyed by sample + output + judge + metric
 eval/rubrics/        # judge rubrics, Git-versioned
 ```
+
+### Deduplication
+
+Dedup is deferred and observable for now, preferring to focus on schema-on-write principles and data lake-style ingestion.
+
+Current plans are to alarm the user for ingestion of identical data entries, with respect to the employer and job title metadata. 
+
+A more sophisticated semantic-similarity filtering tool may eventually be designed to catch cases where the same job posting is collected twice, but posted on different dates, or ingested differently that wouldn't be caught by a naive content hash (such as a trailing space). 

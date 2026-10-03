@@ -4,7 +4,8 @@ This suite is the **source of truth** for the intended key-building contract.
 It deliberately does NOT mirror the current ``keys.py`` implementation: where
 the implementation disagrees with the intended behavior, the implementation is
 wrong and is expected to change. See
-``.kilo/plans/1790319348784-key-builder-testing-spec.md``.
+``.kilo/plans/1790319348784-key-builder-testing-spec.md``; its id scheme is
+superseded by ``.kilo/plans/1790352000000-uuidv7-posting-id-migration.md``.
 
 Scope: key *shape and rules* only. Nothing here asserts anything about real
 postings, their content, or data correctness — data evaluations live outside
@@ -13,9 +14,9 @@ pytest (deferred ``eval/`` machinery).
 
 from __future__ import annotations
 
-import base64
 import datetime as dt
-import hashlib
+import sys
+import uuid
 
 import pytest
 
@@ -23,10 +24,10 @@ from backend.storage import keys
 
 # --- Fixtures ----------------------------------------------------------------
 #
-# ``ID`` is a synthetic 16-char base64url string, *deliberately mixed-case* to
-# exercise case-sensitivity: base64url (RFC 4648 §5) is case-sensitive, and
-# uppercase is legal in the id segment even though it is illegal elsewhere.
-ID = "K3hI-o7w4Qx_9m2N"
+# ``ID`` is a fixed literal UUIDv7 (canonical 36-char lowercase hyphenated).
+# Posting ids are assigned at ingestion by ``keys.new_id()``; they are opaque
+# and time-ordered, not derived from content.
+ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
 MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
 HASH = "a" * 64
@@ -35,16 +36,10 @@ DATE = dt.date(2026, 9, 23)
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
 
-
-def _valid_id_from(source: bytes) -> str:
-    """The intended id derivation: first 16 chars of unpadded base64url(sha256).
-
-    Encoded here independently of ``keys.py`` so the test does not merely
-    re-run the implementation. The builder layer never computes this (id
-    computation is a separate concern), but the *shape* it must accept is this.
-    """
-    digest = hashlib.sha256(source).digest()
-    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")[:16]
+requires_py314 = pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="uuid.uuid7() is new in Python 3.14 (RFC 9562); new_id() needs it",
+)
 
 
 # --- 1. Exact shapes ---------------------------------------------------------
@@ -77,12 +72,11 @@ class TestExactShapes:
     def test_manifest(self) -> None:
         assert keys.manifest(DATE) == "live/meta/datasets/day=2026-09-23/manifest.json"
 
-    def test_derived_fixture_matches_recomputed_id(self) -> None:
-        # Cross-check: an id derived by the intended algorithm is accepted and
-        # round-trips into a key unchanged.
-        derived_id = _valid_id_from(b"# Senior Engineer\nWe are hiring...")
-        assert len(derived_id) == 16
-        assert keys.raw_posting(derived_id) == f"live/raw/{derived_id}/source.md"
+    def test_derived_fixture_matches_minted_id(self) -> None:
+        # Cross-check: a freshly minted id is accepted and round-trips into a
+        # key unchanged. ``new_id()`` is the only minter; builders only validate.
+        minted = keys.new_id()
+        assert keys.raw_posting(minted) == f"live/raw/{minted}/source.md"
 
 
 # --- 2. Concept placement ----------------------------------------------------
@@ -208,27 +202,23 @@ class TestRejectMalformedKeys:
         with pytest.raises(ValueError):
             keys.validate_key(key)
 
-    def test_uppercase_id_segment_is_accepted(self) -> None:
-        # Uppercase is legal in the id segment: base64url ids are mixed-case.
-        assert keys.validate_key(f"live/raw/{ID}/source.md") == (
-            f"live/raw/{ID}/source.md"
-        )
-
-    @pytest.mark.parametrize(
-        "key",
-        [
+    def test_uppercase_outside_id_segment_is_rejected(self) -> None:
+        # Everything is lowercase now: ids are [0-9a-f-], so there is no
+        # uppercase exception anywhere. This is the only case rule.
+        for key in (
             f"live/raw/{ID}/Source.md",
             f"live/derived/{ID}/LLM-clean-text/v1.json",
-        ],
-        ids=["uppercase-filename", "uppercase-variant"],
-    )
-    def test_uppercase_outside_id_segment_is_rejected(self, key: str) -> None:
-        with pytest.raises(ValueError):
-            keys.validate_key(key)
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
 
     @pytest.mark.parametrize(
         "leaf",
-        ["K3hI-o7w4Qx_9m2N.txt", "K3hI-o7w4Qx_9m2N", "K3hI-o7w4Qx_9m2N.npy.npy"],
+        [
+            f"{ID}.txt",
+            ID,
+            f"{ID}.npy.npy",
+        ],
         ids=["wrong-extension", "no-extension", "double-extension"],
     )
     def test_embedding_leaf_must_be_id_npy(self, leaf: str) -> None:
@@ -247,40 +237,38 @@ class TestRejectBadBuilderInputs:
         "bad_id",
         [
             "",
-            "a..b",
-            "shortID",  # 7 chars: wrong length
-            "x" * 32,  # too long
-            "bad#char1234567",
-            "bad/char1234567",
-            "bad=char1234567",
-            "bad char1234567",
+            "0190f3a27b417c9e8a3d5f6e1b2c4d70",  # missing hyphens
+            "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d7",  # too short (35)
+            "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d700",  # too long (37)
+            "0190f3a2-7b41-4c9e-8a3d-5f6e1b2c4d70",  # version nibble 4
+            "0190f3a2-7b41-7c9e-1a3d-5f6e1b2c4d70",  # wrong variant
+            "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d7g",  # non-hex char
+            "0190F3A2-7B41-7C9E-8A3D-5F6E1B2C4D70",  # uppercase hex
+            "0190f3a2-7b41-7c9e-8a3d5f6e1b2c4d70",  # hyphen positions
+            "0190f3a2-7b417c9e-8a3d-5f6e1b2c4d70",  # hyphen positions
+            "bad#char1234567890",  # reserved char
+            "bad/char1234567890",  # slash
+            "bad char1234567890",  # space
         ],
         ids=[
             "empty",
-            "dots",
+            "missing-hyphens",
             "too-short",
             "too-long",
+            "wrong-version",
+            "wrong-variant",
+            "non-hex",
+            "uppercase",
+            "hyphen-after-4",
+            "hyphen-after-6",
             "hash-char",
             "slash-char",
-            "equals-char",
             "space-char",
         ],
     )
     def test_raw_posting_rejects_bad_id(self, bad_id: str) -> None:
         with pytest.raises(ValueError):
             keys.raw_posting(bad_id)
-
-    def test_uppercase_is_not_why_an_id_is_rejected(self) -> None:
-        # ``Affirm`` is valid base64url (6 chars) and would be *legal case-wise*,
-        # but id length is fixed at 16, so it is rejected for length, not case.
-        # This documents that we do NOT reject uppercase ids.
-        with pytest.raises(ValueError):
-            keys.raw_posting("Affirm")
-
-    def test_16_char_uppercase_id_is_accepted(self) -> None:
-        upper_id = "AffirmTechnologi"  # 16 chars, mixed case
-        assert len(upper_id) == 16
-        assert keys.raw_posting(upper_id) == f"live/raw/{upper_id}/source.md"
 
     @pytest.mark.parametrize(
         "bad_variant",
@@ -359,3 +347,40 @@ class TestBuilderOutputsAreValid:
 
     def test_manifest_output_is_valid(self) -> None:
         assert keys.validate_key(keys.manifest(DATE)) == keys.manifest(DATE)
+
+
+# --- 9. new_id(): UUIDv7 minting ---------------------------------------------
+
+
+@requires_py314
+class TestNewId:
+    """``new_id`` mints canonical, time-ordered UUIDv7 ids."""
+
+    def test_is_parseable_uuid(self) -> None:
+        parsed = uuid.UUID(keys.new_id())
+        assert parsed.version == 7
+        assert parsed.variant == uuid.RFC_4122
+
+    def test_matches_id_regex(self) -> None:
+        assert keys._ID_RE.fullmatch(keys.new_id()) is not None
+
+    def test_is_canonical_lowercase_form(self) -> None:
+        minted = keys.new_id()
+        assert len(minted) == 36
+        assert minted == minted.lower()
+        assert minted == str(uuid.UUID(minted))
+
+    def test_validate_key_round_trips_minted_id(self) -> None:
+        minted = keys.new_id()
+        key = keys.raw_posting(minted)
+        assert keys.validate_key(key) == key
+
+    def test_ids_are_monotonic_in_a_tight_loop(self) -> None:
+        # UUIDv7 sorts lexicographically by generation time; the intra-ms
+        # counter guarantees non-decreasing order within the same millisecond.
+        ids = [keys.new_id() for _ in range(1000)]
+        assert ids == sorted(ids)
+
+    def test_ids_are_unique(self) -> None:
+        ids = [keys.new_id() for _ in range(1000)]
+        assert len(set(ids)) == 1000

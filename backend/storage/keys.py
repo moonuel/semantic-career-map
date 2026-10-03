@@ -10,9 +10,13 @@ The ``eval`` branch and the deferred eval machinery are intentionally not
 built yet; the shapes are reserved by the layout and added here when those
 phases arrive.
 
-Posting ids are the first 16 characters of the unpadded base64url encoding of
-``sha256(source bytes)``. base64url (RFC 4648 §5) is **case-sensitive**, so an
-id segment may contain uppercase letters; every other segment stays lowercase.
+Posting ids are time-ordered **UUIDv7** values (RFC 9562 §5.7), rendered in the
+canonical 36-char lowercase hyphenated form. Identity is *assigned at ingestion*
+by :func:`new_id`, not derived from content: the old content-addressed scheme
+(``sha256(source)`` -> 16-char base64url) is superseded. Provenance (content
+hash, source URL, employer, title, ingestion time) lives in the append-only
+``metadata.json`` sidecar, not in the key. Because ids are ``[0-9a-f-]``,
+**every** segment in a key is lowercase; there is no uppercase exception.
 
 Public builders:
     - ``raw_posting(id)``        -> ``live/raw/<id>/source.md``
@@ -22,6 +26,9 @@ Public builders:
     - ``config(hash)``           -> ``configs/<hash>.json``
     - ``manifest(date)``         -> ``live/meta/datasets/day=<date>/manifest.json``
 
+Generators:
+    - ``new_id()`` -> a fresh canonical UUIDv7 string (the only id minter).
+
 Validators:
     - ``validate_key(key)`` raises ``ValueError`` on a malformed key.
 """
@@ -30,6 +37,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
+import uuid
 
 # --- Constants ---------------------------------------------------------------
 
@@ -41,10 +49,13 @@ _DERIVED_VARIANTS: frozenset[str] = frozenset(
     {"sections", "clean-text", "llm-clean-text", "llm-role-context", "labels"}
 )
 
-# Posting id: exactly 16 chars of base64url (RFC 4648 §5), unpadded.
-# ``[A-Za-z0-9_-]`` — case-sensitive by construction.
-_ID_LENGTH: int = 16
-_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16}$")
+# Posting id: a canonical UUIDv7 string (RFC 9562 §5.7) — 36-char lowercase
+# hyphenated ``8-4-4-4-12``. The regex pins the version nibble (``7``) and the
+# RFC 9562 variant (``[89ab]``), so it rejects UUIDv1/3/4/5, uppercase, braces,
+# and URN form. Ids are minted only by ``new_id()``.
+_ID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 
 # Regex for a well-formed non-id path segment: lowercase, digits, hyphens, `_`
 # (for `config-hash`), and `=` for `key=value` partition pairs
@@ -81,14 +92,15 @@ def _check(segment: str, *, name: str) -> str:
 def _check_id(id: str, *, name: str = "posting id") -> str:
     """Return ``id`` if it is a well-formed posting id, else raise.
 
-    A posting id is exactly :data:`_ID_LENGTH` chars of base64url. base64url is
-    case-sensitive, so uppercase is legal **here only** (unlike every other
-    segment, which stays lowercase).
+    A posting id is a canonical UUIDv7 in 36-char lowercase hyphenated form
+    (``8-4-4-4-12``). Unlike every other segment, hyphens sit at fixed
+    positions, so this dedicated shape check is used rather than
+    :data:`_SEGMENT_RE`.
     """
     if _ID_RE.fullmatch(id) is None:
         raise ValueError(
-            f"{name} {id!r} must be exactly {_ID_LENGTH} chars of base64url "
-            f"([A-Za-z0-9_-])"
+            f"{name} {id!r} must be a canonical UUIDv7 (8-4-4-4-12), "
+            f"e.g. '0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70'"
         )
     return id
 
@@ -111,6 +123,21 @@ def _check_date(date: _dt.date) -> str:
 
 
 # --- Builders ---------------------------------------------------------------
+
+
+def new_id() -> str:
+    """Mint a fresh posting id: a canonical UUIDv7 string (RFC 9562 §5.7).
+
+    This is the **only** id generator. Builders validate ids but never mint
+    them, so key construction stays pure and deterministic (important for
+    tests). UUIDv7 is time-ordered, so lexicographic order of ids matches
+    chronological ingestion order.
+
+    Returns:
+        A 36-char lowercase hyphenated UUIDv7, e.g.
+        ``'0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70'``.
+    """
+    return str(uuid.uuid7())
 
 
 def raw_posting(id: str) -> str:
@@ -212,9 +239,9 @@ def validate_key(key: str) -> str:
       - first segment is one of the known buckets (``eval``/``live``/``configs``);
       - every segment matches the safe-character rule (no ``..``, no trailing
         slash, no reserved characters);
-      - the posting-id segment — where the layout places one — is exactly
-        :data:`_ID_LENGTH` chars of base64url and may contain uppercase, while
-        every other segment stays lowercase;
+      - the posting-id segment — where the layout places one — is a canonical
+        UUIDv7 (36-char lowercase hyphenated), while every other segment stays
+        lowercase;
       - no trailing slash; no leading slash.
     """
     if not key or key.startswith("/"):
