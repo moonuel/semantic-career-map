@@ -1,0 +1,35 @@
+Applied Scientist AI/ML
+
+About Opendoor
+
+At Opendoor our mission is to tilt the world in favor of homeowners and those who aim to become one. Homeownership matters. It's how people build wealth, stability, and community. It's how families put down roots, how neighborhoods strengthen, how the future gets built. We're building the modern system of homeownership giving people the freedom to buy and sell on their own terms. We’ve built an end-to-end online experience that has already helped thousands of people and we’re just getting started.
+About the Role
+
+We’re looking for an Applied Scientist (ALL LEVELS) to push the boundaries of applied machine learning and AI at Opendoor. While this role will have a significant impact on our valuation systems — ensuring we provide the most accurate and transparent pricing possible — the scope goes well beyond pricing. You’ll work across a range of challenging ML problems, from multi-modal modeling to operational optimization, helping us rethink how we use structured and unstructured data to make better decisions for our customers.
+What You'll Need
+
+    Strong software engineering and coding skills in Python, with experience contributing to production codebases
+    Experience developing and deploying ML models end-to-end — from research and prototyping to implementation in production systems
+    Hands-on experience with deep learning architectures, including ConvNets, Transformers, or similar
+    Advanced degree (MS or PhD) in computer science, statistics, mathematics, or a related quantitative field
+    Solid foundation in statistics and experimental design
+    Strong communication and collaboration skills — you’re comfortable working with cross-functional stakeholders and can communicate technical ideas clearly
+
+Nice to Have
+
+    Familiarity with Pyspark and distributed data processing
+    Background in search, recommendation systems, or personalization
+    Experience working with large language models (LLMs) or vision-language models (VLMs)
+    A genuine interest in real estate — no prior experience required, but you'll engage deeply with housing data
+
+What You'll Do
+
+    Design and deploy architectural improvements to our deep neural network (DNN)-based home valuation models
+    Build interpretable ML models that can help us explain pricing decisions to customers
+    Incorporate unstructured data — like images, videos, or text — into our forecasting and valuation pipelines using cutting-edge AI models (LLMs, VLMs, etc.)
+    Collaborate with Engineering and Ops to enhance our human-in-the-loop pricing systems
+    Improve the feature engineering and model training pipelines that power our production systems
+    Rethink our risk and optimization models using real-world data and domain insight
+    We’re a small, nimble team — there’s ample opportunity to work across the entire research and modeling stack.
+
+#LI-RO
