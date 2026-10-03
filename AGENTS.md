@@ -8,8 +8,8 @@
 
 - **Stack:** Python 3.12+, Sentence Transformers, FastAPI, Docker
 - **Package manager:** uv + pip (pyproject.toml + requirements.txt)
-- **No virtual environment set up yet** — create one with `uv venv` before installing
-- **No tests exist yet** — test framework is pytest, install with `pip install pytest`
+- **Virtual environment** — ensure activation of the virtual environment by the activation script in `.venv/` before using commands.
+- **Automated testing** — compare output against single-responsibility tests to ensure intended behaviour.
 
 ## Development Commands
 
