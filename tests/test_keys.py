@@ -14,7 +14,6 @@ pytest (deferred ``eval/`` machinery).
 
 from __future__ import annotations
 
-import datetime as dt
 import sys
 import uuid
 
@@ -31,7 +30,6 @@ ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
 MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
 HASH = "a" * 64
-DATE = dt.date(2026, 9, 23)
 
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
@@ -68,9 +66,6 @@ class TestExactShapes:
 
     def test_config(self) -> None:
         assert keys.config(HASH) == f"configs/{HASH}.json"
-
-    def test_manifest(self) -> None:
-        assert keys.manifest(DATE) == "live/meta/datasets/day=2026-09-23/manifest.json"
 
     def test_derived_fixture_matches_minted_id(self) -> None:
         # Cross-check: a freshly minted id is accepted and round-trips into a
@@ -112,11 +107,6 @@ class TestConceptPlacement:
         assert parts[3] == VARIANT
         assert parts[4] == "v2.json"
 
-    def test_manifest_partition_and_leaf_positions(self) -> None:
-        parts = keys.manifest(DATE).split("/")
-        assert parts[-2] == "day=2026-09-23"
-        assert parts[-1] == "manifest.json"
-
 
 # --- 3. Round trip -----------------------------------------------------------
 
@@ -140,11 +130,6 @@ class TestRoundTrip:
     def test_raw_recovers_id(self) -> None:
         assert keys.raw_posting(ID).split("/")[2] == ID
         assert keys.raw_metadata(ID).split("/")[2] == ID
-
-    def test_manifest_recovers_iso_date(self) -> None:
-        partition = keys.manifest(DATE).split("/")[-2]
-        assert partition == "day=2026-09-23"
-        assert dt.date.fromisoformat(partition.removeprefix("day=")) == DATE
 
 
 # --- 4. Config hash ----------------------------------------------------------
@@ -312,7 +297,6 @@ class TestDeterminism:
             MODEL, VARIANT, "v1", ID
         )
         assert keys.config(HASH) == keys.config(HASH)
-        assert keys.manifest(DATE) == keys.manifest(DATE)
 
 
 # --- 8. Builder outputs are valid --------------------------------------------
@@ -344,9 +328,6 @@ class TestBuilderOutputsAreValid:
 
     def test_config_output_is_valid(self) -> None:
         assert keys.validate_key(keys.config(HASH)) == keys.config(HASH)
-
-    def test_manifest_output_is_valid(self) -> None:
-        assert keys.validate_key(keys.manifest(DATE)) == keys.manifest(DATE)
 
 
 # --- 9. new_id(): UUIDv7 minting ---------------------------------------------

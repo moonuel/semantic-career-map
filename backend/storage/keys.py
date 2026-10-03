@@ -24,7 +24,6 @@ Public builders:
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
     - ``embedding(model, variant, v, id)`` -> ``live/embeddings/<model>/<variant>/v<v>/<id>.npy``
     - ``config(hash)``           -> ``configs/<hash>.json``
-    - ``manifest(date)``         -> ``live/meta/datasets/day=<date>/manifest.json``
 
 Generators:
     - ``new_id()`` -> a fresh canonical UUIDv7 string (the only id minter).
@@ -35,7 +34,6 @@ Validators:
 
 from __future__ import annotations
 
-import datetime as _dt
 import re
 import uuid
 
@@ -117,11 +115,6 @@ def _check_hash(hash_: str, *, name: str = "config hash") -> str:
     return hash_
 
 
-def _check_date(date: _dt.date) -> str:
-    """Return ``date`` as ``YYYY-MM-DD`` for a partition segment."""
-    return date.isoformat()
-
-
 # --- Builders ---------------------------------------------------------------
 
 
@@ -200,14 +193,6 @@ def config(hash_: str) -> str:
     version token into reproducible generation parameters (layout §2.3).
     """
     return f"configs/{_check_hash(hash_)}.json"
-
-
-def manifest(date: _dt.date) -> str:
-    """Key for the raw-ingestion manifest on a given day.
-
-    ``live/meta/datasets/day=<date>/manifest.json``
-    """
-    return f"live/meta/datasets/day={_check_date(date)}/manifest.json"
 
 
 # --- Validators -------------------------------------------------------------
