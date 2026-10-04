@@ -64,4 +64,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-04**
 
     Survey of data warehouse design — the Kimball/Inmon/Data Vault paradigms, dimensional modeling (grain-first stars, SCDs, conformed dimensions, surrogate keys), the layered/semantic architecture, ETL vs ELT, and anti-patterns — mapped onto the project's planned Athena SQL layer over the object store.
+
+-   [**011 — Object Store Metadata Design**](011-object-store-metadata-design.md){ .md-button }
+
+    **2026-10-04**
+
+    Survey of object-store metadata design — system vs. custom metadata, how hyperscale metadata services scale (partitioning, tiering, distributed-DB backends), key-namespace engineering (high-cardinality prefixes, Hive time layout, hot-spot avoidance), and durability/consistency/security of the metadata layer — mapped onto the project's metadata.json + UUIDv7 ids + configs provenance.
 </div>
