@@ -70,4 +70,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-04**
 
     Survey of object-store metadata design — system vs. custom metadata, how hyperscale metadata services scale (partitioning, tiering, distributed-DB backends), key-namespace engineering (high-cardinality prefixes, Hive time layout, hot-spot avoidance), and durability/consistency/security of the metadata layer — mapped onto the project's metadata.json + UUIDv7 ids + configs provenance.
+
+-   [**012 — EVōC: Embedding Vector Oriented Clustering**](012-evoc-embedding-clustering.md){ .md-button }
+
+    **2026-10-04**
+
+    Source-level review of TutteInstitute/evoc (v0.3.1) — how the UMAP+HDBSCAN replacement builds one k-NN graph, learns a 4–15D node embedding, runs parallel Borůvka + condensed tree, and uses PLSCAN persistence peaks to auto-select multi-granularity cluster layers.
 </div>

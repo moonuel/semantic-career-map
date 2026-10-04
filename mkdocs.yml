@@ -73,6 +73,7 @@ nav:
     - "009 - Data Lake Design & Best Practices": research-reports/009-data-lake-design-best-practices.md
     - "010 - Data Warehouse Design & Best Practices": research-reports/010-data-warehouse-design-best-practices.md
     - "011 - Object Store Metadata Design": research-reports/011-object-store-metadata-design.md
+    - "012 - EVōC Embedding Clustering": research-reports/012-evoc-embedding-clustering.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md
