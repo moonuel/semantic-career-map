@@ -24,6 +24,7 @@ Items I'm still working on.
 - "Something like generating job labels from the taxonomy" — [2026-07-25](dev-log/2026.md#july-25-2026)
 - "To do this at scale is still something I can't imagine doing without some LLMs and evals." — [2026-07-25](dev-log/2026.md#july-25-2026)
 - "I might stick to small samples for now and solve the scale problem later." — [2026-07-25](dev-log/2026.md#july-25-2026)
+- AnyJev or similar for multi-label classification? The DSML scalable architecture is to have N classifiers for N labels 
 
 ## Embedding & Clustering Behavior
 
