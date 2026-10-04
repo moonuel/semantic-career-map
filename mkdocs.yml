@@ -46,6 +46,7 @@ nav:
     - Data Layout & Object Storage: architecture/data-layout.md
   - Technical Details:
     - Overview: technical/overview.md
+    - Favourite Resources: technical/resources.md
     # - Embedding Pipeline: technical/embedding-pipeline.md
     # - Data Processing: technical/data-processing.md
     # - Evaluation: technical/evaluation.md
