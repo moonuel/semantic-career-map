@@ -52,4 +52,16 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-09-28**
 
     Anthropic's Contextual Retrieval — prepending an LLM-generated, chunk-specific preamble before embedding and BM25 indexing to restore context lost by chunking. Cuts retrieval failure rate up to 67% with reranking; directly applicable to job-postings context loss.
+
+-   [**009 — Data Lake Design & Best Practices**](009-data-lake-design-best-practices.md){ .md-button }
+
+    **2026-10-04**
+
+    Survey of data lake/lakehouse design — medallion (bronze/silver/gold) layering, open table formats (Iceberg/Delta/Hudi), partitioning and the small-files problem, governance and lineage, and anti-patterns — mapped onto the project's `eval/` + `live/` + `configs/` object-storage layout.
+
+-   [**010 — Data Warehouse Design & Best Practices**](010-data-warehouse-design-best-practices.md){ .md-button }
+
+    **2026-10-04**
+
+    Survey of data warehouse design — the Kimball/Inmon/Data Vault paradigms, dimensional modeling (grain-first stars, SCDs, conformed dimensions, surrogate keys), the layered/semantic architecture, ETL vs ELT, and anti-patterns — mapped onto the project's planned Athena SQL layer over the object store.
 </div>
