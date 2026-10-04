@@ -10,9 +10,9 @@
 
 1. [Executive Summary](#1-executive-summary)
 2. [Background: The Context Conundrum](#2-background-the-context-conundrum)
-3. [The Core Technique: Contextual Embeddings & Contextual BM25](#3-the-core-technique-contextual-embeddings--contextual-bm25)
+3. [The Core Technique: Contextual Embeddings & Contextual BM25](#3-the-core-technique-contextual-embeddings-contextual-bm25)
 4. [The Contextualizer Prompt](#4-the-contextualizer-prompt)
-5. [Cost Model & Prompt Caching](#5-cost-model--prompt-caching)
+5. [Cost Model & Prompt Caching](#5-cost-model-prompt-caching)
 6. [Performance Results](#6-performance-results)
 7. [Reranking Layer](#7-reranking-layer)
 8. [Implementation Considerations](#8-implementation-considerations)

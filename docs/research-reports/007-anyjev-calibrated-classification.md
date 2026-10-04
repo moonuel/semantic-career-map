@@ -10,9 +10,9 @@
 1. [Background: What Is AnyJev (and Jev)?](#1-background-what-is-anyjev-and-jev)
 2. [How AnyJev Works: The Levels](#2-how-anyjev-works-the-levels)
 3. [Results Summary](#3-results-summary)
-4. [Jev — The Proprietary Counterpart](#4-jev--the-proprietary-counterpart)
+4. [Jev — The Proprietary Counterpart](#4-jev-the-proprietary-counterpart)
 5. [Relevance to Semantic Career Mapping](#5-relevance-to-semantic-career-mapping)
-6. [Limitations & Caveats](#6-limitations--caveats)
+6. [Limitations & Caveats](#6-limitations-caveats)
 7. [Sources](#7-sources)
 
 ---
