@@ -10,11 +10,10 @@ postings can be de-duplicated across sources later:
 - :func:`fetch_greenhouse_jobs` — ``boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true``
 - :func:`fetch_lever_jobs` — ``api.lever.co/v0/postings/{slug}?mode=json``
 
-``fetch_job_board`` is a thin Ashby convenience retained for callers that want
-the raw ``requests.Response``. dataroles.co, a curator over 16 ATS systems, is
-also supported via its documented read interface (:func:`list_job_urls` and
-:func:`scrape_job`), whose ``identifier.value`` carries the origin embedded on
-every posting.
+dataroles.co, a curator over 16 ATS systems, is also supported via its
+documented read interface (:func:`list_dataroles_job_urls` and
+:func:`fetch_dataroles_job`), whose
+``identifier.value`` carries the origin embedded on every posting.
 """
 
 from __future__ import annotations
@@ -30,6 +29,7 @@ import requests
 _SITEMAP_INDEX = "https://dataroles.co/sitemap.xml"
 _JOB_SITEMAP_PREFIX = "https://dataroles.co/sitemaps/jobs-data"
 
+_ASHBY_API = "https://api.ashbyhq.com/posting-api/job-board"
 _GREENHOUSE_API = "https://boards-api.greenhouse.io/v1/boards"
 _LEVER_API = "https://api.lever.co/v0/postings"
 
@@ -41,23 +41,6 @@ _LOC_RE = re.compile(r"<loc>\s*([^<]+?)\s*</loc>", re.DOTALL)
 _LDJSON_RE = re.compile(
     r'<script\b[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', re.DOTALL
 )
-
-
-def fetch_job_board(job_board_name: str) -> requests.Response:
-    """Fetch the posting list for an Ashby job board.
-
-    Args:
-        job_board_name: The Ashby board identifier, i.e. the slug after
-            ``jobs.ashbyhq.com/``.
-
-    Returns:
-        The raw ``requests.Response``; callers call ``.json()`` themselves.
-    """
-    url = (
-        "https://api.ashbyhq.com/posting-api/job-board/"
-        f"{job_board_name}?includeCompensation=true"
-    )
-    return requests.get(url)
 
 
 def fetch_ashby_jobs(
@@ -81,7 +64,9 @@ def fetch_ashby_jobs(
         requests.HTTPError: if the board cannot be retrieved (unknown boards
             return HTTP 404).
     """
-    response = fetch_job_board(job_board_name)
+    response = requests.get(
+        f"{_ASHBY_API}/{job_board_name}?includeCompensation=true", timeout=30
+    )
     response.raise_for_status()
     payload = response.json()
     jobs = payload.get("jobs", []) if isinstance(payload, dict) else payload
@@ -120,7 +105,14 @@ def fetch_greenhouse_jobs(
     payload = response.json()
     jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
     base_employer = employer or (
-        payload.get("company_name") if isinstance(payload, dict) else None
+        next(
+            (
+                job["company_name"]
+                for job in jobs
+                if isinstance(job, dict) and job.get("company_name")
+            ),
+            None,
+        )
     )
     return [
         _from_greenhouse_job(job, base_employer or board_token, board_token)
@@ -197,7 +189,7 @@ class ScrapedJob:
     source_id: str | None
 
 
-def list_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
+def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
     """Return every job-page URL on dataroles.co, via its sitemaps.
 
     This is the documented read path for automated readers
@@ -226,11 +218,11 @@ def list_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
     return urls
 
 
-def scrape_job(url: str) -> ScrapedJob:
+def fetch_dataroles_job(url: str) -> ScrapedJob:
     """Fetch and parse one dataroles.co job page into a :class:`ScrapedJob`.
 
     Args:
-        url: A job-page URL as returned by :func:`list_job_urls`.
+        url: A job-page URL as returned by :func:`list_dataroles_job_urls`.
 
     Returns:
         The parsed posting.
@@ -241,10 +233,10 @@ def scrape_job(url: str) -> ScrapedJob:
     """
     response = requests.get(url, timeout=30)
     response.raise_for_status()
-    return parse_job(response.text, url)
+    return parse_dataroles_job(response.text, url)
 
 
-def parse_job(html: str, url: str) -> ScrapedJob:
+def parse_dataroles_job(html: str, url: str) -> ScrapedJob:
     """Parse the ``JobPosting`` JSON-LD block out of a dataroles.co page.
 
     Pure and I/O-free, so it is unit-testable against a fixture.
@@ -266,7 +258,7 @@ def parse_job(html: str, url: str) -> ScrapedJob:
             continue
         if not isinstance(obj, dict) or obj.get("@type") != "JobPosting":
             continue
-        return _from_jobposting(obj, url)
+        return _from_dataroles_job(obj, url)
     raise ValueError(f"no JobPosting JSON-LD found at {url}")
 
 
@@ -275,7 +267,7 @@ def _loc_urls(xml_text: str) -> list[str]:
     return [loc.strip() for loc in _LOC_RE.findall(xml_text)]
 
 
-def _from_jobposting(obj: dict[str, Any], url: str) -> ScrapedJob:
+def _from_dataroles_job(obj: dict[str, Any], url: str) -> ScrapedJob:
     """Build a :class:`ScrapedJob` from a parsed ``JobPosting`` object."""
     org = obj.get("hiringOrganization") or {}
     org_name = org.get("name") if isinstance(org, dict) else None
@@ -325,7 +317,7 @@ def _from_ashby_job(job: dict[str, Any], employer: str, slug: str) -> ScrapedJob
         title=job.get("title") or "",
         description_html=job.get("descriptionHtml") or "",
         employer=employer,
-        location=job.get("locationName") or postal.get("addressLocality"),
+        location=job.get("location") or postal.get("addressLocality"),
         country=postal.get("addressCountry"),
         employment_type=job.get("employmentType"),
         date_posted=job.get("publishedAt"),
@@ -467,9 +459,9 @@ def _from_millis(value: Any) -> str | None:
 
 
 if __name__ == "__main__":
-    jobs = list_job_urls()
+    jobs = list_dataroles_job_urls()
 
     for job in jobs[:1]:
-        val = scrape_job(job)
+        val = fetch_dataroles_job(job)
 
         print(val)
