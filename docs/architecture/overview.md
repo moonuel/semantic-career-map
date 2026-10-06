@@ -20,42 +20,18 @@ This section documents the system design of the Semantic Career Map: how the dat
 
 The Semantic Career Map is an information extraction and visualization system that transforms unstructured job postings into a structured semantic representation suitable for search, analysis, and career exploration. Job postings are processed through a multi-stage pipeline producing dense vector representations that capture semantic similarity between roles based on actual responsibilities rather than job titles.
 
-```
-┌──────────────┐      ┌──────────────────────┐     ┌───────────┐
-│    Job       │────▶│ Semantic Career Map  │────▶│   Users   │
-│  Postings    │      │                      │     │           │
-└──────────────┘      │ ingestion → pipeline │     │ Search &  │
-                      │ → embeddings → query │     │ Visualize │
-                      └──────────────────────┘     └───────────┘
-```
-
-<!-- **Non-goals** — what this system deliberately does not do:
-
-- Real-time inference on streaming job feeds
-- Multi-language NLP beyond English
-- User authentication, accounts, or persistence
-- Production-grade rate limiting or auth middleware
-- Mobile or web client (CLI/API only)
-- Resume parsing or document scanning
-- Automated job recommendations or alerting
-
-These boundaries keep the architecture focused on the core problem: transforming free-form job descriptions into a semantically searchable space backed by measurable quality signals. -->
+![](pipeline.png)
 
 ---
 
 ## Pipeline
 
-The data pipeline is a chain of composable, independently testable stages — each stage changes one variable and is evaluated against the same golden set.
+For a high level overview, the pipeline converts job postings into vectors so that structure can be analyzed using standard machine learning tools. 
 
-At a glance, the pipeline turns job descriptions into a map you can look at:
-
-![The pipeline in two steps: above, job posting text becomes a colourless 3D cloud of points; below, the same points are coloured by the role they belong to and flattened to a 2D map while every point keeps its colour.](pipeline.png)
-
-*Every job posting starts as text. The model turns each one into a point in a 3D space where points that mean the same thing sit close together — at first the cloud has no labels. Then points are coloured by the cluster they fall into. The final step flattens the cloud onto a flat 2D map — the same clusters, the same colours, just easier to look at.*
 
 ```
 ┌──────────────────────┐
-│    Raw Job Posting   │  (Markdown from LinkedIn)
+│    Raw Job Posting   │  (Markdown from LinkedIn/Various)
 └──────────┬───────────┘
            ▼
 ┌──────────────────────┐
