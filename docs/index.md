@@ -10,6 +10,12 @@ A semantic search tool for mapping your interests and experience to actual job f
 
 </div>
 
+!!! info "Currently working on:"
+    
+    - Lakehouse data architecture on AWS S3 to support eventual Athena SQL querying for more efficient data ingestion and analysis.
+    - Job posting scraper from Lever, Greenhouse, and Ashby to enrich the dataset.
+    - Handwritten architecture docs to solidify the concepts in my brain after implementation is done. 
+
 <!-- --- -->
 
 <div class="grid cards" markdown>
