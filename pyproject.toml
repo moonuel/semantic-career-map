@@ -18,7 +18,8 @@ dependencies = [
     "httpx",
     "python-dotenv",
     "pytest",
-    "boto3"
+    "boto3",
+    "requests",
 ]
 
 [project.optional-dependencies]
