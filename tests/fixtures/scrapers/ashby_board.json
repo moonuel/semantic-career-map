@@ -1,0 +1,281 @@
+{
+  "jobs": [
+    {
+      "id": "7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+      "title": "Engineering Manager - EU",
+      "department": "Engineering",
+      "team": "EMEA Engineering",
+      "employmentType": "FullTime",
+      "location": "Remote - European Union",
+      "shouldDisplayCompensationOnJobPostings": true,
+      "secondaryLocations": [
+        {
+          "location": "Spain",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "Spain",
+              "addressCountry": "Spain",
+              "addressLocality": "Spain"
+            }
+          }
+        },
+        {
+          "location": "Italy",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Italy",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Germany",
+          "address": {
+            "postalAddress": {
+              "addressCountry": "Germany",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Switzerland",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Switzerland",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Denmark",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Denmark",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Norway",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Norway",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Croatia",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Croatia",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Ireland",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "Ireland",
+              "addressCountry": "Ireland",
+              "addressLocality": "Ireland"
+            }
+          }
+        },
+        {
+          "location": "Stockholm",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "Stockholm",
+              "addressCountry": "Sweden",
+              "addressLocality": "Stockholm"
+            }
+          }
+        },
+        {
+          "location": "Romania",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Romania",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Austria",
+          "address": {
+            "postalAddress": {
+              "addressCountry": "Austria"
+            }
+          }
+        },
+        {
+          "location": "Barcelona",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "Catalonia",
+              "addressCountry": "Spain",
+              "addressLocality": "Barcelona"
+            }
+          }
+        },
+        {
+          "location": "Netherlands",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Netherlands",
+              "addressLocality": "Amsterdam"
+            }
+          }
+        },
+        {
+          "location": "Portugal",
+          "address": {
+            "postalAddress": {
+              "addressCountry": "Portugal"
+            }
+          }
+        },
+        {
+          "location": "France",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "France",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Berlin",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Germany",
+              "addressLocality": "Berlin"
+            }
+          }
+        },
+        {
+          "location": "Sweden",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Sweden",
+              "addressLocality": ""
+            }
+          }
+        },
+        {
+          "location": "Hungary",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "Hungary",
+              "addressCountry": "Hungary",
+              "addressLocality": "Budapest"
+            }
+          }
+        },
+        {
+          "location": "Estonia",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "Estonia",
+              "addressLocality": ""
+            }
+          }
+        }
+      ],
+      "publishedAt": "2024-03-04T14:29:08.532+00:00",
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Remote",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "European Union",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2",
+      "applyUrl": "https://jobs.ashbyhq.com/ashby/7458d4e9-da2e-47bd-98cb-adfda43d42b2/application",
+      "descriptionHtml": "<p style=\"min-height:1.5em\">Hi 👋 I’m <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://uk.linkedin.com/in/colinhoweuk\"><u>Colin</u></a>, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I’m looking for an engineering manager to help us build a different type of engineering team and cultur",
+      "descriptionPlain": "Hi 👋 I’m Colin https://uk.linkedin.com/in/colinhoweuk, Director of Engineering, Europe. How do you feel about software engineers writing product specs, making product decisions, and not breaking down projects into individual tickets? If that sounds exciting (even if a bit scary), read on because I’m looking for an engineering manager to help us build a different type of engineering team and culture at Ashby.\n\nTo start, why do we need to be different? Time and again, I have witnessed engineers kn",
+      "compensation": {
+        "compensationTierSummary": "€110K – €185K • Offers Equity • Offers Bonus",
+        "scrapeableCompensationSalarySummary": "€110K - €185K",
+        "compensationTiers": [
+          {
+            "id": "f1284fac-20e9-4ed0-9a10-776d526a636c",
+            "tierSummary": "€110K – €185K • Offers Equity • Offers Bonus",
+            "title": "EU",
+            "additionalInformation": null,
+            "components": [
+              {
+                "id": "04679796-e0e4-4d9b-a5c0-0cad3ff8ae95",
+                "summary": "Offers Bonus",
+                "compensationType": "Bonus",
+                "interval": "1 YEAR",
+                "currencyCode": "EUR",
+                "minValue": null,
+                "maxValue": null
+              },
+              {
+                "id": "da741ab6-ff38-4fc2-b7b7-c1ccd7260347",
+                "summary": "Offers Equity",
+                "compensationType": "EquityPercentage",
+                "interval": "NONE",
+                "currencyCode": null,
+                "minValue": null,
+                "maxValue": null
+              },
+              {
+                "id": "201b8495-aa7c-417d-923b-94fced49b246",
+                "summary": "€110K – €185K",
+                "compensationType": "Salary",
+                "interval": "1 YEAR",
+                "currencyCode": "EUR",
+                "minValue": 110000,
+                "maxValue": 185000
+              }
+            ]
+          }
+        ],
+        "summaryComponents": [
+          {
+            "compensationType": "Bonus",
+            "interval": "1 YEAR",
+            "currencyCode": "EUR",
+            "minValue": null,
+            "maxValue": null
+          },
+          {
+            "compensationType": "EquityPercentage",
+            "interval": "NONE",
+            "currencyCode": null,
+            "minValue": null,
+            "maxValue": null
+          },
+          {
+            "compensationType": "Salary",
+            "interval": "1 YEAR",
+            "currencyCode": "EUR",
+            "minValue": 110000,
+            "maxValue": 185000
+          }
+        ]
+      }
+    }
+  ],
+  "apiVersion": "1"
+}

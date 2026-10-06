@@ -30,3 +30,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["backend*", "scripts*"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not network'"
+markers = [
+    "network: hits live endpoints; excluded by default, run with pytest -m network",
+]
