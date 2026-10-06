@@ -20,6 +20,8 @@ dependencies = [
     "pytest",
     "boto3",
     "requests",
+    "pyarrow",
+    "pandas",
 ]
 
 [project.optional-dependencies]
