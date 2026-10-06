@@ -30,9 +30,11 @@ ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
 MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
 HASH = "a" * 64
+INGESTED_ON = "2026-10-05"
 
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
+ALL_RAW_SOURCES = sorted(keys._RAW_SOURCES)
 
 requires_py314 = pytest.mark.skipif(
     sys.version_info < (3, 14),
@@ -72,6 +74,75 @@ class TestExactShapes:
         # key unchanged. ``new_id()`` is the only minter; builders only validate.
         minted = keys.new_id()
         assert keys.raw_posting(minted) == f"live/raw/{minted}/source.md"
+
+
+# --- 1b. Raw lakehouse payload -----------------------------------------------
+
+
+class TestRawPayload:
+    """The content-addressed ``lake/raw`` payload builder."""
+
+    def test_full_shape(self) -> None:
+        assert (
+            keys.raw_payload("linkedin", HASH, INGESTED_ON)
+            == f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/sha256={HASH}.json"
+        )
+
+    def test_defaults_ingested_on_to_today(self) -> None:
+        # Omitting ingested_on resolves to today (UTC); backdating is explicit.
+        import datetime
+        from datetime import UTC
+
+        key = keys.raw_payload("lever", HASH)
+        assert key.startswith("lake/raw/source=lever/ingested_on=")
+        assert key.endswith(f"/sha256={HASH}.json")
+        assert datetime.datetime.now(UTC).date().isoformat() in key
+
+    def test_backdates_when_passed(self) -> None:
+        key = keys.raw_payload("ashby", HASH, "2024-03-15")
+        assert "ingested_on=2024-03-15" in key
+
+    @pytest.mark.parametrize("source", ALL_RAW_SOURCES)
+    def test_each_allowlisted_source(self, source: str) -> None:
+        assert keys.raw_payload(source, HASH).startswith(f"lake/raw/source={source}/")
+
+    def test_output_is_valid(self) -> None:
+        key = keys.raw_payload("greenhouse", HASH, INGESTED_ON)
+        assert keys.validate_key(key) == key
+
+    def test_output_is_valid_with_default_date(self) -> None:
+        key = keys.raw_payload("linkedin", HASH)
+        assert keys.validate_key(key) == key
+
+    def test_is_deterministic(self) -> None:
+        assert keys.raw_payload("linkedin", HASH, INGESTED_ON) == keys.raw_payload(
+            "linkedin", HASH, INGESTED_ON
+        )
+
+    @pytest.mark.parametrize(
+        "source",
+        ["", "linkedIn", "Linkedin", "stackoverflow", "a" * 40, "with space"],
+        ids=["empty", "mixed-case", "uppercase", "unknown-source", "too-long", "space"],
+    )
+    def test_rejects_non_allowlisted_source(self, source: str) -> None:
+        with pytest.raises(ValueError):
+            keys.raw_payload(source, HASH)
+
+    def test_rejects_bad_date(self) -> None:
+        for bad in ("", "2026-02-30", "2026-13-01", "2026-1-05", "today"):
+            with pytest.raises(ValueError):
+                keys.raw_payload("linkedin", HASH, bad)
+
+    def test_rejects_bad_hash(self) -> None:
+        for bad in ("", "abc", "a" * 63, "A" * 64):
+            with pytest.raises(ValueError):
+                keys.raw_payload("linkedin", bad)
+
+    def test_validate_key_rejects_bad_raw_partition(self) -> None:
+        # source is a partition: it must be a well-formed key segment.
+        key = f"lake/raw/source=../ingested_on={INGESTED_ON}/sha256={HASH}.json"
+        with pytest.raises(ValueError):
+            keys.validate_key(key)
 
 
 # --- 2. Concept placement ----------------------------------------------------
@@ -292,6 +363,9 @@ class TestDeterminism:
     def test_all_builders_are_idempotent(self) -> None:
         assert keys.raw_posting(ID) == keys.raw_posting(ID)
         assert keys.raw_metadata(ID) == keys.raw_metadata(ID)
+        assert keys.raw_payload("linkedin", HASH, INGESTED_ON) == keys.raw_payload(
+            "linkedin", HASH, INGESTED_ON
+        )
         assert keys.derived(ID, VARIANT, "v2") == keys.derived(ID, VARIANT, "v2")
         assert keys.embedding(MODEL, VARIANT, "v1", ID) == keys.embedding(
             MODEL, VARIANT, "v1", ID
@@ -325,6 +399,12 @@ class TestBuilderOutputsAreValid:
     def test_raw_outputs_are_valid(self) -> None:
         assert keys.validate_key(keys.raw_posting(ID)) == keys.raw_posting(ID)
         assert keys.validate_key(keys.raw_metadata(ID)) == keys.raw_metadata(ID)
+
+    @pytest.mark.parametrize("source", ALL_RAW_SOURCES)
+    def test_raw_payload_output_is_valid(self, source: str) -> None:
+        assert keys.validate_key(
+            keys.raw_payload(source, HASH, INGESTED_ON)
+        ) == keys.raw_payload(source, HASH, INGESTED_ON)
 
     def test_config_output_is_valid(self) -> None:
         assert keys.validate_key(keys.config(HASH)) == keys.config(HASH)

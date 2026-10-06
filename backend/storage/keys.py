@@ -1,24 +1,31 @@
 """Pure key builders and validators for the object store.
 
-Keys implement the layout in ``docs/architecture/data-layout.md``. These
-functions are the single source of truth for well-formed keys: they are pure
-(no I/O) so they can be unit-tested without a store, and every other module
-derives keys through them rather than by string interpolation.
+Keys implement the layout in ``docs/architecture/data.md``. These functions are
+the single source of truth for well-formed keys: they are pure (no I/O) so they
+can be unit-tested without a store, and every other module derives keys through
+them rather than by string interpolation.
 
-This module implements the ``live`` and ``configs`` branches of the layout.
-The ``eval`` branch and the deferred eval machinery are intentionally not
-built yet; the shapes are reserved by the layout and added here when those
-phases arrive.
+This module implements the legacy ``live`` and ``configs`` branches plus the
+lakehouse ``lake`` branch. The lakehouse is being migrated branch-by-branch,
+key builders first; the ``raw`` builder has landed, while ``artifacts``,
+``embeddings``, ``eval``, and ``manifests`` are reserved by the layout and added
+here when those phases arrive.
 
-Posting ids are time-ordered **UUIDv7** values (RFC 9562 §5.7), rendered in the
-canonical 36-char lowercase hyphenated form. Identity is *assigned at ingestion*
-by :func:`new_id`, not derived from content: the old content-addressed scheme
-(``sha256(source)`` -> 16-char base64url) is superseded. Provenance (content
-hash, source URL, employer, title, ingestion time) lives in the append-only
-``metadata.json`` sidecar, not in the key. Because ids are ``[0-9a-f-]``,
-**every** segment in a key is lowercase; there is no uppercase exception.
+Lakehouse ``raw`` objects are **content-addressed**: identity is the SHA-256 of
+the verbatim payload, not a posting id. ``raw_payload`` emits
+``lake/raw/source=<source>/ingested_on=<date>/sha256=<hash>.json``, pruned by
+low-cardinality partitions (``source``, ``ingested_on``). ``source`` is
+validated against an allowlist (:data:`_RAW_SOURCES`) to keep partitioning
+governed.
+
+Legacy posting ids are time-ordered **UUIDv7** values (RFC 9562 §5.7), rendered
+in the canonical 36-char lowercase hyphenated form. Identity is *assigned at
+ingestion* by :func:`new_id`, not derived from content. Because ids are
+``[0-9a-f-]``, **every** segment in a key is lowercase; there is no uppercase
+exception.
 
 Public builders:
+    - ``raw_payload(source, hash, ingested_on=None)`` -> ``lake/raw/source=<source>/ingested_on=<YYYY-MM-DD>/sha256=<hash>.json``
     - ``raw_posting(id)``        -> ``live/raw/<id>/source.md``
     - ``raw_metadata(id)``       -> ``live/raw/<id>/metadata.json``
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
@@ -34,12 +41,23 @@ Validators:
 
 from __future__ import annotations
 
+import datetime
 import re
 import uuid
+from datetime import UTC
 
 # --- Constants ---------------------------------------------------------------
 
-_BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs"})
+# The single bucket's top-level branches. ``lake`` holds the lakehouse raw
+# layer (content-addressed, immutable); ``live`` and ``configs`` are the legacy
+# object-per-posting store still in use until each branch migrates.
+_BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake"})
+
+# Sources admitted into ``lake/raw/source=<source>/``. Kept as an explicit
+# allowlist so partitioning stays governed — a source is a partition column,
+# and an unbounded source set is the partition-explosion / ungoverned-accumulation
+# anti-pattern. Sources are lowercase and must satisfy _SEGMENT_RE.
+_RAW_SOURCES: frozenset[str] = frozenset({"linkedin", "lever", "greenhouse", "ashby"})
 
 # Variants that live under live/derived/<id>/<variant>/.
 # Kept open: new variants are added here and are additive (layout §5).
@@ -115,6 +133,22 @@ def _check_hash(hash_: str, *, name: str = "config hash") -> str:
     return hash_
 
 
+def _check_date(date: str, *, name: str = "ingested_on") -> str:
+    """Return ``date`` if it is a real ``YYYY-MM-DD`` calendar date, else raise.
+
+    The partition regex would accept any ``[-0-9]+``; this is stricter so a
+    typo like ``2026-02-30`` fails at construction rather than minting a
+    partition Athena cannot prune.
+    """
+    try:
+        parsed = datetime.date.fromisoformat(date)
+    except ValueError:
+        raise ValueError(f"{name} must be a YYYY-MM-DD date, got {date!r}") from None
+    if parsed.isoformat() != date:
+        raise ValueError(f"{name} must be a YYYY-MM-DD date, got {date!r}")
+    return date
+
+
 # --- Builders ---------------------------------------------------------------
 
 
@@ -131,6 +165,48 @@ def new_id() -> str:
         ``'0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70'``.
     """
     return str(uuid.uuid7())
+
+
+def raw_payload(
+    source: str,
+    content_hash: str,
+    ingested_on: str | None = None,
+) -> str:
+    """Key for a verbatim, content-addressed raw payload.
+
+    ``lake/raw/source=<source>/ingested_on=<YYYY-MM-DD>/sha256=<content-hash>.json``
+
+    The raw object is addressed by the SHA-256 of the received payload, not by
+    a posting id (layout §2.1). ``source`` and ``ingested_on`` are
+    low-cardinality Hive partitions pruned by Athena.
+
+    Args:
+        source: Origin of the payload; must be in :data:`_RAW_SOURCES`.
+        content_hash: 64-char lowercase hex SHA-256 of the verbatim bytes — the
+            content address.
+        ingested_on: Calendar date of ingestion as ``YYYY-MM-DD``, defaulting to
+            today. May be passed to backdate an observation.
+
+    Returns:
+        The well-formed raw object key.
+
+    Raises:
+        ValueError: if ``source`` is not allowlisted, ``content_hash`` is not
+            64-char hex, or ``ingested_on`` is not a real ``YYYY-MM-DD`` date.
+    """
+    source = _check(source, name="source")
+    if source not in _RAW_SOURCES:
+        raise ValueError(
+            f"unknown raw source {source!r}; expected one of {sorted(_RAW_SOURCES)}"
+        )
+    if ingested_on is None:
+        ingested_on = datetime.datetime.now(UTC).date().isoformat()
+    else:
+        ingested_on = _check_date(ingested_on)
+    return (
+        f"lake/raw/source={source}/ingested_on={ingested_on}/"
+        f"sha256={_check_hash(content_hash, name='content hash')}.json"
+    )
 
 
 def raw_posting(id: str) -> str:
@@ -198,21 +274,22 @@ def config(hash_: str) -> str:
 # --- Validators -------------------------------------------------------------
 
 
-def _id_index(rest: list[str]) -> int | None:
+def _id_index(bucket: str, rest: list[str]) -> int | None:
     """Index in ``rest`` of the posting-id segment for this key shape, else None.
 
     The id is identified *positionally* by the branch, not by its characters:
 
-    - ``raw/<id>/<file>``                        -> index 1
-    - ``derived/<id>/<variant>/<version-file>``  -> index 1
-    - ``embeddings/<model>/<variant>/<vN>/<id>.<ext>`` -> leaf (index ``-1``)
-    - ``meta/...`` and ``configs/...``           -> no id segment
+    - ``live/raw/<id>/<file>``                 -> index 1
+    - ``live/derived/<id>/<variant>/<version-file>`` -> index 1
+    - ``live/embeddings/<model>/<variant>/<vN>/<id>.<ext>`` -> leaf (index ``-1``)
+    - ``lake/raw/...`` (content-addressed)     -> no id segment
+    - ``meta/...`` and ``configs/...``         -> no id segment
     """
     if not rest:
         return None
-    if rest[0] in {"raw", "derived"}:
+    if bucket == "live" and rest[0] in {"raw", "derived"}:
         return 1 if len(rest) > 1 else None
-    if rest[0] == "embeddings":
+    if bucket == "live" and rest[0] == "embeddings":
         return len(rest) - 1
     return None
 
@@ -220,8 +297,8 @@ def _id_index(rest: list[str]) -> int | None:
 def validate_key(key: str) -> str:
     """Validate a key and return it unchanged, or raise ``ValueError``.
 
-    Enforces the structural rules of ``data-layout.md``:
-      - first segment is one of the known buckets (``eval``/``live``/``configs``);
+    Enforces the structural rules of ``data.md``:
+      - first segment is one of the known branches (``eval``/``live``/``configs``/``lake``);
       - every segment matches the safe-character rule (no ``..``, no trailing
         slash, no reserved characters);
       - the posting-id segment — where the layout places one — is a canonical
@@ -251,7 +328,7 @@ def validate_key(key: str) -> str:
                 f"key {key!r} contains a path-normalization segment {segment!r}"
             )
 
-    id_index = _id_index(rest)
+    id_index = _id_index(bucket, rest)
     for index, segment in enumerate(rest):
         if index == id_index:
             # Embeddings place the id at the leaf as ``<id>.npy``; the raw and

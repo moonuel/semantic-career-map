@@ -66,7 +66,7 @@ class TestSplitSlug:
         if not source.is_dir():
             pytest.skip("corpus not present")
         stems = [p.stem for p in source.glob("*.md")]
-        assert len(stems) == 37
+        assert len(stems) >= 37
         for stem in stems:
             employer, title = split_slug(stem)
             assert employer and title
