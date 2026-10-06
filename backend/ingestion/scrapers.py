@@ -3,8 +3,8 @@
 Each established ATS has a public, key-free read API that returns a whole
 company board in one call. The three supported here — Ashby, Greenhouse, and
 Lever — all normalize into the same :class:`ScrapedJob` shape, with
-``source_id`` set from each ATS's native posting id (prefixed by ATS) so that
-postings can be de-duplicated across sources later:
+``source_id`` set from each ATS's native posting id as ``<ats>:<board>:<id>``
+so that postings can be de-duplicated across sources later:
 
 - :func:`fetch_ashby_jobs` — ``api.ashbyhq.com/posting-api/job-board/{slug}``
 - :func:`fetch_greenhouse_jobs` — ``boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true``
@@ -156,9 +156,10 @@ class ScrapedJob:
     """A job posting normalized from any supported source.
 
     The canonical output shape for every source (Ashby, Greenhouse, Lever,
-    dataroles.co). ``source_id`` is the ATS's native posting id, prefixed by
-    ATS so postings can be joined back to a specific origin and de-duplicated
-    across the individual scrapers and the dataroles.co curator.
+    dataroles.co). For the ATS scrapers, ``source_id`` is the native posting id
+    as ``<ats>:<board>:<id>`` so postings can be joined back to a specific
+    origin and de-duplicated across the individual scrapers and the
+    dataroles.co curator.
 
     Attributes:
         url: The public posting URL on the source/employer site.
@@ -172,7 +173,9 @@ class ScrapedJob:
         salary_min: Employer-stated lower bound, if any.
         salary_max: Employer-stated upper bound, if any.
         salary_currency: ISO currency, if any.
-        source_id: ATS-prefixed native posting id, e.g. ``ashby:<id>``.
+        source_id: Native posting id as ``<ats>:<board>:<id>``, e.g.
+            ``ashby:acme:7458d4e9``; a dataroles.co posting carries its origin
+            system's identifier value verbatim instead.
     """
 
     url: str
