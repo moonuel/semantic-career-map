@@ -1,5 +1,9 @@
 # Data Layout & Object Storage Naming
 
+!!! info "Data architecture under construction!"
+  Currently migrating towards a more developed Lakehouse architecture for simplicity and scalability (not described below).
+
+
 Data lake-style ingestion mechanisms and S3-compatible object store conventions are used as the project migrates towards cloud deployment and productionization. 
 
 A single bucket is used for now (until scope justifies expansion into separate buckets), as well as a structured key builder and metadata object for provenance and relational querying later down the line. 
