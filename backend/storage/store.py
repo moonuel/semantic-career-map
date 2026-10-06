@@ -21,6 +21,18 @@ from botocore.exceptions import ClientError
 
 from backend.storage import keys
 
+# S3 error codes meaning "the object is not there": real S3 uses ``NoSuchKey``
+# on GET, while HEAD carries no body and surfaces as the bare status "404"
+# (Garage does the same). Everything else — auth, bucket, throttling — must
+# propagate, not masquerade as a missing object.
+_NOT_FOUND_CODES = frozenset({"NoSuchKey", "NotFound", "404"})
+
+
+def _is_not_found(exc: ClientError) -> bool:
+    if exc.response.get("Error", {}).get("Code") in _NOT_FOUND_CODES:
+        return True
+    return exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 404
+
 
 class ObjectStore:
     """Thin boto3 S3-compatible client, validated through ``keys``.
@@ -78,21 +90,33 @@ class ObjectStore:
         self._client.put_object(Bucket=self._bucket, Key=key, Body=data)
 
     def get(self, key: str) -> bytes:
-        """Read the bytes stored at ``key``."""
+        """Read the bytes stored at ``key``.
+
+        Raises:
+            FileNotFoundError: if the object is 404-class absent.
+        """
         keys.validate_key(key)
         try:
             return self._client.get_object(Bucket=self._bucket, Key=key)["Body"].read()
         except ClientError as exc:
-            raise FileNotFoundError(key) from exc
+            if _is_not_found(exc):
+                raise FileNotFoundError(key) from exc
+            raise
 
     def exists(self, key: str) -> bool:
-        """Return whether ``key`` exists."""
+        """Return whether ``key`` exists.
+
+        Only 404-class ``ClientError``s count as absent; auth, bucket, and
+        throttling failures propagate rather than answering ``False``.
+        """
         keys.validate_key(key)
         try:
             self._client.head_object(Bucket=self._bucket, Key=key)
             return True
-        except ClientError:
-            return False
+        except ClientError as exc:
+            if _is_not_found(exc):
+                return False
+            raise
 
     def list_keys(self, prefix: str) -> Iterator[str]:
         """Yield every key under ``prefix`` (paginated)."""
