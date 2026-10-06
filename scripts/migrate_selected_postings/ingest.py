@@ -13,29 +13,27 @@ The posting id is a UUIDv7 minted at ingestion by ``ids.new_id()`` (see
 corpus is not duplicated.
 
 This is production ingestion, not an experiment artifact; it deliberately lives
-in an unnumbered directory under ``scripts/``. Store access and the metadata
-schema are kept inline for now — extract to ``backend/`` when a second consumer
-appears.
+in an unnumbered directory under ``scripts/``. Store access now lives in
+:mod:`backend.storage.store` (extracted when the second consumer,
+``scripts/seed_lake_raw``, appeared); the metadata schema is still kept inline
+here.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
-from collections.abc import Iterator
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import boto3
-from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
 
 from backend.storage import ids, keys
+from backend.storage.store import ObjectStore
 
 # --- Config ------------------------------------------------------------------
 
@@ -177,86 +175,6 @@ class PostingMetadata:
 
 
 # --- Store (inline round-trip utilities) -------------------------------------
-
-
-class ObjectStore:
-    """Thin boto3 S3-compatible client, validated through ``keys``.
-
-    Points at remote S3 or a local Garage store by endpoint override; the two
-    are behaviourally identical. Keys are always validated before use.
-    """
-
-    def __init__(
-        self,
-        *,
-        bucket: str,
-        endpoint_url: str | None,
-        region: str,
-        access_key: str,
-        secret_key: str,
-    ) -> None:
-        self._bucket = bucket
-        self._client = boto3.client(
-            "s3",
-            endpoint_url=endpoint_url or None,
-            region_name=region,
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            config=Config(s3={"addressing_style": "path"}),
-        )
-
-    @classmethod
-    def from_env(cls) -> ObjectStore:
-        """Construct from the ``GARAGE_S3_*`` variables loaded from ``.env``."""
-        missing = [
-            name
-            for name in (
-                "GARAGE_S3_BUCKET",
-                "GARAGE_S3_ENDPOINT",
-                "GARAGE_S3_REGION",
-                "GARAGE_S3_ACCESS_KEY_ID",
-                "GARAGE_S3_SECRET_ACCESS_KEY",
-            )
-            if not os.environ.get(name)
-        ]
-        if missing:
-            raise RuntimeError(f"missing environment variables: {', '.join(missing)}")
-        return cls(
-            bucket=os.environ["GARAGE_S3_BUCKET"],
-            endpoint_url=os.environ["GARAGE_S3_ENDPOINT"],
-            region=os.environ["GARAGE_S3_REGION"],
-            access_key=os.environ["GARAGE_S3_ACCESS_KEY_ID"],
-            secret_key=os.environ["GARAGE_S3_SECRET_ACCESS_KEY"],
-        )
-
-    def put(self, key: str, data: bytes) -> None:
-        """Write ``data`` at ``key`` (overwrite if present)."""
-        keys.validate_key(key)
-        self._client.put_object(Bucket=self._bucket, Key=key, Body=data)
-
-    def get(self, key: str) -> bytes:
-        """Read the bytes stored at ``key``."""
-        keys.validate_key(key)
-        try:
-            return self._client.get_object(Bucket=self._bucket, Key=key)["Body"].read()
-        except ClientError as exc:
-            raise FileNotFoundError(key) from exc
-
-    def exists(self, key: str) -> bool:
-        """Return whether ``key`` exists."""
-        keys.validate_key(key)
-        try:
-            self._client.head_object(Bucket=self._bucket, Key=key)
-            return True
-        except ClientError:
-            return False
-
-    def list_keys(self, prefix: str) -> Iterator[str]:
-        """Yield every key under ``prefix`` (paginated)."""
-        paginator = self._client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=self._bucket, Prefix=prefix):
-            for obj in page.get("Contents", []):
-                yield obj["Key"]
 
 
 # --- Migration ---------------------------------------------------------------

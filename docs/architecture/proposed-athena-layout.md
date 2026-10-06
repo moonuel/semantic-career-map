@@ -48,6 +48,9 @@ The core principle is:
 
 ## 2. S3 layout
 
+!!! warning "Amendment — no `ingested_on` in raw keys"
+  As adopted in [data.md](data.md §2.1), the raw layer drops the `ingested_on=<YYYY-MM-DD>/` level shown below: a date in the path would give identical re-ingested payloads different keys and accumulate copies, defeating content-addressing within a source. Objects are never rewritten, so S3 `Last-Modified` is the first-ingestion time, and provenance dates for date-range queries live in manifests instead. The tree below is the original proposal text, kept verbatim.
+
 ```text
 lake/
 ├── raw/

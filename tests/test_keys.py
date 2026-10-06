@@ -28,7 +28,6 @@ ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
 MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
 HASH = "a" * 64
-INGESTED_ON = "2026-10-05"
 
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
@@ -77,45 +76,20 @@ class TestRawPayload:
 
     def test_full_shape(self) -> None:
         assert (
-            keys.raw_payload("linkedin", HASH, INGESTED_ON)
-            == f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/sha256={HASH}.json"
+            keys.raw_payload("linkedin", HASH)
+            == f"lake/raw/source=linkedin/sha256={HASH}.json"
         )
-
-    def test_defaults_ingested_on_to_today(self) -> None:
-        # Omitting ingested_on resolves to today (UTC); backdating is explicit.
-        # Allow a one-day slew so a run straddling UTC midnight is not flaky.
-        import datetime
-        from datetime import UTC
-
-        key = keys.raw_payload("lever", HASH)
-        assert key.startswith("lake/raw/source=lever/ingested_on=")
-        assert key.endswith(f"/sha256={HASH}.json")
-        key_date = datetime.date.fromisoformat(
-            key.split("/")[3].removeprefix("ingested_on=")
-        )
-        slew = (datetime.datetime.now(UTC).date() - key_date).days
-        assert slew in {0, 1}
-
-    def test_backdates_when_passed(self) -> None:
-        key = keys.raw_payload("ashby", HASH, "2024-03-15")
-        assert "ingested_on=2024-03-15" in key
 
     @pytest.mark.parametrize("source", ALL_RAW_SOURCES)
     def test_each_allowlisted_source(self, source: str) -> None:
         assert keys.raw_payload(source, HASH).startswith(f"lake/raw/source={source}/")
 
     def test_output_is_valid(self) -> None:
-        key = keys.raw_payload("greenhouse", HASH, INGESTED_ON)
-        assert keys.validate_key(key) == key
-
-    def test_output_is_valid_with_default_date(self) -> None:
-        key = keys.raw_payload("linkedin", HASH)
+        key = keys.raw_payload("greenhouse", HASH)
         assert keys.validate_key(key) == key
 
     def test_is_deterministic(self) -> None:
-        assert keys.raw_payload("linkedin", HASH, INGESTED_ON) == keys.raw_payload(
-            "linkedin", HASH, INGESTED_ON
-        )
+        assert keys.raw_payload("linkedin", HASH) == keys.raw_payload("linkedin", HASH)
 
     @pytest.mark.parametrize(
         "source",
@@ -126,11 +100,6 @@ class TestRawPayload:
         with pytest.raises(ValueError):
             keys.raw_payload(source, HASH)
 
-    def test_rejects_bad_date(self) -> None:
-        for bad in ("", "2026-02-30", "2026-13-01", "2026-1-05", "today"):
-            with pytest.raises(ValueError):
-                keys.raw_payload("linkedin", HASH, bad)
-
     def test_rejects_bad_hash(self) -> None:
         for bad in ("", "abc", "a" * 63, "A" * 64):
             with pytest.raises(ValueError):
@@ -138,37 +107,31 @@ class TestRawPayload:
 
     def test_validate_key_rejects_bad_raw_partition(self) -> None:
         # source is a partition: it must be a well-formed key segment.
-        key = f"lake/raw/source=../ingested_on={INGESTED_ON}/sha256={HASH}.json"
+        key = f"lake/raw/source=../sha256={HASH}.json"
         with pytest.raises(ValueError):
             keys.validate_key(key)
 
 
 class TestValidateLakeRaw:
     """``validate_key`` pins the semantic shape of ``lake/raw``, not just the
-    segment alphabet: partition names and order, the allowlisted source, a real
-    ``ingested_on`` date, and the ``sha256=<hex>.json`` leaf."""
+    segment alphabet: the single ``source`` partition, the allowlisted source,
+    and the ``sha256=<hex>.json`` leaf."""
 
     def _key(self, **overrides: str) -> str:
         parts = {
             "source": "linkedin",
-            "ingested_on": INGESTED_ON,
             "hash": HASH,
         }
         parts.update(overrides)
-        return (
-            f"lake/raw/source={parts['source']}"
-            f"/ingested_on={parts['ingested_on']}"
-            f"/sha256={parts['hash']}.json"
-        )
+        return f"lake/raw/source={parts['source']}/sha256={parts['hash']}.json"
 
     def test_valid_key_round_trips(self) -> None:
         assert keys.validate_key(self._key()) == self._key()
 
     def test_rejects_wrong_segment_count(self) -> None:
         for key in (
-            f"lake/raw/source=linkedin/sha256={HASH}.json",
-            f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}",
-            f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/sha256={HASH}.json/extra",
+            "lake/raw/source=linkedin",
+            f"lake/raw/source=linkedin/sha256={HASH}.json/extra",
         ):
             with pytest.raises(ValueError):
                 keys.validate_key(key)
@@ -176,11 +139,6 @@ class TestValidateLakeRaw:
     def test_rejects_unknown_source_partition(self) -> None:
         with pytest.raises(ValueError):
             keys.validate_key(self._key(source="stackoverflow"))
-
-    def test_rejects_fake_ingested_on(self) -> None:
-        for bad in ("", "x", "2026-02-30", "2026-13-05", "2026-1-5"):
-            with pytest.raises(ValueError):
-                keys.validate_key(self._key(ingested_on=bad))
 
     def test_rejects_bad_hash_leaf(self) -> None:
         for wrong_leaf in (
@@ -192,15 +150,13 @@ class TestValidateLakeRaw:
             f"sha256={HASH}.md",  # wrong extension
         ):
             with pytest.raises(ValueError):
-                keys.validate_key(
-                    f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/{wrong_leaf}"
-                )
+                keys.validate_key(f"lake/raw/source=linkedin/{wrong_leaf}")
 
     def test_rejects_wrong_partition_names_or_order(self) -> None:
         for wrong_tail in (
-            f"ingested_on={INGESTED_ON}/sha256={HASH}.json",  # source missing
-            f"source=linkedin/sha256={HASH}.json",  # ingested_on missing
-            f"day={INGESTED_ON}/source=linkedin/sha256={HASH}.json",  # extra/wrong
+            f"sha256={HASH}.json",  # source partition missing
+            f"linkedin/sha256={HASH}.json",  # bare segment, no k=v partition
+            f"source=linkedin/day=2026-10-05/sha256={HASH}.json",  # extra
             f"source=linkedin/source=linkedin/sha256={HASH}.json",  # duplicated
         ):
             with pytest.raises(ValueError):
@@ -425,9 +381,7 @@ class TestDeterminism:
     def test_all_builders_are_idempotent(self) -> None:
         assert keys.raw_posting(ID) == keys.raw_posting(ID)
         assert keys.raw_metadata(ID) == keys.raw_metadata(ID)
-        assert keys.raw_payload("linkedin", HASH, INGESTED_ON) == keys.raw_payload(
-            "linkedin", HASH, INGESTED_ON
-        )
+        assert keys.raw_payload("linkedin", HASH) == keys.raw_payload("linkedin", HASH)
         assert keys.derived(ID, VARIANT, "v2") == keys.derived(ID, VARIANT, "v2")
         assert keys.embedding(MODEL, VARIANT, "v1", ID) == keys.embedding(
             MODEL, VARIANT, "v1", ID
@@ -464,9 +418,9 @@ class TestBuilderOutputsAreValid:
 
     @pytest.mark.parametrize("source", ALL_RAW_SOURCES)
     def test_raw_payload_output_is_valid(self, source: str) -> None:
-        assert keys.validate_key(
-            keys.raw_payload(source, HASH, INGESTED_ON)
-        ) == keys.raw_payload(source, HASH, INGESTED_ON)
+        assert keys.validate_key(keys.raw_payload(source, HASH)) == keys.raw_payload(
+            source, HASH
+        )
 
     def test_config_output_is_valid(self) -> None:
         assert keys.validate_key(keys.config(HASH)) == keys.config(HASH)
