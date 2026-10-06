@@ -1,14 +1,20 @@
 """Scrapers for job-posting sources.
 
-Currently two sources:
+Each established ATS has a public, key-free read API that returns a whole
+company board in one call. The three supported here — Ashby, Greenhouse, and
+Lever — all normalize into the same :class:`ScrapedJob` shape, with
+``source_id`` set from each ATS's native posting id (prefixed by ATS) so that
+postings can be de-duplicated across sources later:
 
-- :func:`fetch_job_board` reads a single company's job board from Ashby's
-  public posting API.
-- :func:`scrape_job` (and :func:`list_job_urls`) read postings from
-  dataroles.co through its documented read interface — the sitemap enumerates
-  every job-page URL, and each job page embeds a schema.org ``JobPosting``
-  JSON-LD block whose ``description`` (raw HTML) and accompanying metadata are
-  sufficient for ingestion.
+- :func:`fetch_ashby_jobs` — ``api.ashbyhq.com/posting-api/job-board/{slug}``
+- :func:`fetch_greenhouse_jobs` — ``boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true``
+- :func:`fetch_lever_jobs` — ``api.lever.co/v0/postings/{slug}?mode=json``
+
+``fetch_job_board`` is a thin Ashby convenience retained for callers that want
+the raw ``requests.Response``. dataroles.co, a curator over 16 ATS systems, is
+also supported via its documented read interface (:func:`list_job_urls` and
+:func:`scrape_job`), whose ``identifier.value`` carries the origin embedded on
+every posting.
 """
 
 from __future__ import annotations
@@ -16,12 +22,16 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
 
 _SITEMAP_INDEX = "https://dataroles.co/sitemap.xml"
 _JOB_SITEMAP_PREFIX = "https://dataroles.co/sitemaps/jobs-data"
+
+_GREENHOUSE_API = "https://boards-api.greenhouse.io/v1/boards"
+_LEVER_API = "https://api.lever.co/v0/postings"
 
 # A ``<loc>`` URL in any sitemap namespace; matches both ``urlset`` and
 # ``sitemapindex`` documents.
@@ -50,23 +60,127 @@ def fetch_job_board(job_board_name: str) -> requests.Response:
     return requests.get(url)
 
 
+def fetch_ashby_jobs(
+    job_board_name: str, employer: str | None = None
+) -> list[ScrapedJob]:
+    """Fetch and normalize all postings on an Ashby job board.
+
+    ``GET api.ashbyhq.com/posting-api/job-board/{slug}?includeCompensation=true``
+    returns the whole board. ``includeCompensation=true`` is required for the
+    ``compensation`` object to be present at all.
+
+    Args:
+        job_board_name: The Ashby board identifier (slug after ``jobs.ashbyhq.com/``).
+        employer: Optional override; Ashby does not name the employer, so it
+            defaults to ``job_board_name``.
+
+    Returns:
+        A list of :class:`ScrapedJob`, one per open posting.
+
+    Raises:
+        requests.HTTPError: if the board cannot be retrieved (unknown boards
+            return HTTP 404).
+    """
+    response = fetch_job_board(job_board_name)
+    response.raise_for_status()
+    payload = response.json()
+    jobs = payload.get("jobs", []) if isinstance(payload, dict) else payload
+    return [
+        _from_ashby_job(job, employer or job_board_name, job_board_name)
+        for job in jobs
+        if isinstance(job, dict)
+    ]
+
+
+def fetch_greenhouse_jobs(
+    board_token: str, employer: str | None = None
+) -> list[ScrapedJob]:
+    """Fetch and normalize all postings on a Greenhouse job board.
+
+    ``GET boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true``
+    returns the whole board with full HTML descriptions in one call.
+    ``content=true`` is what makes ``content`` (the description) non-empty.
+
+    Args:
+        board_token: The Greenhouse board token (slug after
+            ``job-boards.greenhouse.io/``).
+        employer: Optional override; defaults to the API's ``company_name``.
+
+    Returns:
+        A list of :class:`ScrapedJob`, one per open posting.
+
+    Raises:
+        requests.HTTPError: if the board cannot be retrieved (unknown tokens
+            return HTTP 404).
+    """
+    response = requests.get(
+        f"{_GREENHOUSE_API}/{board_token}/jobs", params={"content": "true"}, timeout=30
+    )
+    response.raise_for_status()
+    payload = response.json()
+    jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
+    base_employer = employer or (
+        payload.get("company_name") if isinstance(payload, dict) else None
+    )
+    return [
+        _from_greenhouse_job(job, base_employer or board_token, board_token)
+        for job in jobs
+        if isinstance(job, dict)
+    ]
+
+
+def fetch_lever_jobs(site: str, employer: str | None = None) -> list[ScrapedJob]:
+    """Fetch and normalize all postings on a Lever job site.
+
+    ``GET api.lever.co/v0/postings/{site}?mode=json`` returns the full board as
+    a bare JSON array. ``mode=json`` (or an ``Accept: application/json``
+    header) is required — without it the endpoint serves a rendered page.
+
+    Args:
+        site: The Lever board slug (after ``jobs.lever.co/``).
+        employer: Optional override; Lever never names the company, so it
+            defaults to ``site``.
+
+    Returns:
+        A list of :class:`ScrapedJob`, one per open posting.
+
+    Raises:
+        requests.HTTPError: if the board cannot be retrieved (unknown sites
+            return HTTP 404).
+    """
+    response = requests.get(f"{_LEVER_API}/{site}", params={"mode": "json"}, timeout=30)
+    response.raise_for_status()
+    payload = response.json()
+    jobs = payload if isinstance(payload, list) else []
+    return [
+        _from_lever_job(job, employer or site, site)
+        for job in jobs
+        if isinstance(job, dict)
+    ]
+
+
 @dataclass(frozen=True)
 class ScrapedJob:
-    """A job posting parsed from dataroles.co's ``JobPosting`` JSON-LD.
+    """A job posting normalized from any supported source.
+
+    The canonical output shape for every source (Ashby, Greenhouse, Lever,
+    dataroles.co). ``source_id`` is the ATS's native posting id, prefixed by
+    ATS so postings can be joined back to a specific origin and de-duplicated
+    across the individual scrapers and the dataroles.co curator.
 
     Attributes:
-        url: The dataroles.co job-page URL that announced this posting.
+        url: The public posting URL on the source/employer site.
         title: Role title, e.g. ``Senior Data Analyst``.
-        description_html: Verbatim job description HTML from ``description``.
-        employer: Organization name from ``hiringOrganization``.
-        location: Locality from ``jobLocation.address.addressLocality``.
-        country: Country code from ``jobLocation.address.addressCountry``.
-        employment_type: e.g. ``FULL_TIME``.
-        date_posted: ISO date from ``datePosted`` (listings confirmed open).
-        salary_min: Employer-stated lower bound from ``baseSalary``, if any.
-        salary_max: Employer-stated upper bound from ``baseSalary``, if any.
-        salary_currency: ISO currency from ``baseSalary``, if any.
-        source_id: The ATS id from ``identifier``, if present.
+        description_html: Verbatim job description HTML.
+        employer: Organization name.
+        location: Free-text location or locality.
+        country: Country code, if the source provides a structured one.
+        employment_type: e.g. ``FULL_TIME`` (or the source's equivalent).
+        date_posted: ISO date/timestamp of posting, if provided.
+        salary_min: Employer-stated lower bound, if any.
+        salary_max: Employer-stated upper bound, if any.
+        salary_currency: ISO currency, if any.
+        source_id: ATS-prefixed native posting id, e.g. ``ashby:<id>``.
     """
 
     url: str
@@ -196,8 +310,163 @@ def _from_jobposting(obj: dict[str, Any], url: str) -> ScrapedJob:
     )
 
 
-if __name__ == "__main__":
+def _from_ashby_job(job: dict[str, Any], employer: str, slug: str) -> ScrapedJob:
+    """Build a :class:`ScrapedJob` from one Ashby posting object."""
+    compensation = job.get("compensation") or {}
+    compensation = compensation if isinstance(compensation, dict) else {}
+    comp = _salary_from_components(compensation.get("summaryComponents"))
 
+    address = job.get("address") or {}
+    postal = address.get("postalAddress") if isinstance(address, dict) else None
+    postal = postal if isinstance(postal, dict) else {}
+
+    return ScrapedJob(
+        url=job.get("jobUrl") or "",
+        title=job.get("title") or "",
+        description_html=job.get("descriptionHtml") or "",
+        employer=employer,
+        location=job.get("locationName") or postal.get("addressLocality"),
+        country=postal.get("addressCountry"),
+        employment_type=job.get("employmentType"),
+        date_posted=job.get("publishedAt"),
+        salary_min=comp[0],
+        salary_max=comp[1],
+        salary_currency=comp[2],
+        source_id=f"ashby:{slug}:{job.get('id')}",
+    )
+
+
+def _from_greenhouse_job(job: dict[str, Any], employer: str, token: str) -> ScrapedJob:
+    """Build a :class:`ScrapedJob` from one Greenhouse posting object."""
+    location = job.get("location") or {}
+    location = location if isinstance(location, dict) else {}
+    offices = job.get("offices") or []
+    country = next(
+        (o.get("location") for o in offices if isinstance(o, dict)),
+        None,
+    )
+
+    return ScrapedJob(
+        url=job.get("absolute_url") or "",
+        title=job.get("title") or "",
+        description_html=job.get("content") or "",
+        employer=employer,
+        location=location.get("name"),
+        country=country,
+        employment_type=job.get("employment_type"),
+        date_posted=job.get("first_published") or job.get("updated_at"),
+        salary_min=None,
+        salary_max=None,
+        salary_currency=None,
+        source_id=f"greenhouse:{token}:{job.get('id')}",
+    )
+
+
+def _from_lever_job(job: dict[str, Any], employer: str, site: str) -> ScrapedJob:
+    """Build a :class:`ScrapedJob` from one Lever posting object."""
+    categories = job.get("categories") or {}
+    categories = categories if isinstance(categories, dict) else {}
+    salary = job.get("salaryRange") or {}
+    salary = salary if isinstance(salary, dict) else {}
+    commitment = categories.get("commitment")
+    country = job.get("country")
+
+    source_id = f"lever:{site}:{job.get('id')}"
+    return ScrapedJob(
+        url=job.get("hostedUrl") or "",
+        title=job.get("text") or "",
+        description_html=_lever_description(job),
+        employer=employer,
+        location=categories.get("location"),
+        country=country,
+        employment_type=commitment,
+        date_posted=_from_millis(job.get("createdAt")),
+        salary_min=_as_float(salary.get("min")),
+        salary_max=_as_float(salary.get("max")),
+        salary_currency=salary.get("currency"),
+        source_id=source_id,
+    )
+
+
+def _lever_description(job: dict[str, Any]) -> str:
+    """Assemble a Lever posting's full HTML body.
+
+    Lever splits a posting across ``description``, ``lists`` (requirements /
+    responsibilities), and ``additional``. Concatenating them gives the full
+    body; ``description`` alone would look truncated.
+    """
+    parts: list[str] = []
+    if job.get("description"):
+        parts.append(job["description"])
+    lists = job.get("lists") or []
+    for block in lists:
+        if not isinstance(block, dict):
+            continue
+        text = block.get("text")
+        content = block.get("content")
+        if text or content:
+            parts.append(
+                f"{text}<br>{content}" if text and content else text or content
+            )
+    if job.get("additional"):
+        parts.append(job["additional"])
+    return "<br>".join(parts)
+
+
+def _salary_from_components(
+    components: Any,
+) -> tuple[float | None, float | None, str | None]:
+    """Reduce an Ashby ``summaryComponents`` array to (min, max, currency).
+
+    A posting can carry several components (base salary plus separate equity /
+    bonus tiers). The base pay is the component whose ``compensationType`` is
+    ``Salary``; when absent, fall back to the first component that has bounds.
+    ``minValue``/``maxValue`` are ``None`` for equity/bonus tiers.
+    """
+    if not isinstance(components, list):
+        return None, None, None
+    salary = next(
+        (
+            c
+            for c in components
+            if isinstance(c, dict) and c.get("compensationType") == "Salary"
+        ),
+        None,
+    )
+    pick = salary or next(
+        (
+            c
+            for c in components
+            if isinstance(c, dict) and c.get("minValue") is not None
+        ),
+        None,
+    )
+    if not isinstance(pick, dict):
+        return None, None, None
+    return (
+        _as_float(pick.get("minValue")),
+        _as_float(pick.get("maxValue")),
+        pick.get("currencyCode"),
+    )
+
+
+def _as_float(value: Any) -> float | None:
+    """Coerce an int/float to ``float``, else ``None``."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _from_millis(value: Any) -> str | None:
+    """Format a millisecond Unix epoch as an ISO UTC string, else ``None``."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    return datetime.fromtimestamp(value / 1000, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+if __name__ == "__main__":
     jobs = list_job_urls()
 
     for job in jobs[:1]:
