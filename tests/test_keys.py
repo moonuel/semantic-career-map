@@ -61,6 +61,12 @@ class TestExactShapes:
     def test_config(self) -> None:
         assert keys.config(HASH) == f"configs/{HASH}.json"
 
+    def test_manifest_ingestion(self) -> None:
+        assert (
+            keys.manifest_ingestion("2026-10-06", ID)
+            == f"lake/manifests/ingestion/ingested_on=2026-10-06/ingestion_id={ID}.parquet"
+        )
+
     def test_derived_fixture_matches_minted_id(self) -> None:
         # Cross-check: a freshly minted id is accepted and round-trips into a
         # key unchanged. ``new_id()`` is the only minter; builders only validate.
@@ -161,6 +167,75 @@ class TestValidateLakeRaw:
         ):
             with pytest.raises(ValueError):
                 keys.validate_key(f"lake/raw/{wrong_tail}")
+
+
+class TestValidateLakeManifest:
+    """``validate_key`` pins the semantic shape of ``lake/manifests/ingestion``:
+    the single ``ingested_on`` day partition and the
+    ``ingestion_id=<uuid7>.parquet`` leaf."""
+
+    def _key(self, **overrides: str) -> str:
+        parts = {
+            "date": "2026-10-06",
+            "id": ID,
+        }
+        parts.update(overrides)
+        return (
+            f"lake/manifests/ingestion/ingested_on={parts['date']}"
+            f"/ingestion_id={parts['id']}.parquet"
+        )
+
+    def test_valid_key_round_trips(self) -> None:
+        assert keys.validate_key(self._key()) == self._key()
+
+    def test_rejects_wrong_segment_count(self) -> None:
+        for key in (
+            "lake/manifests/ingestion",
+            self._key() + "/extra",
+            "lake/manifests/ingestion/ingested_on=2026-10-06",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_other_manifest_sub_branches_stay_unpinned(self) -> None:
+        # ``datasets``/``runs`` are reserved and not yet committed to a shape;
+        # only the ``ingestion`` sub-branch is pinned here.
+        key = "lake/manifests/datasets/part-00000.parquet"
+        assert keys.validate_key(key) == key
+
+    def test_rejects_bad_dates(self) -> None:
+        for bad in (
+            "2026-10-6",  # not zero-padded
+            "20261006",  # no dashes
+            "26-10-06",  # short year
+            "2026-13-01",  # no such month
+            "2026-02-30",  # no such day
+            "",  # empty
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/manifests/ingestion/ingested_on={bad}")
+                keys.manifest_ingestion(bad, ID)
+
+    def test_rejects_non_canonical_partition_name(self) -> None:
+        for wrong in (
+            f"event_on=2026-10-06/ingestion_id={ID}.parquet",
+            f"date=2026-10-06/ingestion_id={ID}.parquet",
+            f"ingested_on=2026-10-06/day=2026-10-06/ingestion_id={ID}.parquet",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/manifests/ingestion/{wrong}")
+
+    def test_rejects_bad_leaf(self) -> None:
+        for wrong_leaf in (
+            "ingestion_id=abc.parquet",  # not a uuid
+            f"ingestion_id={ID}",  # missing extension
+            f"ingestion_id={ID}.json",  # wrong extension
+            f"run_id={ID}.parquet",  # wrong name
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(
+                    f"lake/manifests/ingestion/ingested_on=2026-10-06/{wrong_leaf}"
+                )
 
 
 # --- 2. Concept placement ----------------------------------------------------
@@ -387,6 +462,9 @@ class TestDeterminism:
             MODEL, VARIANT, "v1", ID
         )
         assert keys.config(HASH) == keys.config(HASH)
+        assert keys.manifest_ingestion("2026-10-06", ID) == keys.manifest_ingestion(
+            "2026-10-06", ID
+        )
 
 
 # --- 8. Builder outputs are valid --------------------------------------------
@@ -424,3 +502,7 @@ class TestBuilderOutputsAreValid:
 
     def test_config_output_is_valid(self) -> None:
         assert keys.validate_key(keys.config(HASH)) == keys.config(HASH)
+
+    def test_manifest_ingestion_output_is_valid(self) -> None:
+        key = keys.manifest_ingestion("2026-10-06", ID)
+        assert keys.validate_key(key) == key
