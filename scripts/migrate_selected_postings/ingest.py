@@ -7,8 +7,8 @@ One-off migration that moves the hand-picked markdown postings in
     live/raw/<id>/source.md       verbatim file bytes
     live/raw/<id>/metadata.json   provenance sidecar (PostingMetadata)
 
-The posting id is a UUIDv7 minted at ingestion by ``keys.new_id()`` (see
-``backend/storage/keys.py``). Re-running is safe: a posting whose
+The posting id is a UUIDv7 minted at ingestion by ``ids.new_id()`` (see
+``backend/storage/ids.py``). Re-running is safe: a posting whose
 ``content_sha256`` is already present under ``live/raw/`` is skipped, so the
 corpus is not duplicated.
 
@@ -21,7 +21,6 @@ appears.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import sys
@@ -36,7 +35,7 @@ from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
 
-from backend.storage import keys
+from backend.storage import ids, keys
 
 # --- Config ------------------------------------------------------------------
 
@@ -60,15 +59,6 @@ _DEFAULT_SOURCE = _REPO_ROOT / "data" / "selected-job-postings"
 
 
 # --- Metadata schema ---------------------------------------------------------
-
-
-def content_sha256(data: bytes) -> str:
-    """Return the lowercase hex SHA-256 of ``data``.
-
-    The hash is computed from the verbatim posting bytes and is the sole
-    content-identity used for the re-run skip.
-    """
-    return hashlib.sha256(data).hexdigest()
 
 
 def split_slug(stem: str) -> tuple[str, str]:
@@ -108,7 +98,7 @@ class PostingMetadata:
     artifacts, not to the raw sidecar.
 
     Attributes:
-        id: Canonical UUIDv7 posting id, as minted by ``keys.new_id()``.
+        id: Canonical UUIDv7 posting id, as minted by ``ids.new_id()``.
         source: Origin URL, or ``None`` for local files with no URL.
         employer: Employer derived from the filename slug.
         title: Role title derived from the filename slug.
@@ -148,12 +138,12 @@ class PostingMetadata:
         """
         employer, title = split_slug(stem)
         meta = cls(
-            id=keys.new_id(),
+            id=ids.new_id(),
             source=source,
             employer=employer,
             title=title,
             ingested_at=ingested_at or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            content_sha256=content_sha256(source_bytes),
+            content_sha256=ids.content_sha256(source_bytes),
         )
         meta.validate()
         return meta
@@ -172,7 +162,7 @@ class PostingMetadata:
 
     def validate(self) -> None:
         """Raise ``ValueError`` if any field violates the schema invariants."""
-        if keys._ID_RE.fullmatch(self.id) is None:
+        if ids._ID_RE.fullmatch(self.id) is None:
             raise ValueError(f"id {self.id!r} is not a canonical UUIDv7")
         if self.source is not None and not self.source:
             raise ValueError("source must be a non-empty string or None")
@@ -180,7 +170,7 @@ class PostingMetadata:
             raise ValueError("employer must be non-empty")
         if not self.title:
             raise ValueError("title must be non-empty")
-        if keys._HASH_RE.fullmatch(self.content_sha256) is None:
+        if ids._HASH_RE.fullmatch(self.content_sha256) is None:
             raise ValueError(
                 f"content_sha256 {self.content_sha256!r} must be 64-char hex"
             )

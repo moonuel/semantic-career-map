@@ -19,10 +19,10 @@ validated against an allowlist (:data:`_RAW_SOURCES`) to keep partitioning
 governed.
 
 Legacy posting ids are time-ordered **UUIDv7** values (RFC 9562 §5.7), rendered
-in the canonical 36-char lowercase hyphenated form. Identity is *assigned at
-ingestion* by :func:`new_id`, not derived from content. Because ids are
-``[0-9a-f-]``, **every** segment in a key is lowercase; there is no uppercase
-exception.
+in the canonical 36-char lowercase hyphenated form. Identity minting and
+content hashing live in :mod:`backend.storage.ids`; this module only validates
+and places id/hash tokens in keys. Because ids are ``[0-9a-f-]``, **every**
+segment in a key is lowercase; there is no uppercase exception.
 
 Public builders:
     - ``raw_payload(source, hash, ingested_on=None)`` -> ``lake/raw/source=<source>/ingested_on=<YYYY-MM-DD>/sha256=<hash>.json``
@@ -32,9 +32,6 @@ Public builders:
     - ``embedding(model, variant, v, id)`` -> ``live/embeddings/<model>/<variant>/v<v>/<id>.npy``
     - ``config(hash)``           -> ``configs/<hash>.json``
 
-Generators:
-    - ``new_id()`` -> a fresh canonical UUIDv7 string (the only id minter).
-
 Validators:
     - ``validate_key(key)`` raises ``ValueError`` on a malformed key.
 """
@@ -43,8 +40,9 @@ from __future__ import annotations
 
 import datetime
 import re
-import uuid
 from datetime import UTC
+
+from backend.storage.ids import _HASH_RE, _ID_RE
 
 # --- Constants ---------------------------------------------------------------
 
@@ -65,14 +63,6 @@ _DERIVED_VARIANTS: frozenset[str] = frozenset(
     {"sections", "clean-text", "llm-clean-text", "llm-role-context", "labels"}
 )
 
-# Posting id: a canonical UUIDv7 string (RFC 9562 §5.7) — 36-char lowercase
-# hyphenated ``8-4-4-4-12``. The regex pins the version nibble (``7``) and the
-# RFC 9562 variant (``[89ab]``), so it rejects UUIDv1/3/4/5, uppercase, braces,
-# and URN form. Ids are minted only by ``new_id()``.
-_ID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-)
-
 # Regex for a well-formed non-id path segment: lowercase, digits, hyphens, `_`
 # (for `config-hash`), and `=` for `key=value` partition pairs
 # (e.g. `day=2026-09-23`, Report 005 §3.2). No leading/trailing hyphen.
@@ -82,9 +72,6 @@ _SEGMENT_RE = re.compile(r"^[a-z0-9]+(?:[-_=][a-z0-9]+)*$")
 # `name.ext`, where the name follows the segment rules and the extension is
 # lowercase alphanumeric. Dots are only allowed here, at the leaf.
 _FILENAME_RE = re.compile(r"^[a-z0-9]+(?:[-_=][a-z0-9]+)*(?:\.[a-z0-9]+)?$")
-
-# Hash is hex (SHA-256), fixed length 64.
-_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 
 # Version token: `v` followed by a positive integer.
 _VERSION_RE = re.compile(r"^v[1-9][0-9]*$")
@@ -150,21 +137,6 @@ def _check_date(date: str, *, name: str = "ingested_on") -> str:
 
 
 # --- Builders ---------------------------------------------------------------
-
-
-def new_id() -> str:
-    """Mint a fresh posting id: a canonical UUIDv7 string (RFC 9562 §5.7).
-
-    This is the **only** id generator. Builders validate ids but never mint
-    them, so key construction stays pure and deterministic (important for
-    tests). UUIDv7 is time-ordered, so lexicographic order of ids matches
-    chronological ingestion order.
-
-    Returns:
-        A 36-char lowercase hyphenated UUIDv7, e.g.
-        ``'0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70'``.
-    """
-    return str(uuid.uuid7())
 
 
 def raw_payload(

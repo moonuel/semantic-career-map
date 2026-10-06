@@ -14,18 +14,16 @@ pytest (deferred ``eval/`` machinery).
 
 from __future__ import annotations
 
-import sys
-import uuid
-
 import pytest
 
-from backend.storage import keys
+from backend.storage import ids, keys
 
 # --- Fixtures ----------------------------------------------------------------
 #
 # ``ID`` is a fixed literal UUIDv7 (canonical 36-char lowercase hyphenated).
-# Posting ids are assigned at ingestion by ``keys.new_id()``; they are opaque
-# and time-ordered, not derived from content.
+# Posting ids are assigned at ingestion by ``ids.new_id()``; they are opaque
+# and time-ordered, not derived from content. Identity minting is tested in
+# ``test_ids.py``.
 ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
 MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
@@ -35,11 +33,6 @@ INGESTED_ON = "2026-10-05"
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
 ALL_RAW_SOURCES = sorted(keys._RAW_SOURCES)
-
-requires_py314 = pytest.mark.skipif(
-    sys.version_info < (3, 14),
-    reason="uuid.uuid7() is new in Python 3.14 (RFC 9562); new_id() needs it",
-)
 
 
 # --- 1. Exact shapes ---------------------------------------------------------
@@ -72,7 +65,7 @@ class TestExactShapes:
     def test_derived_fixture_matches_minted_id(self) -> None:
         # Cross-check: a freshly minted id is accepted and round-trips into a
         # key unchanged. ``new_id()`` is the only minter; builders only validate.
-        minted = keys.new_id()
+        minted = ids.new_id()
         assert keys.raw_posting(minted) == f"live/raw/{minted}/source.md"
 
 
@@ -408,40 +401,3 @@ class TestBuilderOutputsAreValid:
 
     def test_config_output_is_valid(self) -> None:
         assert keys.validate_key(keys.config(HASH)) == keys.config(HASH)
-
-
-# --- 9. new_id(): UUIDv7 minting ---------------------------------------------
-
-
-@requires_py314
-class TestNewId:
-    """``new_id`` mints canonical, time-ordered UUIDv7 ids."""
-
-    def test_is_parseable_uuid(self) -> None:
-        parsed = uuid.UUID(keys.new_id())
-        assert parsed.version == 7
-        assert parsed.variant == uuid.RFC_4122
-
-    def test_matches_id_regex(self) -> None:
-        assert keys._ID_RE.fullmatch(keys.new_id()) is not None
-
-    def test_is_canonical_lowercase_form(self) -> None:
-        minted = keys.new_id()
-        assert len(minted) == 36
-        assert minted == minted.lower()
-        assert minted == str(uuid.UUID(minted))
-
-    def test_validate_key_round_trips_minted_id(self) -> None:
-        minted = keys.new_id()
-        key = keys.raw_posting(minted)
-        assert keys.validate_key(key) == key
-
-    def test_ids_are_monotonic_in_a_tight_loop(self) -> None:
-        # UUIDv7 sorts lexicographically by generation time; the intra-ms
-        # counter guarantees non-decreasing order within the same millisecond.
-        ids = [keys.new_id() for _ in range(1000)]
-        assert ids == sorted(ids)
-
-    def test_ids_are_unique(self) -> None:
-        ids = [keys.new_id() for _ in range(1000)]
-        assert len(set(ids)) == 1000
