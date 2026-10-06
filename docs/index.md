@@ -15,6 +15,7 @@ A semantic search tool for mapping your interests and experience to actual job f
     - Lakehouse data architecture on AWS S3 to support eventual Athena SQL querying for more efficient data ingestion and analysis.
     - Job posting scraper from Lever, Greenhouse, and Ashby to enrich the dataset.
     - Handwritten architecture docs to solidify the concepts in my brain after implementation is done. 
+    - Deployed slice of the base pipeline, complete with light (AnyJev?) evals for data monitoring. 
 
 <!-- --- -->
 
