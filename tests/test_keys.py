@@ -83,13 +83,18 @@ class TestRawPayload:
 
     def test_defaults_ingested_on_to_today(self) -> None:
         # Omitting ingested_on resolves to today (UTC); backdating is explicit.
+        # Allow a one-day slew so a run straddling UTC midnight is not flaky.
         import datetime
         from datetime import UTC
 
         key = keys.raw_payload("lever", HASH)
         assert key.startswith("lake/raw/source=lever/ingested_on=")
         assert key.endswith(f"/sha256={HASH}.json")
-        assert datetime.datetime.now(UTC).date().isoformat() in key
+        key_date = datetime.date.fromisoformat(
+            key.split("/")[3].removeprefix("ingested_on=")
+        )
+        slew = (datetime.datetime.now(UTC).date() - key_date).days
+        assert slew in {0, 1}
 
     def test_backdates_when_passed(self) -> None:
         key = keys.raw_payload("ashby", HASH, "2024-03-15")
@@ -136,6 +141,70 @@ class TestRawPayload:
         key = f"lake/raw/source=../ingested_on={INGESTED_ON}/sha256={HASH}.json"
         with pytest.raises(ValueError):
             keys.validate_key(key)
+
+
+class TestValidateLakeRaw:
+    """``validate_key`` pins the semantic shape of ``lake/raw``, not just the
+    segment alphabet: partition names and order, the allowlisted source, a real
+    ``ingested_on`` date, and the ``sha256=<hex>.json`` leaf."""
+
+    def _key(self, **overrides: str) -> str:
+        parts = {
+            "source": "linkedin",
+            "ingested_on": INGESTED_ON,
+            "hash": HASH,
+        }
+        parts.update(overrides)
+        return (
+            f"lake/raw/source={parts['source']}"
+            f"/ingested_on={parts['ingested_on']}"
+            f"/sha256={parts['hash']}.json"
+        )
+
+    def test_valid_key_round_trips(self) -> None:
+        assert keys.validate_key(self._key()) == self._key()
+
+    def test_rejects_wrong_segment_count(self) -> None:
+        for key in (
+            f"lake/raw/source=linkedin/sha256={HASH}.json",
+            f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}",
+            f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/sha256={HASH}.json/extra",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_rejects_unknown_source_partition(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(self._key(source="stackoverflow"))
+
+    def test_rejects_fake_ingested_on(self) -> None:
+        for bad in ("", "x", "2026-02-30", "2026-13-05", "2026-1-5"):
+            with pytest.raises(ValueError):
+                keys.validate_key(self._key(ingested_on=bad))
+
+    def test_rejects_bad_hash_leaf(self) -> None:
+        for wrong_leaf in (
+            "sha256=abc.json",
+            f"sha256={'a' * 63}.json",
+            f"sha256={'A' * 64}.json",
+            f"md5={HASH}.json",
+            f"sha256={HASH}",  # missing .json extension
+            f"sha256={HASH}.md",  # wrong extension
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(
+                    f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/{wrong_leaf}"
+                )
+
+    def test_rejects_wrong_partition_names_or_order(self) -> None:
+        for wrong_tail in (
+            f"ingested_on={INGESTED_ON}/sha256={HASH}.json",  # source missing
+            f"source=linkedin/sha256={HASH}.json",  # ingested_on missing
+            f"day={INGESTED_ON}/source=linkedin/sha256={HASH}.json",  # extra/wrong
+            f"source=linkedin/source=linkedin/sha256={HASH}.json",  # duplicated
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/raw/{wrong_tail}")
 
 
 # --- 2. Concept placement ----------------------------------------------------

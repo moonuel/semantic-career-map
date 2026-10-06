@@ -66,7 +66,10 @@ class TestSplitSlug:
         if not source.is_dir():
             pytest.skip("corpus not present")
         stems = [p.stem for p in source.glob("*.md")]
-        assert len(stems) >= 37
+        # Exact count on purpose: the corpus is hand-picked and append-only, so
+        # the pin catches a bad glob or surprise drift. Bump deliberately when
+        # the corpus grows.
+        assert len(stems) == 38
         for stem in stems:
             employer, title = split_slug(stem)
             assert employer and title
@@ -79,7 +82,7 @@ class TestContentHash:
     def test_is_deterministic_hex64(self) -> None:
         h = ids.content_sha256(b"hello")
         assert h == ids.content_sha256(b"hello")
-        assert ids._HASH_RE.fullmatch(h) is not None
+        assert ids.is_sha256_hex(h)
 
     def test_differs_on_content(self) -> None:
         assert ids.content_sha256(b"a") != ids.content_sha256(b"b")
@@ -105,7 +108,7 @@ class TestPostingMetadata:
         meta = PostingMetadata.from_source(
             source_bytes=b"body", stem="affirm-ml-engineer-2"
         )
-        assert ids._ID_RE.fullmatch(meta.id) is not None
+        assert ids.is_canonical_uuid7(meta.id)
         assert meta.employer == "affirm"
         assert meta.title == "ml-engineer-2"
         assert meta.content_sha256 == ids.content_sha256(b"body")

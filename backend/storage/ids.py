@@ -1,26 +1,18 @@
 """Pure identity helpers for the object store.
 
-``ids.py`` owns identity *minting and hashing*: the UUIDv7 posting id and the
-SHA-256 content hash. It is deliberately separate from :mod:`backend.storage.keys`,
+``ids.py`` owns identity *minting and hashing*: ``new_id()`` is the only minter
+of posting ids, ``content_sha256()`` computes content addresses, and
+``is_canonical_uuid7()`` / ``is_sha256_hex()`` are the shape predicates other
+modules build on. It is deliberately separate from :mod:`backend.storage.keys`,
 which owns key *shape*. Both are pure (no I/O) so they are unit-testable without
 a store.
 
 Posting ids are time-ordered **UUIDv7** values (RFC 9562 §5.7), rendered in the
 canonical 36-char lowercase hyphenated form. Identity is *assigned at ingestion*
-by :func:`new_id`, not derived from content. Because ids are ``[0-9a-f-]``,
+by :func:`new_id`, not derived from content. Content hashes are of the verbatim
+received payload: they are the content address for content-addressed raw objects
+and the dedup identity for re-ingestion. Because ids and hashes are lowercase,
 every key segment is lowercase; there is no uppercase exception.
-
-Content hashes are the lowercase hex SHA-256 of the verbatim received payload,
-computed by :func:`content_sha256`. They are the content address for
-content-addressed raw objects and the dedup identity for re-ingestion.
-
-Public functions:
-    - ``new_id()``         -> a fresh canonical UUIDv7 string (the only id minter).
-    - ``content_sha256(data)`` -> lowercase hex SHA-256 of ``data``.
-
-Regexes:
-    - ``_ID_RE``    matches a canonical UUIDv7 posting id.
-    - ``_HASH_RE``  matches a 64-char lowercase hex SHA-256.
 """
 
 from __future__ import annotations
@@ -70,3 +62,36 @@ def content_sha256(data: bytes) -> str:
         A 64-char lowercase hex SHA-256 digest of ``data``.
     """
     return hashlib.sha256(data).hexdigest()
+
+
+def is_canonical_uuid7(id: str) -> bool:
+    """Return True if ``id`` is a canonical UUIDv7 string, else False.
+
+    The shape accepted is identical to :func:`new_id`'s output: 36-char
+    lowercase hyphenated ``8-4-4-4-12`` with the version nibble ``7`` and the
+    RFC 9562 variant (``[89ab]``). Builders and metadata schemas validate ids
+    through this predicate rather than the private :data:`_ID_RE`.
+
+    Args:
+        id: Candidate posting-id string.
+
+    Returns:
+        True if ``id`` is a canonical UUIDv7.
+    """
+    return _ID_RE.fullmatch(id) is not None
+
+
+def is_sha256_hex(hash_: str) -> bool:
+    """Return True if ``hash_`` is a 64-char lowercase hex SHA-256, else False.
+
+    The shape accepted is identical to :func:`content_sha256`'s output.
+    Builders and metadata schemas validate hashes through this predicate
+    rather than the private :data:`_HASH_RE`.
+
+    Args:
+        hash_: Candidate hash string.
+
+    Returns:
+        True if ``hash_`` is a 64-char lowercase hex string.
+    """
+    return _HASH_RE.fullmatch(hash_) is not None

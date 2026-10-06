@@ -28,7 +28,7 @@ class TestContentHash:
     """``content_sha256`` mints a deterministic 64-char lowercase hex SHA-256."""
 
     def test_is_64_char_hex(self) -> None:
-        assert ids._HASH_RE.fullmatch(ids.content_sha256(b"hello")) is not None
+        assert ids.is_sha256_hex(ids.content_sha256(b"hello"))
 
     def test_is_deterministic(self) -> None:
         assert ids.content_sha256(b"hello") == ids.content_sha256(b"hello")
@@ -53,7 +53,7 @@ class TestNewId:
         assert parsed.variant == uuid.RFC_4122
 
     def test_matches_id_regex(self) -> None:
-        assert ids._ID_RE.fullmatch(ids.new_id()) is not None
+        assert ids.is_canonical_uuid7(ids.new_id())
 
     def test_is_canonical_lowercase_form(self) -> None:
         minted = ids.new_id()
