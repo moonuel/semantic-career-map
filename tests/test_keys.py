@@ -83,13 +83,18 @@ class TestRawPayload:
 
     def test_defaults_ingested_on_to_today(self) -> None:
         # Omitting ingested_on resolves to today (UTC); backdating is explicit.
+        # Allow a one-day slew so a run straddling UTC midnight is not flaky.
         import datetime
         from datetime import UTC
 
         key = keys.raw_payload("lever", HASH)
         assert key.startswith("lake/raw/source=lever/ingested_on=")
         assert key.endswith(f"/sha256={HASH}.json")
-        assert datetime.datetime.now(UTC).date().isoformat() in key
+        key_date = datetime.date.fromisoformat(
+            key.split("/")[3].removeprefix("ingested_on=")
+        )
+        slew = (datetime.datetime.now(UTC).date() - key_date).days
+        assert slew in {0, 1}
 
     def test_backdates_when_passed(self) -> None:
         key = keys.raw_payload("ashby", HASH, "2024-03-15")

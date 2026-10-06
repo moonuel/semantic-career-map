@@ -166,11 +166,13 @@ def raw_payload(
         ValueError: if ``source`` is not allowlisted, ``content_hash`` is not
             64-char hex, or ``ingested_on`` is not a real ``YYYY-MM-DD`` date.
     """
-    source = _check(source, name="source")
+    # Allowlist check first so an unknown source gets the useful "expected one
+    # of ..." message, not the generic segment error.
     if source not in _RAW_SOURCES:
         raise ValueError(
             f"unknown raw source {source!r}; expected one of {sorted(_RAW_SOURCES)}"
         )
+    source = _check(source, name="source")
     if ingested_on is None:
         ingested_on = datetime.datetime.now(UTC).date().isoformat()
     else:
@@ -320,6 +322,10 @@ def validate_key(key: str) -> str:
       - ``lake/raw`` keys additionally pin the whole content-addressed shape
         (allowlisted ``source``, real ``ingested_on`` date, ``sha256=<hash>.json``);
       - no trailing slash; no leading slash.
+
+    Reserved ``lake`` branches (``artifacts``/``embeddings``/``eval``/``manifests``)
+    are not yet pinned to a shape: they pass the general rules above but their
+    positional layouts are only enforced once their builders land.
     """
     if not key or key.startswith("/"):
         raise ValueError(f"key must not be empty or start with '/': {key!r}")

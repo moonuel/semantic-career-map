@@ -66,7 +66,10 @@ class TestSplitSlug:
         if not source.is_dir():
             pytest.skip("corpus not present")
         stems = [p.stem for p in source.glob("*.md")]
-        assert len(stems) >= 37
+        # Exact count on purpose: the corpus is hand-picked and append-only, so
+        # the pin catches a bad glob or surprise drift. Bump deliberately when
+        # the corpus grows.
+        assert len(stems) == 38
         for stem in stems:
             employer, title = split_slug(stem)
             assert employer and title
