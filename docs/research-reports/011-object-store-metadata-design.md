@@ -422,8 +422,8 @@ key metadata-design principles this research surfaced. The alignment and the nex
   a catalog's lineage/transformation record — metadata held *as an object* rather than bloating keys.
 - **A dedicated metadata namespace exists.** Top-level `configs/` and per-posting `metadata.json` give the
   project a control-plane structure that a catalog can later consume rather than replace.
-- **The Athena path is already anticipated.** `data-layout.md` §A.1 names the future relational layer over
-  `metadata.json`; reports 009/010 map it to the lake/warehouse side. This report covers the *metadata* side
+- **The Athena path is already anticipated.** `data-layout.md` §9 names the relational layer over the
+  metadata sidecars; reports 009/010 map it to the lake/warehouse side. This report covers the *metadata* side
   of that same path.
 
 **Recommended reinforcements**
