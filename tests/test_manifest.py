@@ -177,6 +177,30 @@ class TestRejectsBadInput:
         with pytest.raises(ValueError):
             _build(run_started_at=naive, completed_at=COMPLETED)
 
+    def test_rejects_non_allowlisted_source(self) -> None:
+        # The raw-key allowlist governs manifest sources too: a source the
+        # raw layer can never mint (e.g. "jobspy") must not pass the builder.
+        observations = [
+            BatchObservation(
+                source="jobspy",
+                action="stored",
+                content_sha256=HASH1,
+                source_id=None,
+                board="acme",
+                employer=None,
+                observed_at=STARTED,
+            )
+        ]
+        with pytest.raises(ValueError, match="unknown raw source"):
+            build_ingestion_manifest(observations, **HEADER)  # type: ignore[arg-type]
+
+    def test_rejects_failed_exceeds_attempted(self) -> None:
+        with pytest.raises(ValueError, match="boards_failed"):
+            _build(boards_failed=3, boards_attempted=2)  # type: ignore[arg-type]
+
+    def test_allows_all_boards_failed(self) -> None:
+        _build(boards_failed=2, boards_attempted=2, status="failed")
+
     def test_rejects_bad_action(self) -> None:
         obs = BatchObservation(
             source="linkedin",

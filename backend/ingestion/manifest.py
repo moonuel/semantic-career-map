@@ -34,6 +34,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from backend.storage.ids import is_canonical_uuid7, is_sha256_hex
+from backend.storage.keys import RAW_SOURCES
 
 SCHEMA_VERSION = 1
 
@@ -69,7 +70,9 @@ class BatchObservation:
     """One payload observed during a batch scrape.
 
     Attributes:
-        source: Raw source allowlist value; joins the raw key partition.
+        source: Raw source allowlist value: one of
+            :data:`backend.storage.keys.RAW_SOURCES`; joins the raw key
+            partition and is validated against the same allowlist.
         action: ``stored`` if the run put a new raw object, ``duplicate`` if
             the content hash was already present (write-time dedup, §4).
         content_sha256: SHA-256 of the verbatim payload; ``sha256=<hash>``
@@ -141,6 +144,11 @@ def build_ingestion_manifest(
         raise ValueError(f"status {status!r} must be one of {sorted(STATUSES)}")
     if boards_attempted < 0 or boards_failed < 0:
         raise ValueError("board counts must be non-negative")
+    if boards_failed > boards_attempted:
+        raise ValueError(
+            f"boards_failed {boards_failed} must not exceed "
+            f"boards_attempted {boards_attempted}"
+        )
 
     timestamps: list[tuple[str, datetime]] = [
         ("run_started_at", run_started_at),
@@ -159,13 +167,17 @@ def build_ingestion_manifest(
         )
 
     for obs in observations:
+        if obs.source not in RAW_SOURCES:
+            raise ValueError(
+                f"unknown raw source {obs.source!r}; expected one of {sorted(RAW_SOURCES)}"
+            )
         if obs.action not in ACTIONS:
             raise ValueError(f"action {obs.action!r} must be one of {sorted(ACTIONS)}")
         if not is_sha256_hex(obs.content_sha256):
             raise ValueError(
                 f"content_sha256 {obs.content_sha256!r} must be a 64-char hex string"
             )
-        for join_column in ("source", "board", "employer"):
+        for join_column in ("board", "employer"):
             value = getattr(obs, join_column)
             if value is not None and not value:
                 raise ValueError(f"observation {join_column} must be non-empty")

@@ -16,7 +16,7 @@ Lakehouse ``raw`` objects are **content-addressed**: identity is the SHA-256 of
 the verbatim payload, not a posting id. ``raw_payload`` emits
 ``lake/raw/source=<source>/sha256=<hash>.json``, pruned by the low-cardinality
 ``source`` partition. ``source`` is validated against an allowlist
-(:data:`_RAW_SOURCES`) to keep partitioning governed. There is deliberately no
+(:data:`RAW_SOURCES`) to keep partitioning governed. There is deliberately no
 time partition: identical re-ingested payloads map to the same key and
 overwrite idempotently, so each payload is stored once. Ingestion time is not
 encoded in the key — objects are never rewritten, so S3 ``Last-Modified`` is
@@ -61,7 +61,7 @@ _BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake"})
 # allowlist so partitioning stays governed — a source is a partition column,
 # and an unbounded source set is the partition-explosion / ungoverned-accumulation
 # anti-pattern. Sources are lowercase and must satisfy _SEGMENT_RE.
-_RAW_SOURCES: frozenset[str] = frozenset({"linkedin", "lever", "greenhouse", "ashby"})
+RAW_SOURCES: frozenset[str] = frozenset({"linkedin", "lever", "greenhouse", "ashby"})
 
 # Variants that live under live/derived/<id>/<variant>/.
 # Kept open: new variants are added here and are additive (layout §5).
@@ -160,7 +160,7 @@ def raw_payload(source: str, content_hash: str) -> str:
     manifests for Athena range queries; it is not encoded here.
 
     Args:
-        source: Origin of the payload; must be in :data:`_RAW_SOURCES`.
+        source: Origin of the payload; must be in :data:`RAW_SOURCES`.
         content_hash: 64-char lowercase hex SHA-256 of the verbatim bytes — the
             content address.
 
@@ -173,9 +173,9 @@ def raw_payload(source: str, content_hash: str) -> str:
     """
     # Allowlist check first so an unknown source gets the useful "expected one
     # of ..." message, not the generic segment error.
-    if source not in _RAW_SOURCES:
+    if source not in RAW_SOURCES:
         raise ValueError(
-            f"unknown raw source {source!r}; expected one of {sorted(_RAW_SOURCES)}"
+            f"unknown raw source {source!r}; expected one of {sorted(RAW_SOURCES)}"
         )
     source = _check(source, name="source")
     return (
@@ -358,10 +358,10 @@ def _validate_lake_raw(key: str, rest: list[str]) -> None:
     if names != ["source"]:
         raise ValueError(f"key {key!r} must partition exactly on source, got {names}")
     for name, _, value in partitions:
-        if value not in _RAW_SOURCES:
+        if value not in RAW_SOURCES:
             raise ValueError(
                 f"key {key!r} has unknown raw source {value!r}; "
-                f"expected one of {sorted(_RAW_SOURCES)}"
+                f"expected one of {sorted(RAW_SOURCES)}"
             )
 
 

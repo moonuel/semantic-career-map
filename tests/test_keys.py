@@ -31,7 +31,7 @@ HASH = "a" * 64
 
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
-ALL_RAW_SOURCES = sorted(keys._RAW_SOURCES)
+ALL_RAW_SOURCES = sorted(keys.RAW_SOURCES)
 
 
 # --- 1. Exact shapes ---------------------------------------------------------
