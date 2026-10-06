@@ -162,7 +162,7 @@ class PostingMetadata:
 
     def validate(self) -> None:
         """Raise ``ValueError`` if any field violates the schema invariants."""
-        if ids._ID_RE.fullmatch(self.id) is None:
+        if not ids.is_canonical_uuid7(self.id):
             raise ValueError(f"id {self.id!r} is not a canonical UUIDv7")
         if self.source is not None and not self.source:
             raise ValueError("source must be a non-empty string or None")
@@ -170,7 +170,7 @@ class PostingMetadata:
             raise ValueError("employer must be non-empty")
         if not self.title:
             raise ValueError("title must be non-empty")
-        if ids._HASH_RE.fullmatch(self.content_sha256) is None:
+        if not ids.is_sha256_hex(self.content_sha256):
             raise ValueError(
                 f"content_sha256 {self.content_sha256!r} must be 64-char hex"
             )

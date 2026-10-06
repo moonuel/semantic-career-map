@@ -79,7 +79,7 @@ class TestContentHash:
     def test_is_deterministic_hex64(self) -> None:
         h = ids.content_sha256(b"hello")
         assert h == ids.content_sha256(b"hello")
-        assert ids._HASH_RE.fullmatch(h) is not None
+        assert ids.is_sha256_hex(h)
 
     def test_differs_on_content(self) -> None:
         assert ids.content_sha256(b"a") != ids.content_sha256(b"b")
@@ -105,7 +105,7 @@ class TestPostingMetadata:
         meta = PostingMetadata.from_source(
             source_bytes=b"body", stem="affirm-ml-engineer-2"
         )
-        assert ids._ID_RE.fullmatch(meta.id) is not None
+        assert ids.is_canonical_uuid7(meta.id)
         assert meta.employer == "affirm"
         assert meta.title == "ml-engineer-2"
         assert meta.content_sha256 == ids.content_sha256(b"body")

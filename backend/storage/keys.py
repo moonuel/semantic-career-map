@@ -25,7 +25,7 @@ and places id/hash tokens in keys. Because ids are ``[0-9a-f-]``, **every**
 segment in a key is lowercase; there is no uppercase exception.
 
 Public builders:
-    - ``raw_payload(source, hash, ingested_on=None)`` -> ``lake/raw/source=<source>/ingested_on=<YYYY-MM-DD>/sha256=<hash>.json``
+    - ``raw_payload(source, content_hash, ingested_on=None)`` -> ``lake/raw/source=<source>/ingested_on=<YYYY-MM-DD>/sha256=<hash>.json``
     - ``raw_posting(id)``        -> ``live/raw/<id>/source.md``
     - ``raw_metadata(id)``       -> ``live/raw/<id>/metadata.json``
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
@@ -42,7 +42,7 @@ import datetime
 import re
 from datetime import UTC
 
-from backend.storage.ids import _HASH_RE, _ID_RE
+from backend.storage.ids import is_canonical_uuid7, is_sha256_hex
 
 # --- Constants ---------------------------------------------------------------
 
@@ -87,7 +87,7 @@ def _check(segment: str, *, name: str) -> str:
     if _SEGMENT_RE.fullmatch(segment) is None:
         raise ValueError(
             f"{name} {segment!r} is not a valid key segment "
-            f"(lowercase letters, digits, hyphens, underscores only)"
+            f"(lowercase letters, digits, '=', hyphens, underscores only)"
         )
     return segment
 
@@ -100,7 +100,7 @@ def _check_id(id: str, *, name: str = "posting id") -> str:
     positions, so this dedicated shape check is used rather than
     :data:`_SEGMENT_RE`.
     """
-    if _ID_RE.fullmatch(id) is None:
+    if not is_canonical_uuid7(id):
         raise ValueError(
             f"{name} {id!r} must be a canonical UUIDv7 (8-4-4-4-12), "
             f"e.g. '0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70'"
@@ -115,7 +115,7 @@ def _check_version(version: str, *, name: str = "version") -> str:
 
 
 def _check_hash(hash_: str, *, name: str = "config hash") -> str:
-    if _HASH_RE.fullmatch(hash_) is None:
+    if not is_sha256_hex(hash_):
         raise ValueError(f"{name} must be a 64-char hex string, got {hash_!r}")
     return hash_
 
@@ -266,6 +266,47 @@ def _id_index(bucket: str, rest: list[str]) -> int | None:
     return None
 
 
+def _validate_lake_raw(key: str, rest: list[str]) -> None:
+    """Semantic checks for the content-addressed ``lake/raw`` key shape.
+
+    ``lake/raw/source=<source>/ingested_on=<date>/sha256=<hash>.json``
+
+    The safe-character loop in :func:`validate_key` only pins the segment
+    alphabet; this pins the branch shape itself — partition names, order, and
+    values, plus the hash leaf — because ``validate_key`` also gates externally
+    supplied keys that :func:`raw_payload` did not mint. Later ``lake/``
+    branches get the same treatment when their builders land.
+    """
+    if len(rest) != 4:
+        raise ValueError(
+            f"key {key!r} must be lake/raw/source=<source>/ingested_on=<date>/"
+            f"sha256=<hash>.json"
+        )
+    leaf = rest[-1]
+    leaf_name, _, leaf_value = leaf.partition("=")
+    if leaf_name != "sha256" or not leaf_value.endswith(".json"):
+        raise ValueError(
+            f"key {key!r} must end in 'sha256=<content-hash>.json', got {leaf!r}"
+        )
+    _check_hash(leaf_value.removesuffix(".json"), name="content hash")
+    partitions = [segment.partition("=") for segment in rest[1:-1]]
+    names = [name for name, _, _ in partitions]
+    if names != ["source", "ingested_on"]:
+        raise ValueError(
+            f"key {key!r} must partition exactly on source then ingested_on, "
+            f"got {names}"
+        )
+    for name, _, value in partitions:
+        if name == "source":
+            if value not in _RAW_SOURCES:
+                raise ValueError(
+                    f"key {key!r} has unknown raw source {value!r}; "
+                    f"expected one of {sorted(_RAW_SOURCES)}"
+                )
+        else:
+            _check_date(value)
+
+
 def validate_key(key: str) -> str:
     """Validate a key and return it unchanged, or raise ``ValueError``.
 
@@ -276,6 +317,8 @@ def validate_key(key: str) -> str:
       - the posting-id segment — where the layout places one — is a canonical
         UUIDv7 (36-char lowercase hyphenated), while every other segment stays
         lowercase;
+      - ``lake/raw`` keys additionally pin the whole content-addressed shape
+        (allowlisted ``source``, real ``ingested_on`` date, ``sha256=<hash>.json``);
       - no trailing slash; no leading slash.
     """
     if not key or key.startswith("/"):
@@ -319,8 +362,11 @@ def validate_key(key: str) -> str:
         if pattern.fullmatch(segment) is None:
             raise ValueError(
                 f"key {key!r} contains malformed segment {segment!r} "
-                f"(lowercase letters, digits, hyphens, underscores; dots only "
-                f"in the last segment)"
+                f"(lowercase letters, digits, '=', hyphens, underscores; dots "
+                f"only in the last segment)"
             )
+
+    if bucket == "lake" and rest[:1] == ["raw"]:
+        _validate_lake_raw(key, rest)
 
     return key
