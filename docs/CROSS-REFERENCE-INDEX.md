@@ -75,7 +75,7 @@ Adding a research report requires updating:
 | Why CPU-only | `architecture/design-decisions.md`, `technical/tech-choices.md:10` |
 | Why stateless API | `architecture/design-decisions.md` |
 | Why LLM-based boilerplate removal | `architecture/design-decisions.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
-| Object storage layer taxonomy, single-bucket prefixes, object-key templates, provenance, MLflow alignment | `architecture/data-layout.md` |
+| Lakehouse data layout: S3 raw layer, Parquet datasets, Hive partitions, metadata/manifests, Athena catalog alignment, legacy store migration | `architecture/data-layout.md` |
 | Model comparison table (all-MiniLM-L6-v2 vs bge-small-en-1.5 vs mpnet-base-v2) | `technical/embedding-pipeline.md:59-63`, `technical/tech-choices.md:18-21` |
 | Alternatives considered (FAISS, pgvector, Elasticsearch, ONNX, CUDA, hybrid BM25) | `technical/tech-choices.md:17-28` |
 | Optimization layers table | `technical/tech-choices.md:32-38` |
@@ -98,7 +98,7 @@ The architecture section is multi-page (like the Technical Details section): `ar
 |---|---|
 | Dataset properties (27 postings, LinkedIn, July 2026) | `technical/data-processing.md:5-13` |
 | Role breakdown (8 DS, 5 MLE, 3 AIE, etc.) | `technical/data-processing.md:18-22`, `project.md:99` (commented-out) |
-| Processing pipeline steps (parse → LLM clean → embed → visualize) | `technical/data-processing.md:28-38` |
+| Processing pipeline steps (parse → LLM clean → embed → visualize) | `technical/data-processing.md:28-38`, `architecture/overview.md` (pipeline figure), `scripts/make_pipeline_figure.py` |
 | LLM cleaning details (system prompt, gpt-5.4-nano) | `technical/data-processing.md:66-75` |
 | Quality validation metrics | `technical/data-processing.md:77-87` |
 | Data augmentation plan (template-based, 27→350+, slot vocabularies) | `technical/data-processing.md:105-126` |

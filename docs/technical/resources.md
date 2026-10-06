@@ -6,7 +6,7 @@ Just my favourite resources used in this project.
 
 | Resource | Author | Why it matters |
 |---|---|---|
-| [Object Storage System Design](https://www.systemdesignhandbook.com/guides/object-storage-system-design/) | Fahim Ul Haq | Grounds the object-store layout: buckets, keys, metadata, and durability trade-offs used in [Data Layout & Object Storage](../architecture/data-layout.md). |
+| [Object Storage System Design](https://www.systemdesignhandbook.com/guides/object-storage-system-design/) | Fahim Ul Haq | Grounds the object-store layout: buckets, keys, metadata, and durability trade-offs used in [Data Architecture](../architecture/data.md). |
 | [Designing Machine Learning Systems](https://www.oreilly.com/library/view/designing-machine-learning/9781098107956/) | Chip Huyen | End-to-end ML system design: data engineering, feature stores, deployment, monitoring. |
 | [AI Engineering](https://www.oreilly.com/library/view/ai-engineering/9781098166298/) | Chip Huyen | Evaluation, RAG, agents, and the AI engineering stack. |
 

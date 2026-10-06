@@ -1,4 +1,4 @@
-# Data Layout & Object Storage Naming
+# Data Architecture
 
 !!! info "Data architecture under construction!"
   Currently migrating from the legacy object-per-posting store to the lakehouse layout described below. The [`keys.py`](../../backend/storage/keys.py) builders still emit legacy keys (§11) until per-branch builders land.

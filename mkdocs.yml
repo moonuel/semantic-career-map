@@ -43,7 +43,7 @@ nav:
   - Architecture:
     - Overview: architecture/overview.md
     # - Design Decisions: architecture/design-decisions.md
-    - Data Layout & Object Storage: architecture/data-layout.md
+    - Data Architecture: architecture/data.md
   - Technical Details:
     - Overview: technical/overview.md
     - Favourite Resources: technical/resources.md

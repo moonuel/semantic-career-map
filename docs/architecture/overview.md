@@ -10,7 +10,7 @@ This section documents the system design of the Semantic Career Map: how the dat
 
 -   [**Data Layout & Object Storage Naming**](data-layout.md){ .md-button }
 
-    Proposed single-bucket S3 prefix and object-key convention for raw postings, cleaned variants, derived artifacts, and embeddings — including provenance tracking, lifecycle, and MLflow alignment.
+    Lakehouse layout for raw postings, derived artifacts, and embeddings — content-addressed raw JSON, Parquet datasets, Hive-style partitions, Athena tables over the Glue catalog, and manifests for provenance.
 
 </div> -->
 
@@ -47,6 +47,12 @@ These boundaries keep the architecture focused on the core problem: transforming
 
 The data pipeline is a chain of composable, independently testable stages — each stage changes one variable and is evaluated against the same golden set.
 
+At a glance, the pipeline turns job descriptions into a map you can look at:
+
+![The pipeline in two steps: above, job posting text becomes a colourless 3D cloud of points; below, the same points are coloured by the role they belong to and flattened to a 2D map while every point keeps its colour.](pipeline.png)
+
+*Every job posting starts as text. The model turns each one into a point in a 3D space where points that mean the same thing sit close together — at first the cloud has no labels. Then points are coloured by the cluster they fall into. The final step flattens the cloud onto a flat 2D map — the same clusters, the same colours, just easier to look at.*
+
 ```
 ┌──────────────────────┐
 │    Raw Job Posting   │  (Markdown from LinkedIn)
@@ -82,4 +88,4 @@ The data pipeline is a chain of composable, independently testable stages — ea
 
 Each stage has a corresponding capability spec in `openspec/specs/` defining its requirements. Experiment numbers reference the validation artifacts — see [Experiment Log](../experiments/index.md).
 
-As the pipeline is productionized, each stage's inputs and outputs move to versioned S3 object storage and are tracked as MLflow runs. The single-bucket prefix and key convention for that migration is defined in [Data Layout & Object Storage Naming](data-layout.md).
+As the pipeline is productionized, each stage's inputs and outputs move to versioned datasets in the S3 lakehouse and are tracked as MLflow runs. The lakehouse layout for that migration -- raw JSON layer, Parquet datasets, and Athena tables over the Glue catalog -- is defined in [Data Layout & Object Storage Naming](data.md).
