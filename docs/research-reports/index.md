@@ -76,4 +76,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-04**
 
     Source-level review of TutteInstitute/evoc (v0.3.1) — how the UMAP+HDBSCAN replacement builds one k-NN graph, learns a 4–15D node embedding, runs parallel Borůvka + condensed tree, and uses PLSCAN persistence peaks to auto-select multi-granularity cluster layers.
+
+-   [**013 — Job Board API Scrapers**](013-job-board-api-scrapers.md){ .md-button }
+
+    **2026-10-07**
+
+    Survey of ATS public job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, Personio vs. Workday/Teamtailor and curators like dataroles.co) — per-source field coverage, pagination/sorting, change and deletion semantics, polling frequency, board-token discovery, dedup, and rate-limit/ToS posture. Mapped onto `backend/ingestion/scrapers.py`.
 </div>
