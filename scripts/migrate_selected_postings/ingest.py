@@ -189,7 +189,7 @@ def _existing_hashes(store: ObjectStore) -> set[str]:
         try:
             raw = store.get(key).decode("utf-8")
             seen.add(json.loads(raw)["content_sha256"])
-        except FileNotFoundError, KeyError, ValueError, UnicodeDecodeError:
+        except (FileNotFoundError, KeyError, ValueError, UnicodeDecodeError):
             continue
     return seen
 

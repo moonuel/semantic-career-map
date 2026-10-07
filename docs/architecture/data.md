@@ -76,7 +76,7 @@ Exact-byte hashing is sometimes too exact -- a trailing space should not mint a 
 
 ### 2.2 Posting ids
 
-The posting `<id>` stays a time-ordered **UUIDv7** (RFC 9562 §5.7) minted once at ingestion -- lexicographic order equals chronological order, which keeps exports sortable for free. What changes is placement: `posting_id` stops being the load-bearing path segment and becomes a row column, the join handle tying one posting's artifact row, embedding row, and eval rows back together. Ids are still minted by exactly one generator in `keys.py`.
+The posting `<id>` stays a time-ordered **UUIDv7** (RFC 9562 §5.7) minted once at ingestion -- lexicographic order equals chronological order, which keeps exports sortable for free. What changes is placement: `posting_id` stops being the load-bearing path segment and becomes a row column, the join handle tying one posting's artifact row, embedding row, and eval rows back together. Ids are still minted by exactly one generator in [`ids.py`](../../backend/storage/ids.py).
 
 ### 2.3 Partitions
 
