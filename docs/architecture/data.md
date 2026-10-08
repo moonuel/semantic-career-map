@@ -1,7 +1,7 @@
 # Data Architecture
 
 !!! info "Data architecture under construction!"
-  Currently migrating from the legacy object-per-posting store to the lakehouse layout described below. The [`keys.py`](../../backend/storage/keys.py) raw branch has migrated: `raw_payload` emits content-addressed keys (§2.1) with a governed `source` allowlist and an optional backdatable `ingested_on`. The `artifacts/`, `embeddings/`, `eval/`, and `manifests/` builders still emit legacy keys (§11) until their branches land.
+  Currently migrating from the legacy object-per-posting store to the lakehouse layout described below. The [`keys.py`](../../backend/storage/keys.py) raw branch has migrated: `raw_payload` emits content-addressed keys (§2.1) with a governed `source` allowlist and no time partition. The `artifacts/`, `embeddings/`, `eval/`, and `manifests/` builders still emit legacy keys (§11) until their branches land.
 
 
 The lakehouse is the immutable, versioned source of truth for raw job-posting data, and the layer every derived dataset is reproducibly built from.
@@ -32,8 +32,7 @@ Data is organized into five top-level branches -- one immutable source layer, th
 lake/                          # the single bucket, for now
   raw/
     source=<source>/
-      ingested_on=<YYYY-MM-DD>/
-        sha256=<content-hash>.json       # verbatim payload, content-addressed
+      sha256=<content-hash>.json       # verbatim payload, content-addressed, stored once
   artifacts/
     type=<artifact-type>/
       variant=<variant>/
@@ -71,15 +70,17 @@ Keys carry what must be **listed and pruned by prefix** -- everything else is me
 
 Raw objects are named by content, not by arrival: `sha256=<hash>.json` is the identity of the *received payload*, while the *ingestion event* gets its own identity (`ingestion_id`, recorded in raw metadata and `manifests/ingestion/`). The same content observed repeatedly is therefore not a new document version -- the object already exists, and only gains another observation.
 
+The raw key therefore carries only `source=` plus the hash leaf. There is deliberately no `ingested_on=` partition: a date in the path would give identical re-ingested payloads different keys on different runs and accumulate copies, defeating content-addressing. Objects are never rewritten, so the object's S3 `Last-Modified` is its first-ingestion time, and provenance dates for Athena range queries live in `manifests/ingestion/` (§3) instead of the key namespace.
+
 Exact-byte hashing is sometimes too exact -- a trailing space should not mint a new identity. Once canonicalization rules exist, keep both a `raw_hash` (exact received bytes, the address) and a `canonical_content_hash` (semantically equivalent canonicalized content).
 
 ### 2.2 Posting ids
 
-The posting `<id>` stays a time-ordered **UUIDv7** (RFC 9562 §5.7) minted once at ingestion -- lexicographic order equals chronological order, which keeps exports sortable for free. What changes is placement: `posting_id` stops being the load-bearing path segment and becomes a row column, the join handle tying one posting's artifact row, embedding row, and eval rows back together. Ids are still minted by exactly one generator in `keys.py`.
+The posting `<id>` stays a time-ordered **UUIDv7** (RFC 9562 §5.7) minted once at ingestion -- lexicographic order equals chronological order, which keeps exports sortable for free. What changes is placement: `posting_id` stops being the load-bearing path segment and becomes a row column, the join handle tying one posting's artifact row, embedding row, and eval rows back together. Ids are still minted by exactly one generator in [`ids.py`](../../backend/storage/ids.py).
 
 ### 2.3 Partitions
 
-Directory levels are Hive-style `<column>=<value>` pairs, which become Athena partition columns (e.g. `source=linkedin/`, `ingested_on=2026-10-05/`). Partition on low-to-moderate-cardinality dimensions that queries actually filter on -- `source`, `ingested_on`, `event_date`. Never partition on high-cardinality identifiers such as `posting_id` or `content_hash`: an address identifies an object, a partition prunes a scan. Partitioning exists to reduce what Athena reads, not to encode application identity into the directory tree.
+Directory levels are Hive-style `<column>=<value>` pairs, which become Athena partition columns (e.g. `source=linkedin/`). Partition on low-to-moderate-cardinality dimensions that queries actually filter on -- `source`, `event_date`. Never partition on high-cardinality identifiers such as `posting_id` or `content_hash`: an address identifies an object, a partition prunes a scan. But a partition also has to earn its place: the raw layer carries no time partition not because dates are high-cardinality, but because identical re-ingested content must not mint new keys (§2.1) -- its time provenance lives in manifests, pruned there instead. Partitioning exists to reduce what Athena reads, not to encode application identity into the directory tree.
 
 ### 2.4 Versions
 
