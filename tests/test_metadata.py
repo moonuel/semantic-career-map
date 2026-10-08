@@ -12,14 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from backend.storage import keys
+from backend.storage import ids
 
 sys.path.insert(
     0,
     str(Path(__file__).resolve().parents[1] / "scripts" / "migrate_selected_postings"),
 )
 
-from ingest import PostingMetadata, content_sha256, split_slug
+from ingest import PostingMetadata, split_slug
 
 # --- split_slug --------------------------------------------------------------
 
@@ -77,12 +77,12 @@ class TestSplitSlug:
 
 class TestContentHash:
     def test_is_deterministic_hex64(self) -> None:
-        h = content_sha256(b"hello")
-        assert h == content_sha256(b"hello")
-        assert keys._HASH_RE.fullmatch(h) is not None
+        h = ids.content_sha256(b"hello")
+        assert h == ids.content_sha256(b"hello")
+        assert ids.is_sha256_hex(h)
 
     def test_differs_on_content(self) -> None:
-        assert content_sha256(b"a") != content_sha256(b"b")
+        assert ids.content_sha256(b"a") != ids.content_sha256(b"b")
 
 
 # --- PostingMetadata ---------------------------------------------------------
@@ -105,10 +105,10 @@ class TestPostingMetadata:
         meta = PostingMetadata.from_source(
             source_bytes=b"body", stem="affirm-ml-engineer-2"
         )
-        assert keys._ID_RE.fullmatch(meta.id) is not None
+        assert ids.is_canonical_uuid7(meta.id)
         assert meta.employer == "affirm"
         assert meta.title == "ml-engineer-2"
-        assert meta.content_sha256 == content_sha256(b"body")
+        assert meta.content_sha256 == ids.content_sha256(b"body")
         assert meta.source is None
         assert meta.ingested_at.endswith("Z")
 

@@ -14,30 +14,25 @@ pytest (deferred ``eval/`` machinery).
 
 from __future__ import annotations
 
-import sys
-import uuid
-
 import pytest
 
-from backend.storage import keys
+from backend.storage import ids, keys
 
 # --- Fixtures ----------------------------------------------------------------
 #
 # ``ID`` is a fixed literal UUIDv7 (canonical 36-char lowercase hyphenated).
-# Posting ids are assigned at ingestion by ``keys.new_id()``; they are opaque
-# and time-ordered, not derived from content.
+# Posting ids are assigned at ingestion by ``ids.new_id()``; they are opaque
+# and time-ordered, not derived from content. Identity minting is tested in
+# ``test_ids.py``.
 ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
 MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
 HASH = "a" * 64
+INGESTED_ON = "2026-10-05"
 
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
-
-requires_py314 = pytest.mark.skipif(
-    sys.version_info < (3, 14),
-    reason="uuid.uuid7() is new in Python 3.14 (RFC 9562); new_id() needs it",
-)
+ALL_RAW_SOURCES = sorted(keys._RAW_SOURCES)
 
 
 # --- 1. Exact shapes ---------------------------------------------------------
@@ -70,8 +65,146 @@ class TestExactShapes:
     def test_derived_fixture_matches_minted_id(self) -> None:
         # Cross-check: a freshly minted id is accepted and round-trips into a
         # key unchanged. ``new_id()`` is the only minter; builders only validate.
-        minted = keys.new_id()
+        minted = ids.new_id()
         assert keys.raw_posting(minted) == f"live/raw/{minted}/source.md"
+
+
+# --- 1b. Raw lakehouse payload -----------------------------------------------
+
+
+class TestRawPayload:
+    """The content-addressed ``lake/raw`` payload builder."""
+
+    def test_full_shape(self) -> None:
+        assert (
+            keys.raw_payload("linkedin", HASH, INGESTED_ON)
+            == f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/sha256={HASH}.json"
+        )
+
+    def test_defaults_ingested_on_to_today(self) -> None:
+        # Omitting ingested_on resolves to today (UTC); backdating is explicit.
+        # Allow a one-day slew so a run straddling UTC midnight is not flaky.
+        import datetime
+        from datetime import UTC
+
+        key = keys.raw_payload("lever", HASH)
+        assert key.startswith("lake/raw/source=lever/ingested_on=")
+        assert key.endswith(f"/sha256={HASH}.json")
+        key_date = datetime.date.fromisoformat(
+            key.split("/")[3].removeprefix("ingested_on=")
+        )
+        slew = (datetime.datetime.now(UTC).date() - key_date).days
+        assert slew in {0, 1}
+
+    def test_backdates_when_passed(self) -> None:
+        key = keys.raw_payload("ashby", HASH, "2024-03-15")
+        assert "ingested_on=2024-03-15" in key
+
+    @pytest.mark.parametrize("source", ALL_RAW_SOURCES)
+    def test_each_allowlisted_source(self, source: str) -> None:
+        assert keys.raw_payload(source, HASH).startswith(f"lake/raw/source={source}/")
+
+    def test_output_is_valid(self) -> None:
+        key = keys.raw_payload("greenhouse", HASH, INGESTED_ON)
+        assert keys.validate_key(key) == key
+
+    def test_output_is_valid_with_default_date(self) -> None:
+        key = keys.raw_payload("linkedin", HASH)
+        assert keys.validate_key(key) == key
+
+    def test_is_deterministic(self) -> None:
+        assert keys.raw_payload("linkedin", HASH, INGESTED_ON) == keys.raw_payload(
+            "linkedin", HASH, INGESTED_ON
+        )
+
+    @pytest.mark.parametrize(
+        "source",
+        ["", "linkedIn", "Linkedin", "stackoverflow", "a" * 40, "with space"],
+        ids=["empty", "mixed-case", "uppercase", "unknown-source", "too-long", "space"],
+    )
+    def test_rejects_non_allowlisted_source(self, source: str) -> None:
+        with pytest.raises(ValueError):
+            keys.raw_payload(source, HASH)
+
+    def test_rejects_bad_date(self) -> None:
+        for bad in ("", "2026-02-30", "2026-13-01", "2026-1-05", "today"):
+            with pytest.raises(ValueError):
+                keys.raw_payload("linkedin", HASH, bad)
+
+    def test_rejects_bad_hash(self) -> None:
+        for bad in ("", "abc", "a" * 63, "A" * 64):
+            with pytest.raises(ValueError):
+                keys.raw_payload("linkedin", bad)
+
+    def test_validate_key_rejects_bad_raw_partition(self) -> None:
+        # source is a partition: it must be a well-formed key segment.
+        key = f"lake/raw/source=../ingested_on={INGESTED_ON}/sha256={HASH}.json"
+        with pytest.raises(ValueError):
+            keys.validate_key(key)
+
+
+class TestValidateLakeRaw:
+    """``validate_key`` pins the semantic shape of ``lake/raw``, not just the
+    segment alphabet: partition names and order, the allowlisted source, a real
+    ``ingested_on`` date, and the ``sha256=<hex>.json`` leaf."""
+
+    def _key(self, **overrides: str) -> str:
+        parts = {
+            "source": "linkedin",
+            "ingested_on": INGESTED_ON,
+            "hash": HASH,
+        }
+        parts.update(overrides)
+        return (
+            f"lake/raw/source={parts['source']}"
+            f"/ingested_on={parts['ingested_on']}"
+            f"/sha256={parts['hash']}.json"
+        )
+
+    def test_valid_key_round_trips(self) -> None:
+        assert keys.validate_key(self._key()) == self._key()
+
+    def test_rejects_wrong_segment_count(self) -> None:
+        for key in (
+            f"lake/raw/source=linkedin/sha256={HASH}.json",
+            f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}",
+            f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/sha256={HASH}.json/extra",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_rejects_unknown_source_partition(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(self._key(source="stackoverflow"))
+
+    def test_rejects_fake_ingested_on(self) -> None:
+        for bad in ("", "x", "2026-02-30", "2026-13-05", "2026-1-5"):
+            with pytest.raises(ValueError):
+                keys.validate_key(self._key(ingested_on=bad))
+
+    def test_rejects_bad_hash_leaf(self) -> None:
+        for wrong_leaf in (
+            "sha256=abc.json",
+            f"sha256={'a' * 63}.json",
+            f"sha256={'A' * 64}.json",
+            f"md5={HASH}.json",
+            f"sha256={HASH}",  # missing .json extension
+            f"sha256={HASH}.md",  # wrong extension
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(
+                    f"lake/raw/source=linkedin/ingested_on={INGESTED_ON}/{wrong_leaf}"
+                )
+
+    def test_rejects_wrong_partition_names_or_order(self) -> None:
+        for wrong_tail in (
+            f"ingested_on={INGESTED_ON}/sha256={HASH}.json",  # source missing
+            f"source=linkedin/sha256={HASH}.json",  # ingested_on missing
+            f"day={INGESTED_ON}/source=linkedin/sha256={HASH}.json",  # extra/wrong
+            f"source=linkedin/source=linkedin/sha256={HASH}.json",  # duplicated
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/raw/{wrong_tail}")
 
 
 # --- 2. Concept placement ----------------------------------------------------
@@ -292,6 +425,9 @@ class TestDeterminism:
     def test_all_builders_are_idempotent(self) -> None:
         assert keys.raw_posting(ID) == keys.raw_posting(ID)
         assert keys.raw_metadata(ID) == keys.raw_metadata(ID)
+        assert keys.raw_payload("linkedin", HASH, INGESTED_ON) == keys.raw_payload(
+            "linkedin", HASH, INGESTED_ON
+        )
         assert keys.derived(ID, VARIANT, "v2") == keys.derived(ID, VARIANT, "v2")
         assert keys.embedding(MODEL, VARIANT, "v1", ID) == keys.embedding(
             MODEL, VARIANT, "v1", ID
@@ -326,42 +462,11 @@ class TestBuilderOutputsAreValid:
         assert keys.validate_key(keys.raw_posting(ID)) == keys.raw_posting(ID)
         assert keys.validate_key(keys.raw_metadata(ID)) == keys.raw_metadata(ID)
 
+    @pytest.mark.parametrize("source", ALL_RAW_SOURCES)
+    def test_raw_payload_output_is_valid(self, source: str) -> None:
+        assert keys.validate_key(
+            keys.raw_payload(source, HASH, INGESTED_ON)
+        ) == keys.raw_payload(source, HASH, INGESTED_ON)
+
     def test_config_output_is_valid(self) -> None:
         assert keys.validate_key(keys.config(HASH)) == keys.config(HASH)
-
-
-# --- 9. new_id(): UUIDv7 minting ---------------------------------------------
-
-
-@requires_py314
-class TestNewId:
-    """``new_id`` mints canonical, time-ordered UUIDv7 ids."""
-
-    def test_is_parseable_uuid(self) -> None:
-        parsed = uuid.UUID(keys.new_id())
-        assert parsed.version == 7
-        assert parsed.variant == uuid.RFC_4122
-
-    def test_matches_id_regex(self) -> None:
-        assert keys._ID_RE.fullmatch(keys.new_id()) is not None
-
-    def test_is_canonical_lowercase_form(self) -> None:
-        minted = keys.new_id()
-        assert len(minted) == 36
-        assert minted == minted.lower()
-        assert minted == str(uuid.UUID(minted))
-
-    def test_validate_key_round_trips_minted_id(self) -> None:
-        minted = keys.new_id()
-        key = keys.raw_posting(minted)
-        assert keys.validate_key(key) == key
-
-    def test_ids_are_monotonic_in_a_tight_loop(self) -> None:
-        # UUIDv7 sorts lexicographically by generation time; the intra-ms
-        # counter guarantees non-decreasing order within the same millisecond.
-        ids = [keys.new_id() for _ in range(1000)]
-        assert ids == sorted(ids)
-
-    def test_ids_are_unique(self) -> None:
-        ids = [keys.new_id() for _ in range(1000)]
-        assert len(set(ids)) == 1000

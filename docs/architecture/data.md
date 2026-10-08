@@ -1,7 +1,7 @@
 # Data Architecture
 
 !!! info "Data architecture under construction!"
-  Currently migrating from the legacy object-per-posting store to the lakehouse layout described below. The [`keys.py`](../../backend/storage/keys.py) builders still emit legacy keys (§11) until per-branch builders land.
+  Currently migrating from the legacy object-per-posting store to the lakehouse layout described below. The [`keys.py`](../../backend/storage/keys.py) raw branch has migrated: `raw_payload` emits content-addressed keys (§2.1) with a governed `source` allowlist and an optional backdatable `ingested_on`. The `artifacts/`, `embeddings/`, `eval/`, and `manifests/` builders still emit legacy keys (§11) until their branches land.
 
 
 The lakehouse is the immutable, versioned source of truth for raw job-posting data, and the layer every derived dataset is reproducibly built from.
