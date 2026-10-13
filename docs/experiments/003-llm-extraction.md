@@ -142,7 +142,7 @@ Each of the three scripts was run in sequence, with `MiniLM-L6-v2` used as the e
 The per-model performance over 5 postings is summarized below:
 
 | Posting | Jaccard vs Golden | Boilerplate | Hallucinations | Over-deletion | Golden Words | LLM Words |
-|---|---|---|---|---|---|---|---|
+|---------|-------------------|-------------|----------------|---------------|--------------|-----------|
 | BMO Data Scientist | 0.801 | CLEAN | CLEAN | 19.9% | 333 | 248 |
 | Affirm ML Engineer 2 | 0.872 | CLEAN | CLEAN | 12.8% | 386 | 311 |
 | HelloFresh ML Engineer | 0.775 | CLEAN | CLEAN | 22.5% | 338 | 245 |
