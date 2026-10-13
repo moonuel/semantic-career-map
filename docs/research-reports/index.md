@@ -82,4 +82,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-07**
 
     Survey of ATS public job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, Personio vs. Workday/Teamtailor and curators like dataroles.co) — per-source field coverage, pagination/sorting, change and deletion semantics, polling frequency, board-token discovery, dedup, and rate-limit/ToS posture. Mapped onto `backend/ingestion/scrapers.py`.
+
+-   [**015 — HiringCafe MCP**](015-hiringcafe-mcp.md){ .md-button }
+
+    **2026-10-13**
+
+    Survey of the MCP surfaces over HiringCafe, the ATS-first AI job aggregator: its official no-auth ChatGPT-app MCP server (-first-party verified live), the Claude Connector, and community/Apify MCP wraps — tools, filter taxonomy, deliberate provenance de-scoping, robots/ToS posture, and the patterns reusable for ingestion and agent distribution.
 </div>
