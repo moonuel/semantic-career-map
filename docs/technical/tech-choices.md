@@ -14,6 +14,8 @@
 
 ## Alternatives Considered
 
+Full survey of semantic search tools, ANN algorithms, and the graduation ladder from NumPy → FAISS/Qdrant/pgvector: [Research Report 014](../research-reports/014-semantic-search-tools-architecture.md).
+
 | Choice | Selected | Reason |
 |---|---|---|
 | all-MiniLM-L6-v2 | ✓ | 80 MB, ~20 ms CPU, 384d — smallest viable model |

@@ -2,6 +2,11 @@
 
 Just my favourite resources used in this project.
 
+## Uncategorized/To read
+
+https://www.anthropic.com/engineering/contextual-retrieval
+
+
 ## Engineering & System Design
 
 | Resource | Author | Why it matters |
@@ -20,8 +25,19 @@ Synthesized in [Research Report 004 — LLM Evaluations](../research-reports/004
 | [From Weeks to a Day: How We Made LLM Evaluation Fast Enough to Iterate On](https://medium.com/airbnb-engineering/from-weeks-to-a-day-how-we-made-llm-evaluation-fast-enough-to-iterate-on-14e2d35198b4) | Baharak Saberidokht (Airbnb) | Deterministic evaluation via caching, micro-adapters, end-to-end validation at the seams. |
 | [LLM Evals: Everything You Need to Know](https://hamel.dev/blog/posts/evals-faq/) | Hamel Husain & Shreya Shankar | Error analysis (open → axial coding), binary pass/fail, synthetic data generation, custom annotation tooling. |
 
+## Semantic Search
+
+Synthesized in [Research Report 014 — Semantic Search Tools and Architecture](../research-reports/014-semantic-search-tools-architecture.md). The three primary sources:
+
+| Resource | Author | Why it matters |
+|---|---|---|
+| [A Comprehensive Empirical Evaluation of Vector Database Systems for ANN](https://arxiv.org/html/2608.12812v1) | (arXiv, 2026) | First reproducible 7-system head-to-head (FAISS, Qdrant, Milvus, Weaviate, Chroma, pgvector, LanceDB) — no system dominates; pick by bottleneck regime. |
+| [Hybrid Search in Production: BM25 + Dense Embeddings](https://tianpan.co/blog/2026/04/12/hybrid-search-production-bm25-dense-embeddings) | Pan Tian | Fusion done right: RRF k=60 as robust default, convex-combination tuning, reranker placement, query-type diagnosis. |
+| [Introducing the Ettin Reranker Family](https://huggingface.co/blog/ettin-reranker) | Tom Aarsen (HF) | SOTA cross-encoders at 17M–1B (ModernBERT, 8K ctx) — the CPU-friendly rerank ladder for a future Stage 2. |
+
 ## Key Takeaways Applied Here
 
 - Manual error analysis before automated evaluators.
 - My data engineering design instincts are good! 
 - Scalable design for multi-label classification.
+- Exact NumPy cosine is correct retrieval engineering at ≤500 vectors — not a placeholder.
