@@ -14,12 +14,21 @@ dataroles.co, a curator over 16 ATS systems, is also supported via its
 documented read interface (:func:`list_dataroles_job_urls` and
 :func:`fetch_dataroles_job`), whose
 ``identifier.value`` carries the origin embedded on every posting.
+:func:`fetch_dataroles_jobs` bounds that per-page walk for the scheduled
+registry, where it is the fetcher behind the synthetic ``curated`` board.
+
+For the registry dispatch (:mod:`backend.ingestion.raw` ``board_fetch``),
+every source exposes a uniform ``(board, limit)`` board fetcher. Whole-board
+ATS responses make ``limit`` a no-op there — the intake bound applies
+post-fetch — while the dataroles walk honors it as its page-fetch budget.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import sys
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -28,6 +37,11 @@ import requests
 
 _SITEMAP_INDEX = "https://dataroles.co/sitemap.xml"
 _JOB_SITEMAP_PREFIX = "https://dataroles.co/sitemaps/jobs-data"
+
+# Politeness pause between curator page fetches; the sitemap walk itself is a
+# handful of GETs, but unlike the one-call ATS boards the curated corpus is
+# one GET per posting.
+_PAGE_DELAY_S = 0.25
 
 _ASHBY_API = "https://api.ashbyhq.com/posting-api/job-board"
 _GREENHOUSE_API = "https://boards-api.greenhouse.io/v1/boards"
@@ -237,6 +251,48 @@ def fetch_dataroles_job(url: str) -> ScrapedJob:
     response = requests.get(url, timeout=30)
     response.raise_for_status()
     return parse_dataroles_job(response.text, url)
+
+
+def fetch_dataroles_jobs(
+    limit: int | None = None, page_delay_s: float | None = None
+) -> list[ScrapedJob]:
+    """Walk the dataroles.co sitemaps and fetch bounded job pages.
+
+    Unlike the one-call ATS boards, the curated corpus is page-at-a-time, so
+    the walk is bounded: ``limit`` pages are gathered (``None`` walks the
+    whole sitemap — thousands of GETs). Pages that fail to fetch or parse are
+    skipped with a stderr note rather than failing the walk; the returned
+    postings still pass through the intake filter downstream.
+
+    Args:
+        limit: Page-fetch budget; ``None`` takes the whole sitemap.
+        page_delay_s: Pause between page GETs; ``None`` uses the module
+            default (:data:`_PAGE_DELAY_S`).
+
+    Returns:
+        A list of :class:`ScrapedJob` in sitemap document order.
+    """
+    delay = _PAGE_DELAY_S if page_delay_s is None else page_delay_s
+    jobs: list[ScrapedJob] = []
+    for url in list_dataroles_job_urls():
+        if limit is not None and len(jobs) >= limit:
+            break
+        time.sleep(delay)
+        try:
+            jobs.append(fetch_dataroles_job(url))
+        except (requests.RequestException, ValueError) as exc:
+            _warn_page_skip(url, exc)
+    return jobs
+
+
+def _warn_page_skip(url: str, exc: Exception) -> None:
+    """One-line stderr note for a skipped curator page.
+
+    Board status (the run manifest's outcome map) can only see fetch-level
+    outcomes, so a page-level skip surfaces here instead.
+    """
+    body = " ".join(f"{exc}".split()) or exc.__class__.__name__
+    print(f"dataroles: skipping page {url}: {body[:120]}", file=sys.stderr)
 
 
 def parse_dataroles_job(html: str, url: str) -> ScrapedJob:
@@ -459,6 +515,42 @@ def _from_millis(value: Any) -> str | None:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return None
     return datetime.fromtimestamp(value / 1000, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# --- Board-fetch dispatch interface ------------------------------------------
+#
+# uniform (board, limit) fetchers for raw.board_fetch; the dispatch maps the
+# registry's source names onto these.
+
+
+def _ashby_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Whole-board Ashby fetch; ``limit`` cuts intake post-fetch, not here."""
+    return fetch_ashby_jobs(board)
+
+
+def _greenhouse_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Whole-board Greenhouse fetch; ``limit`` cuts intake post-fetch."""
+    return fetch_greenhouse_jobs(board)
+
+
+def _lever_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Whole-board Lever fetch; ``limit`` cuts intake post-fetch."""
+    return fetch_lever_jobs(board)
+
+
+def _dataroles_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Bounded dataroles.co walk for the registry dispatch.
+
+    Args:
+        board: The synthetic registry slug (``"curated"``) — dataroles has
+            one global corpus, not per-company boards; the slug keeps the
+            fetch signatures uniform.
+        limit: Page-fetch budget (``None`` walks the whole sitemap).
+
+    Returns:
+        A list of :class:`ScrapedJob` in sitemap document order.
+    """
+    return fetch_dataroles_jobs(limit)
 
 
 if __name__ == "__main__":

@@ -61,7 +61,9 @@ _BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake"})
 # allowlist so partitioning stays governed — a source is a partition column,
 # and an unbounded source set is the partition-explosion / ungoverned-accumulation
 # anti-pattern. Sources are lowercase and must satisfy _SEGMENT_RE.
-RAW_SOURCES: frozenset[str] = frozenset({"linkedin", "lever", "greenhouse", "ashby"})
+RAW_SOURCES: frozenset[str] = frozenset(
+    {"linkedin", "lever", "greenhouse", "ashby", "dataroles"}
+)
 
 # Variants that live under live/derived/<id>/<variant>/.
 # Kept open: new variants are added here and are additive (layout §5).

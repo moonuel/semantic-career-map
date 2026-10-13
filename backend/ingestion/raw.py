@@ -26,9 +26,10 @@ from typing import Any, Protocol
 
 from backend.ingestion.scrapers import (
     ScrapedJob,
-    fetch_ashby_jobs,
-    fetch_greenhouse_jobs,
-    fetch_lever_jobs,
+    _ashby_board_fetch,
+    _dataroles_board_fetch,
+    _greenhouse_board_fetch,
+    _lever_board_fetch,
 )
 from backend.storage import ids, keys
 
@@ -232,14 +233,22 @@ def ingest_board(
     return events
 
 
-def board_fetch(source: str, board: str) -> list[ScrapedJob]:
-    """Fetch one board through the per-source scraper function dispatch."""
+def board_fetch(source: str, board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Fetch one board through the per-source scraper function dispatch.
+
+    Fetchers share the uniform ``(board, limit)`` signature. The ATS sources
+    take their whole board in one call and treat ``limit`` as a no-op — the
+    intake bound applies post-fetch at :func:`usable_jobs` — while the
+    dataroles curator fetches page-by-page and honors ``limit`` as its
+    page-fetch budget.
+    """
     fetcher = _FETCHERS[source]
-    return fetcher(board)
+    return fetcher(board, limit)
 
 
-_FETCHERS: dict[str, Callable[[str], list[ScrapedJob]]] = {
-    "ashby": fetch_ashby_jobs,
-    "greenhouse": fetch_greenhouse_jobs,
-    "lever": fetch_lever_jobs,
+_FETCHERS: dict[str, Callable[[str, int | None], list[ScrapedJob]]] = {
+    "ashby": _ashby_board_fetch,
+    "greenhouse": _greenhouse_board_fetch,
+    "lever": _lever_board_fetch,
+    "dataroles": _dataroles_board_fetch,
 }

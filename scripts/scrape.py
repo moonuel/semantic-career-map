@@ -81,12 +81,13 @@ def _scrape_source(
 ) -> tuple[list[BatchObservation], dict[str, str]]:
     """Scrape one source across ``boards``; return its observations and statuses.
 
-    Dedup is seeded per source (an empty set seen by
-    :func:`raw.ingest_board`) and the store's content-hash existence check
-    covers prior runs; within one run, cross-board duplicates resolve through
-    the shared set inside :func:`raw.ingest_board`. Board isolation happens
-    here: one board raising leaves the others running, with the failure on
-    the returned status map for the run header.
+    Dedup is seeded per board (a fresh hash set passed to
+    :func:`raw.ingest_board`); the store's content-hash existence check
+    covers prior runs and, since a source's boards share one ``lake/raw``
+    partition, cross-board duplicates within one run resolve through the same
+    existence check. Board isolation happens here: one board raising leaves
+    the others running, with the failure on the returned status map for the
+    run header.
 
     Args:
         source: Allowlisted raw source.
@@ -103,7 +104,7 @@ def _scrape_source(
     board_status: dict[str, str] = {}
     for board in boards:
         try:
-            jobs = raw.board_fetch(source, board)
+            jobs = raw.board_fetch(source, board, limit)
         except requests.RequestException as exc:
             board_status[f"{source}/{board}"] = _error_text(exc)
             continue
