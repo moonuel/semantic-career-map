@@ -13,8 +13,9 @@ Items I'm still working on.
 
 - "The better first step is to formalize and capture this existing structure I think. SQL database perhaps, for the raw and important intermediate representations (like cleaned data and engineered features)." — [2026-08-25](dev-log/2026.md#august-25-2026)
 - "Planning for the future, ML systems require both data and experiment versioning. From Huyen (DSML), you want to capture the entire computational experiment that produced the data." — [2026-08-25](dev-log/2026.md#august-25-2026)
-- "Data versioning will become crucial. Use S3 object store" — [2026-09-16](dev-log/2026.md#september-16-2026)
-- "One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques." — [2026-09-16](dev-log/2026.md#september-16-2026)
+- ~~"Data versioning will become crucial. Use S3 object store" — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Done
+- ~~"One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques." — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Used real data scrapers
+- Scheduled data scraping
 
 ## Taxonomy & Clustering Validation
 
