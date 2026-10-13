@@ -87,7 +87,9 @@ def _scrape_source(
     partition, cross-board duplicates within one run resolve through the same
     existence check. Board isolation happens here: one board raising leaves
     the others running, with the failure on the returned status map for the
-    run header.
+    run header. ``ValueError`` counts as a board outcome (e.g. an unknown
+    board slug, or the dataroles walk reporting that none of its pages
+    yielded a posting) on par with a transport failure.
 
     Args:
         source: Allowlisted raw source.
@@ -105,7 +107,7 @@ def _scrape_source(
     for board in boards:
         try:
             jobs = raw.board_fetch(source, board, limit)
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError) as exc:
             board_status[f"{source}/{board}"] = _error_text(exc)
             continue
         existing_hashes: set[str] = set()

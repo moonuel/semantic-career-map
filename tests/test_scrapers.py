@@ -37,6 +37,7 @@ from backend.ingestion.scrapers import (
     _GREENHOUSE_API,
     _LDJSON_RE,
     _LEVER_API,
+    _dataroles_board_fetch,
     _from_ashby_job,
     _from_dataroles_job,
     _from_greenhouse_job,
@@ -410,6 +411,125 @@ class TestFetchDatarolesJobs:
         jobs = fetch_dataroles_jobs()
         assert len(jobs) == 19
         assert "skipping page" in capsys.readouterr().err
+
+    def test_budget_counts_attempts_not_successes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        page = load_fixture("dataroles_job_page.html")
+        seen: list[str] = []
+
+        def fake_get(
+            url: str, params: Any = None, timeout: Any = None
+        ) -> _FakeResponse:
+            if url.endswith("sitemap.xml"):
+                return _FakeResponse(load_fixture("sitemap_index.xml"))
+            if "jobs-data" in url:
+                return _FakeResponse(load_fixture("jobs_sitemap.xml"))
+            seen.append(url)
+            if len(seen) == 1:
+                return _FakeResponse("", status_code=500)
+            return _FakeResponse(page)
+
+        monkeypatch.setattr("backend.ingestion.scrapers.requests.get", fake_get)
+        monkeypatch.setattr("backend.ingestion.scrapers.time.sleep", lambda _s: None)
+
+        jobs = fetch_dataroles_jobs(limit=2)
+        assert len(jobs) == 1
+        assert len(seen) == 2
+
+    def test_all_failed_pages_fail_the_board(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        seen: list[str] = []
+
+        def fake_get(
+            url: str, params: Any = None, timeout: Any = None
+        ) -> _FakeResponse:
+            if url.endswith("sitemap.xml"):
+                return _FakeResponse(load_fixture("sitemap_index.xml"))
+            if "jobs-data" in url:
+                return _FakeResponse(load_fixture("jobs_sitemap.xml"))
+            seen.append(url)
+            return _FakeResponse("", status_code=500)
+
+        monkeypatch.setattr("backend.ingestion.scrapers.requests.get", fake_get)
+        monkeypatch.setattr("backend.ingestion.scrapers.time.sleep", lambda _s: None)
+
+        with pytest.raises(requests.RequestException, match="none of"):
+            fetch_dataroles_jobs()
+        assert len(seen) == 20
+        assert capsys.readouterr().err.count("skipping page") == 20
+
+    def test_non_dataroles_page_url_is_skipped(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        page = load_fixture("dataroles_job_page.html")
+        sitemap = (
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://other.example.net/jobs/sneaky</loc></url>"
+            "<url><loc>https://dataroles.co/jobs/real</loc></url>"
+            "</urlset>"
+        )
+        seen: list[str] = []
+
+        def fake_get(
+            url: str, params: Any = None, timeout: Any = None
+        ) -> _FakeResponse:
+            if url.endswith("sitemap.xml"):
+                return _FakeResponse(load_fixture("sitemap_index.xml"))
+            if "jobs-data" in url:
+                return _FakeResponse(sitemap)
+            seen.append(url)
+            return _FakeResponse(page)
+
+        monkeypatch.setattr("backend.ingestion.scrapers.requests.get", fake_get)
+        monkeypatch.setattr("backend.ingestion.scrapers.time.sleep", lambda _s: None)
+
+        jobs = fetch_dataroles_jobs()
+        assert len(jobs) == 1
+        assert "https://dataroles.co/jobs/real" in seen
+        assert all("other.example.net" not in got for got in seen)
+        err = capsys.readouterr().err
+        assert "skipping page" in err
+        assert "other.example.net" in err
+
+    def test_non_https_dataroles_page_url_is_skipped(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        page = load_fixture("dataroles_job_page.html")
+        sitemap = (
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>http://dataroles.co/jobs/downgraded</loc></url>"
+            "<url><loc>https://dataroles.co/jobs/real</loc></url>"
+            "</urlset>"
+        )
+        seen: list[str] = []
+
+        def fake_get(
+            url: str, params: Any = None, timeout: Any = None
+        ) -> _FakeResponse:
+            if url.endswith("sitemap.xml"):
+                return _FakeResponse(load_fixture("sitemap_index.xml"))
+            if "jobs-data" in url:
+                return _FakeResponse(sitemap)
+            seen.append(url)
+            return _FakeResponse(page)
+
+        monkeypatch.setattr("backend.ingestion.scrapers.requests.get", fake_get)
+        monkeypatch.setattr("backend.ingestion.scrapers.time.sleep", lambda _s: None)
+
+        jobs = fetch_dataroles_jobs()
+        assert len(jobs) == 1
+        assert seen == ["https://dataroles.co/jobs/real"]
+        assert "skipping page" in capsys.readouterr().err
+
+
+class TestBoardFetchDispatch:
+    """``_dataroles_board_fetch`` — slug validation at the dispatch edge."""
+
+    def test_rejects_uncurated_slug(self) -> None:
+        with pytest.raises(ValueError, match="curated"):
+            _dataroles_board_fetch("acme")
 
 
 # --- Pure unit tests ---------------------------------------------------------
