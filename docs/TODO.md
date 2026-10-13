@@ -49,6 +49,7 @@ Items I'm still working on.
     - Something like a personalized recommendation system for skill development and career path optimization." — [2026-08-03](dev-log/2026.md#august-03-2026)
 - "A k-NN clustering metric can be defined by taking the k-nearest neighbours to any given job posting \(P\) and counting whether it shares a tag with \(P\)." — [2026-08-03](dev-log/2026.md#august-03-2026)
 - "This requires the tag generation using the [taxonomy](research-reports/003-ml-ai-responsibility-taxonomy.md) to assign consistent labels to postings." — [2026-08-03](dev-log/2026.md#august-03-2026)
+- My dream is to have a more transparent "AI search" feature. Something like, skill extraction and description of responsibilities from the postings. Then people describe their experiences or ideal job, a similar skill extraction and capability description is generated (editable by humans) and then rankings are generated from that. The purpose would be job exploration, not connection to live postings. (2026-10-13)
 
 ## Reading
 
