@@ -2,10 +2,11 @@
 
 The query path of ``docs/specs/hiringcafe-mcp-query-integration.md`` — the
 manual counterpart to :mod:`scripts.scrape`. Unlike the scheduled scraper,
-queries are enumerated on the command line (or fall back to a small declared
-set here), never in the source registry, so the scheduler can never reach
-this entry point. Each invocation runs one MCP handshake, then per query one
-search call plus details calls for the top-k results, and prints per-query
+queries are enumerated on the command line, as named :data:`_QUERY_SETS`
+(curated role-search vocabulary this project's taxonomy targets), or both —
+never in the source registry, so the scheduler can never reach this entry
+point. Each invocation runs one MCP handshake, then per query one search
+call plus details calls for the top-k results, and prints per-query
 summaries. Lake writes, raw-layer ingestion, and the run manifest land in a
 later slice; this slice is fetch-and-report.
 
@@ -24,7 +25,23 @@ from datetime import UTC, datetime
 
 from backend.ingestion import mcp
 
-_DEFAULT_QUERIES = ("ml engineer", "mlops", "data platform")
+# Named query sets: the curated role-search vocabulary this project sources
+# against HiringCafe (spec §1 — query-driven windows over their index). Sets
+# are an observation lens, not a registry: they name what to ask, never a
+# board the scheduler would poll. Grow per need; every query costs
+# 1 + details calls per run.
+_QUERY_SETS: dict[str, tuple[str, ...]] = {
+    "core": ("machine learning engineer", "mlops", "data platform"),
+    "ai-engineering": ("ai engineer", "llm engineer", "computer vision engineer"),
+    "platform-infra": (
+        "platform engineer",
+        "backend engineer",
+        "data engineer",
+        "site reliability engineer",
+    ),
+    "research": ("data scientist", "research scientist", "applied scientist"),
+}
+
 _DEFAULT_LIMIT = 25
 _DEFAULT_DETAILS = 10
 _CALL_DELAY_S = 0.5
@@ -68,6 +85,45 @@ def _run_query(
         )
 
 
+def _select_queries(
+    sets: list[str], queries: list[str], *, set_all: bool = False
+) -> list[str]:
+    """Resolve the effective query list, order-preserving and de-duplicated.
+
+    Args:
+        sets: Named sets from ``--set``, in argv order.
+        queries: Explicit queries from ``--query``, in argv order.
+        set_all: ``--set-all`` — iterate every named set.
+
+    Returns:
+        Union of the named sets' members and the explicit queries; with
+        no set selection given, the ``core`` set.
+    """
+    selected: list[str] = []
+    seen: set[str] = set()
+
+    def _add(value: str) -> None:
+        if value not in seen:
+            seen.add(value)
+            selected.append(value)
+
+    if set_all:
+        for set_queries in _QUERY_SETS.values():
+            for query in set_queries:
+                _add(query)
+    elif not sets and not queries:
+        for query in _QUERY_SETS["core"]:
+            _add(query)
+        return selected
+    else:
+        for name in sets:
+            for query in _QUERY_SETS[name]:
+                _add(query)
+    for query in queries:
+        _add(query)
+    return selected
+
+
 def run(
     *,
     queries: list[str],
@@ -107,7 +163,22 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=None,
         metavar="QUERY",
-        help="search query; repeatable, defaults to the module's default set",
+        help="explicit search query; repeatable, unioned after --set",
+    )
+    parser.add_argument(
+        "--set",
+        action="append",
+        dest="sets",
+        choices=sorted(_QUERY_SETS),
+        default=None,
+        metavar="SET",
+        help="named query set (one of: %(choices)s); repeatable; defaults "
+        "to the 'core' set",
+    )
+    parser.add_argument(
+        "--set-all",
+        action="store_true",
+        help="iterate every named query set",
     )
     parser.add_argument(
         "--limit",
@@ -136,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: mcp handshake failed: {_error_text(exc)}", file=sys.stderr)
         return 1
 
-    queries = args.query if args.query else list(_DEFAULT_QUERIES)
+    queries = _select_queries(args.sets or [], args.query or [], set_all=args.set_all)
     return run(queries=queries, limit=args.limit, details=args.details, client=client)
 
 
