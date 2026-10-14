@@ -17,8 +17,10 @@ manifest (:mod:`backend.ingestion.manifest`) instead of silent side effects.
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import json
+import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -128,6 +130,7 @@ def ingest_payload(
     board: str = "",
     source_id: str = "",
     employer: str = "",
+    dedup_lock: threading.Lock | None = None,
 ) -> IngestionEvent:
     """Ingest one canonical payload; return its :class:`IngestionEvent`.
 
@@ -144,6 +147,13 @@ def ingest_payload(
         existing_hashes: Hashes seen this run, mutated when the payload is
             written so a caller loop stays dedup-correct without repeat
             existence calls.
+        dedup_lock: Optional lock held around the exists→put→record critical
+            section; give concurrent workers ingesting the same source
+            partition one shared lock so two identical payloads arriving at
+            once still yield exactly one ``stored`` event (without it, both
+            pass the existence check and both report ``stored`` — the
+            idempotent overwrite keeps the raw layer correct, only the
+            manifest counts drift).
         board, source_id, employer: Provenance columns for the returned
             event.
 
@@ -153,26 +163,27 @@ def ingest_payload(
     content_hash = ids.content_sha256(payload)
     key = keys.raw_payload(source, content_hash)
     keys.validate_key(key)
-    if content_hash in existing_hashes or sink.exists(key):
+    with contextlib.nullcontext() if dedup_lock is None else dedup_lock:
+        if content_hash in existing_hashes or sink.exists(key):
+            return IngestionEvent(
+                source=source,
+                board=board,
+                event="duplicate",
+                content_sha256=content_hash,
+                source_id=source_id,
+                employer=employer,
+            )
+        sink.put(key, payload)
+        existing_hashes.add(content_hash)
         return IngestionEvent(
             source=source,
             board=board,
-            event="duplicate",
+            event="stored",
             content_sha256=content_hash,
+            raw_key=key,
             source_id=source_id,
             employer=employer,
         )
-    sink.put(key, payload)
-    existing_hashes.add(content_hash)
-    return IngestionEvent(
-        source=source,
-        board=board,
-        event="stored",
-        content_sha256=content_hash,
-        raw_key=key,
-        source_id=source_id,
-        employer=employer,
-    )
 
 
 def usable_jobs(jobs: Iterable[ScrapedJob], *, limit: int | None) -> list[ScrapedJob]:
@@ -203,6 +214,7 @@ def ingest_board(
     sink: Sink,
     existing_hashes: set[str],
     limit: int | None = None,
+    dedup_lock: threading.Lock | None = None,
 ) -> list[IngestionEvent]:
     """Ingest one board fetch and return its manifest events.
 
@@ -213,6 +225,8 @@ def ingest_board(
         sink: Where raw objects are written.
         existing_hashes: Dedup set, updated in place.
         limit: Per-board posting bound; ``None`` takes the whole board.
+        dedup_lock: See :func:`ingest_payload` — pass the source partition's
+            shared lock when several boards of one source ingest in parallel.
 
     Returns:
         One :class:`IngestionEvent` per posting ingested.
@@ -225,6 +239,7 @@ def ingest_board(
                 job_payload(job),
                 sink=sink,
                 existing_hashes=existing_hashes,
+                dedup_lock=dedup_lock,
                 board=board,
                 source_id=job.source_id or "",
                 employer=job.employer,
