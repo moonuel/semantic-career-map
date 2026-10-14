@@ -21,7 +21,8 @@ from typing import Any
 import pytest
 import requests
 
-from backend.ingestion import mcp
+from backend.ingestion import mcp, raw
+from backend.storage import ids, keys
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "hiringcafe"
 
@@ -173,3 +174,89 @@ def test_details_missing_job_raises() -> None:
     client = make_client(session)
     with pytest.raises(mcp.MCPError, match="no job record"):
         client.details("doesnotexist1")
+
+
+class TestNormalizeJob:
+    """``normalize_job``: the MCP record → ``source=hiringcafe`` payload mapping."""
+
+    def _search_record(self) -> dict[str, Any]:
+        return json.loads(load_fixture("search_call.json"))["result"][
+            "structuredContent"
+        ]["jobs"][0]
+
+    def _details_record(self) -> dict[str, Any]:
+        return json.loads(load_fixture("details_call.json"))["result"][
+            "structuredContent"
+        ]["job"]
+
+    def test_search_row_maps_normalized_fields(self) -> None:
+        payload = mcp.normalize_job(self._search_record())
+        assert payload["source_id"] == "hiringcafe:ex1mpla1c0de16ch"
+        assert payload["title"] == "Staff ML Platform Engineer"
+        assert payload["employer"] == "Example Analytics"
+        assert payload["url"].startswith("https://hiringcafe.com/job/")
+        assert payload["workplace_type"] == "Remote"
+        assert payload["employment_types"] == ["Full Time"]
+        assert payload["date_posted"] == "2026-10-01T12:00:00.000Z"
+        assert payload["location"] == "United States"
+        # search rows carry no description field: payload keeps it None, the
+        # writer (later slice) decides intake.
+        assert payload["description"] is None
+
+    def test_salary_flattened_from_compensation(self) -> None:
+        payload = mcp.normalize_job(self._search_record())
+        assert payload["salary"] == {
+            "currency": "USD",
+            "frequency": "Yearly",
+            "minimum": 180000,
+            "maximum": 240000,
+        }
+
+    def test_salary_none_for_non_dict_compensation(self) -> None:
+        record = self._search_record() | {"compensation": "bad"}
+        assert mcp.normalize_job(record)["salary"] is None
+
+    def test_extraction_layer_kept_whole(self) -> None:
+        payload = mcp.normalize_job(self._details_record())
+        extracted = payload["extracted"]
+        assert extracted["requirements_summary"] == (
+            "Requires 5+ years building ML platforms and data pipelines."
+        )
+        assert extracted["seniority_level"] == "Senior Level"
+        assert extracted["minimum_years_experience"] == 5
+        assert extracted["responsibilities"] == [
+            "defining architecture",
+            "mentoring engineers",
+        ]
+        assert extracted["technologies"] == ["Apache Spark", "Kubernetes"]
+
+    def test_details_row_carries_description(self) -> None:
+        payload = mcp.normalize_job(self._details_record())
+        assert "ML platform lifecycle" in payload["description"]
+
+    def test_unknown_fields_preserved_under_extra(self) -> None:
+        record = self._search_record() | {
+            "jobCategory": "Engineering",
+            "isRemote": False,
+        }
+        payload = mcp.normalize_job(record)
+        assert payload["extra"] == {"jobCategory": "Engineering", "isRemote": False}
+
+    def test_known_fields_never_leak_into_extra(self) -> None:
+        payload = mcp.normalize_job(self._details_record())
+        assert payload["extra"] == {}
+
+    def test_record_without_id_rejected(self) -> None:
+        with pytest.raises(ValueError, match="without id"):
+            mcp.normalize_job({"title": "no id"})
+
+    def test_payload_is_canonical_deterministic(self) -> None:
+        record = self._details_record()
+        first = raw.canonical_json(mcp.normalize_job(record))
+        second = raw.canonical_json(mcp.normalize_job(json.loads(json.dumps(record))))
+        assert first == second
+        # the payload is key-mintable: accepts its hash placement unrounded
+        content_hash = ids.content_sha256(first)
+        key = keys.raw_payload("hiringcafe", content_hash)
+        assert keys.validate_key(key) == key
+        assert key.startswith("lake/raw/source=hiringcafe/sha256=")

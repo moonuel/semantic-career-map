@@ -30,6 +30,75 @@ _CLIENT_NAME = "semantic-career-map"
 SEARCH_CAP = 25
 
 
+def normalize_job(record: dict[str, Any]) -> dict[str, Any]:
+    """Map one MCP job record to the canonical ``source=hiringcafe`` payload.
+
+    Pure and byte-deterministic: fields map to flat normalized names
+    (:data:`_PAYLOAD_FIELDS`), the LLM extraction layer stays whole under
+    ``extracted`` (:data:`_PAYLOAD_EXTRACTED_FIELDS`), unrecognized structured
+    fields are preserved under ``extra``. Together with the full plain-text
+    ``description``, the payload is exactly spec F3/N2 — what the source gave,
+    verbatim-where-it-shifts, no observation metadata mixed in. Identity is
+    content-addressed downstream, so this dict must hash identically across
+    runs for identical server records.
+
+    Args:
+        record: One ``structuredContent`` job row (search result) or
+            ``structuredContent.job`` record (details result) verbatim from
+            the MCP response. A details record is a search row plus
+            ``description``; either is accepted.
+
+    Returns:
+        The payload dict to canonicalize with ``raw.canonical_json``.
+
+    Raises:
+        ValueError: if ``record`` lacks the job id token.
+    """
+    job_id = record.get("id")
+    if not job_id:
+        raise ValueError(f"mcp job record without id: {job_id!r}")
+    payload: dict[str, Any] = {"source_id": f"hiringcafe:{job_id}"}
+    mapped = _PAYLOAD_FIELDS | _PAYLOAD_EXTRACTED_FIELDS
+    for field, name in _PAYLOAD_FIELDS.items():
+        payload[name] = record.get(field)
+    salary = record.get("compensation")
+    payload["salary"] = dict(salary) if isinstance(salary, dict) and salary else None
+    extracted = {
+        name: record.get(field) for field, name in _PAYLOAD_EXTRACTED_FIELDS.items()
+    }
+    extra = {
+        key: value
+        for key, value in record.items()
+        if key not in mapped and key not in ("description", "compensation", "id")
+    }
+    payload["description"] = record.get("description")
+    payload["extracted"] = extracted
+    payload["extra"] = extra
+    return payload
+
+
+# MCP record field -> payload field, for the lakes normalized posting fields.
+_PAYLOAD_FIELDS: dict[str, str] = {
+    "applyUrl": "url",
+    "title": "title",
+    "company": "employer",
+    "location": "location",
+    "workplaceType": "workplace_type",
+    "employmentTypes": "employment_types",
+    "datePosted": "date_posted",
+}
+
+# MCP record field -> payload field, for the LLM extraction layer (kept whole
+# under ``extracted``): this is the schema-benchmark material (spec F3/N2).
+_PAYLOAD_EXTRACTED_FIELDS: dict[str, str] = {
+    "requirementsSummary": "requirements_summary",
+    "seniorityLevel": "seniority_level",
+    "minimumYearsExperience": "minimum_years_experience",
+    "responsibilities": "responsibilities",
+    "technologies": "technologies",
+}
+
+
 class MCPError(requests.RequestException):
     """One MCP transport or protocol failure, typed like a fetch failure.
 
