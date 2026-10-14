@@ -1,0 +1,36 @@
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "## Staff ML Platform Engineer\n**Example Analytics**\n\nStaff ML Platform Engineer at Example Analytics (Remote). Requires 5+ years building ML platforms and data pipelines."
+      }
+    ],
+    "structuredContent": {
+      "job": {
+        "id": "ex1mpla1c0de16ch",
+        "title": "Staff ML Platform Engineer",
+        "company": "Example Analytics",
+        "location": "United States",
+        "workplaceType": "Remote",
+        "employmentTypes": ["Full Time"],
+        "compensation": {
+          "currency": "USD",
+          "frequency": "Yearly",
+          "minimum": 180000,
+          "maximum": 240000
+        },
+        "datePosted": "2026-10-01T12:00:00.000Z",
+        "requirementsSummary": "Requires 5+ years building ML platforms and data pipelines.",
+        "seniorityLevel": "Senior Level",
+        "minimumYearsExperience": 5,
+        "responsibilities": ["defining architecture", "mentoring engineers"],
+        "technologies": ["Apache Spark", "Kubernetes"],
+        "applyUrl": "https://hiringcafe.com/job/staff-ml-platform-engineer-example-analytics-ex1mpla1c0de16ch?utm_source=chatgpt&utm_medium=llm-app&utm_campaign=mcp",
+        "description": "Example Analytics builds semantic search infrastructure for example data. About the role: you will own the technical strategy for the end-to-end ML platform lifecycle, from feature development and training data to offline experimentation. What you'll do: define architecture and technical standards across batch and streaming computation; partner with platform teams to resolve ambiguity. Who you might be: 5+ years in infrastructure or ML platforms; 2+ years building production ML infrastructure; deep experience with distributed data systems such as Spark and Kubernetes. Benefits: healthcare, 401k with employer match, flexible vacation. Pay range: $180,000 — $240,000 USD."
+      }
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 3
+}
