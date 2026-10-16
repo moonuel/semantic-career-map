@@ -17,7 +17,6 @@ port; real posting provenance is the corpus curation itself).
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +28,7 @@ from backend.ingestion import raw
 from backend.ingestion.manifest import (
     BatchObservation,
     build_ingestion_manifest,
+    pipeline_version,
     write_ingestion_manifest,
 )
 from backend.ingestion.raw import FileSink, Sink
@@ -84,7 +84,7 @@ def run(*, source_dir: Path, sink: Sink) -> int:
         observations,
         ingestion_id=ingestion_id,
         ingested_on=run_started_at.date(),
-        pipeline_version=_pipeline_version(),
+        pipeline_version=pipeline_version(),
         configuration_hash=_corpus_configuration_hash(source_dir, sink),
         run_started_at=run_started_at,
         completed_at=datetime.now(UTC),
@@ -103,21 +103,6 @@ def run(*, source_dir: Path, sink: Sink) -> int:
         f"{len(observations)} corpus files  manifest={manifest_key}"
     )
     return 0
-
-
-def _pipeline_version() -> str:
-    """Version of the pipeline code, mirroring ``scripts/scrape.py``."""
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd=_REPO_ROOT,
-            check=True,
-        )
-    except OSError, subprocess.SubprocessError:
-        return "unknown"
-    return out.stdout.strip() or "unknown"
 
 
 def _corpus_configuration_hash(source_dir: Path, sink: Sink) -> str:

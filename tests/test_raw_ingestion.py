@@ -190,6 +190,32 @@ class TestIngestBoard:
         assert second[0].event == "duplicate"
 
 
+# --- 3b. Board-fetch dispatch -------------------------------------------------
+
+
+class TestBoardFetch:
+    """``board_fetch`` — the uniform ``(board, limit)`` dispatch contract."""
+
+    def test_forwards_board_and_limit_to_fetcher(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[tuple[str, int | None]] = []
+
+        def fake_fetcher(board: str, limit: int | None) -> list[ScrapedJob]:
+            calls.append((board, limit))
+            return [_job("ashby:a:1")]
+
+        monkeypatch.setitem(raw._FETCHERS, "ashby", fake_fetcher)
+        jobs = raw.board_fetch("ashby", "acme", 7)
+        assert calls == [("acme", 7)]
+        assert [j.source_id for j in jobs] == ["ashby:a:1"]
+
+    def test_dispatch_covers_registry(self) -> None:
+        from backend.ingestion import sources
+
+        assert set(raw._FETCHERS) == set(sources.SOURCE_BOARDS)
+
+
 # --- 4. FileSink mirror ------------------------------------------------------
 
 

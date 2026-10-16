@@ -15,12 +15,15 @@ module implements it.
 from __future__ import annotations
 
 import io
+import subprocess
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from backend.ingestion.raw import IngestionEvent
 from backend.storage import ids, keys
 
 # Manifest schema version, bumped on any breaking change to the columns.
@@ -122,6 +125,70 @@ def _check_tz(value: datetime, *, name: str) -> None:
     """Raise unless ``value`` is a datetime carrying a timezone."""
     if not isinstance(value, datetime) or value.tzinfo is None:
         raise ValueError(f"{name} must be a TZ-aware datetime")
+
+
+def pipeline_version() -> str:
+    """Version of the pipeline code: short git sha, else ``unknown``.
+
+    Shared provenance stamp for every run manifest header; callers print or
+    record it verbatim. The manifest contract requires a non-empty version.
+
+    Args:
+        None.
+
+    Returns:
+        A non-empty git short sha when available, else ``"unknown"``.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).resolve().parents[2],
+            check=True,
+        )
+    except OSError, subprocess.SubprocessError:
+        return "unknown"
+    return out.stdout.strip() or "unknown"
+
+
+def event_to_observation(
+    event: IngestionEvent, *, observed_at: datetime
+) -> BatchObservation:
+    """Convert one ingestion event into its manifest observation row.
+
+    The single event→row mapping, so every writer script turns events into
+    provenance identically (empty ``employer``/``source_id`` become ``None``
+    columns; a ``duplicate`` event keeps its ``content_sha256`` — the join to
+    the raw object lives on the row even though ``raw_key`` does not exist
+    for it).
+
+    Args:
+        event: An event from :func:`raw.ingest_payload` /
+            :func:`raw.ingest_board` etc.
+        observed_at: TZ-aware UTC moment of observation (one per batch,
+            wall-stamped when the event arrived).
+
+    Returns:
+        The validated :class:`BatchObservation`.
+
+    Raises:
+        ValueError: if the event violates the manifest contract (unknown
+            source, missing hash, empty board) or ``observed_at`` lacks a
+            timezone.
+    """
+    _check_tz(observed_at, name="observed_at")
+    observation = BatchObservation(
+        source=event.source,
+        action=event.event,
+        content_sha256=event.content_sha256,
+        source_id=event.source_id or None,
+        board=event.board,
+        employer=event.employer or None,
+        observed_at=observed_at,
+    )
+    observation.validate()
+    return observation
 
 
 def build_ingestion_manifest(

@@ -88,4 +88,16 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-09**
 
     Survey of the semantic search stack — retriever families (bi-encoder, sparse, late-interaction, cross-encoder), ANN index algorithms, vector database engines (FAISS, Qdrant, Weaviate, Milvus, pgvector, Chroma, LanceDB), the 2026 two-stage default (hybrid RRF + reranker), and the graduation ladder from exact NumPy cosine. Mapped onto `backend/retrieval.py`.
+
+-   [**015 — HiringCafe MCP**](015-hiringcafe-mcp.md){ .md-button }
+
+    **2026-10-13**
+
+    Survey of the MCP surfaces over HiringCafe, the ATS-first AI job aggregator: its official no-auth ChatGPT-app MCP server (-first-party verified live), the Claude Connector, and community/Apify MCP wraps — tools, filter taxonomy, deliberate provenance de-scoping, robots/ToS posture, and the patterns reusable for ingestion and agent distribution.
+
+-   [**016 — ESCO: The EU Jobs Taxonomy**](016-esco-eu-jobs-taxonomy.md){ .md-button }
+
+    **2026-10-16**
+
+    Survey of ESCO (European Skills, Competences, Qualifications and Occupations) — the EU's free multilingual taxonomy: ISCO-08-anchored occupations (3,039), the skills pillar (13,939 concepts with reuse levels, green/digital labels), v1.2.1 AI-driven maintenance and delta files, the 19-file CSV download + HAL web API, CC BY 4.0 licensing, O*NET/EURES crosswalks, and how NLP practitioners extract & map job skills onto it — with pin-the-snapshot recommendations for partitioning anchors and taxonomy label generation.
 </div>

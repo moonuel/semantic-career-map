@@ -61,7 +61,15 @@ _BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake"})
 # allowlist so partitioning stays governed — a source is a partition column,
 # and an unbounded source set is the partition-explosion / ungoverned-accumulation
 # anti-pattern. Sources are lowercase and must satisfy _SEGMENT_RE.
-RAW_SOURCES: frozenset[str] = frozenset({"linkedin", "lever", "greenhouse", "ashby"})
+#
+# ``hiringcafe`` is the query-driven MCP source
+# (``docs/specs/hiringcafe-mcp-query-integration.md``): provenance-poor by the
+# protocol's design (no ATS/board join keys — the MCP result strips employer
+# URLs and ATS identifiers), so its partition is standalone; its postings join
+# to nothing outside ``source=hiringcafe``.
+RAW_SOURCES: frozenset[str] = frozenset(
+    {"linkedin", "lever", "greenhouse", "ashby", "dataroles", "hiringcafe"}
+)
 
 # Variants that live under live/derived/<id>/<variant>/.
 # Kept open: new variants are added here and are additive (layout §5).

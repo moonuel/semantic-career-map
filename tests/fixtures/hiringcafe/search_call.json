@@ -1,0 +1,39 @@
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "## HiringCafe job results (showing 1 of 137 matches)\n\n### [Staff ML Platform Engineer](https://hiringcafe.com/job/staff-ml-platform-engineer-example-analytics-ex1mpla1c0de16ch?utm_source=chatgpt&utm_medium=llm-app&utm_campaign=mcp)\n**Example Analytics**\n- **Location:** United States\n- **Workplace:** Remote\n- **Compensation:** $180,000 – $240,000/yr\n- **Employment type:** Full Time\n- **Seniority:** Senior Level\n- **Posted:** 2026-10-01\n- **Job ID:** ex1mpla1c0de16ch\n\nRequires 5+ years building ML platforms and data pipelines."
+      }
+    ],
+    "structuredContent": {
+      "count": 1,
+      "total_matches": 137,
+      "jobs": [
+        {
+          "id": "ex1mpla1c0de16ch",
+          "title": "Staff ML Platform Engineer",
+          "company": "Example Analytics",
+          "location": "United States",
+          "workplaceType": "Remote",
+          "employmentTypes": ["Full Time"],
+          "compensation": {
+            "currency": "USD",
+            "frequency": "Yearly",
+            "minimum": 180000,
+            "maximum": 240000
+          },
+          "datePosted": "2026-10-01T12:00:00.000Z",
+          "requirementsSummary": "Requires 5+ years building ML platforms and data pipelines.",
+          "seniorityLevel": "Senior Level",
+          "minimumYearsExperience": 5,
+          "responsibilities": ["defining architecture", "mentoring engineers"],
+          "technologies": ["Apache Spark", "Kubernetes"],
+          "applyUrl": "https://hiringcafe.com/job/staff-ml-platform-engineer-example-analytics-ex1mpla1c0de16ch?utm_source=chatgpt&utm_medium=llm-app&utm_campaign=mcp"
+        }
+      ]
+    }
+  },
+  "jsonrpc": "2.0",
+  "id": 2
+}

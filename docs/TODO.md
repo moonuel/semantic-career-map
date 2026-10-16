@@ -13,8 +13,10 @@ Items I'm still working on.
 
 - "The better first step is to formalize and capture this existing structure I think. SQL database perhaps, for the raw and important intermediate representations (like cleaned data and engineered features)." — [2026-08-25](dev-log/2026.md#august-25-2026)
 - "Planning for the future, ML systems require both data and experiment versioning. From Huyen (DSML), you want to capture the entire computational experiment that produced the data." — [2026-08-25](dev-log/2026.md#august-25-2026)
-- "Data versioning will become crucial. Use S3 object store" — [2026-09-16](dev-log/2026.md#september-16-2026)
-- "One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques." — [2026-09-16](dev-log/2026.md#september-16-2026)
+- ~~"Data versioning will become crucial. Use S3 object store" — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Done
+- ~~"One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques." — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Used real data scrapers
+- Scheduled data scraping
+- MLflow-style run lineage: ingestion manifests already carry `pipeline_version` (git sha) and `configuration_hash` (run config digest) — MLflow's code + params columns are covered. The gap: no **environment snapshot** (runtime-dependency digest — two runs on the same commit aren't provably the same code), and no **dataset versions** (which raw objects / content hashes fed an embedding or eval run). The reserved `embeddings`/`eval`/`runs` manifest keys in [`backend/storage/keys.py`](../backend/storage/keys.py) are where both land; an env-digest column is the cheaper first step. Also: the sha pins the checked-out commit, not the working tree (uncommitted edits run stale — `git describe --dirty` is the cheap fix if it ever matters).
 
 ## Taxonomy & Clustering Validation
 

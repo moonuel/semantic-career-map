@@ -14,20 +14,37 @@ dataroles.co, a curator over 16 ATS systems, is also supported via its
 documented read interface (:func:`list_dataroles_job_urls` and
 :func:`fetch_dataroles_job`), whose
 ``identifier.value`` carries the origin embedded on every posting.
+:func:`fetch_dataroles_jobs` bounds that per-page walk for the scheduled
+registry, where it is the fetcher behind the synthetic ``curated`` board.
+
+For the registry dispatch (:mod:`backend.ingestion.raw` ``board_fetch``),
+every source exposes a uniform ``(board, limit)`` board fetcher. Whole-board
+ATS responses make ``limit`` a no-op there — the intake bound applies
+post-fetch — while the dataroles walk honors it as its page-fetch budget.
 """
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
+import sys
+import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
 _SITEMAP_INDEX = "https://dataroles.co/sitemap.xml"
 _JOB_SITEMAP_PREFIX = "https://dataroles.co/sitemaps/jobs-data"
+
+# Politeness pause between curator page fetches; the sitemap walk itself is a
+# handful of GETs, but unlike the one-call ATS boards the curated corpus is
+# one GET per posting.
+_PAGE_DELAY_S = 0.25
 
 _ASHBY_API = "https://api.ashbyhq.com/posting-api/job-board"
 _GREENHOUSE_API = "https://boards-api.greenhouse.io/v1/boards"
@@ -192,21 +209,23 @@ class ScrapedJob:
     source_id: str | None
 
 
-def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
-    """Return every job-page URL on dataroles.co, via its sitemaps.
+def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> Iterator[str]:
+    """Yield every job-page URL on dataroles.co, via its sitemaps.
 
     This is the documented read path for automated readers
     (``docs/architecture``): the sitemap index references paged ``jobs-data``
-    sitemaps, whose entries point at individual ``/jobs/`` pages.
+    sitemaps, whose entries point at individual ``/jobs/`` pages. URLs are
+    yielded lazily, de-duplicated in document order, so a consumer that stops
+    early (e.g. a page-fetch budget) never downloads the remaining sitemap
+    pages.
 
     Args:
         base: The sitemap index URL; default is dataroles.co's.
 
-    Returns:
-        A list of job-page URLs, de-duplicated in document order.
+    Yields:
+        Job-page URLs, de-duplicated in document order.
     """
     seen: set[str] = set()
-    urls: list[str] = []
     index = requests.get(base, timeout=30)
     index.raise_for_status()
     for sitemap_url in _loc_urls(index.text):
@@ -217,8 +236,7 @@ def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
         for loc in _loc_urls(sitemap.text):
             if "/jobs/" in loc and loc not in seen:
                 seen.add(loc)
-                urls.append(loc)
-    return urls
+                yield loc
 
 
 def fetch_dataroles_job(url: str) -> ScrapedJob:
@@ -237,6 +255,83 @@ def fetch_dataroles_job(url: str) -> ScrapedJob:
     response = requests.get(url, timeout=30)
     response.raise_for_status()
     return parse_dataroles_job(response.text, url)
+
+
+def fetch_dataroles_jobs(
+    limit: int | None = None, page_delay_s: float | None = None
+) -> list[ScrapedJob]:
+    """Walk the dataroles.co sitemaps and fetch bounded job pages.
+
+    Unlike the one-call ATS boards, the curated corpus is page-at-a-time, so
+    the walk is bounded: ``limit`` page fetches are attempted (``None``
+    attempts the whole sitemap — thousands of GETs). Failed attempts consume
+    the budget, so a corpus whose pages keep failing cannot un-bound the run.
+    Only pages rooted at the dataroles.co HTTPS origin are fetched; pages
+    that fail to fetch or parse are skipped with a stderr note rather than
+    failing the walk, and the returned postings still pass through the
+    intake filter downstream.
+
+    Args:
+        limit: Page-fetch budget (attempts); ``None`` takes the whole
+            sitemap.
+        page_delay_s: Pause between page GETs; ``None`` uses the module
+            default (:data:`_PAGE_DELAY_S`).
+
+    Returns:
+        A list of :class:`ScrapedJob` in sitemap document order.
+
+    Raises:
+        requests.RequestException: if at least one page was attempted and
+            none yielded a posting.
+    """
+    delay = _PAGE_DELAY_S if page_delay_s is None else page_delay_s
+    attempts = 0
+    last_error: Exception | None = None
+    jobs: list[ScrapedJob] = []
+    for url in list_dataroles_job_urls():
+        if limit is not None and attempts >= limit:
+            break
+        time.sleep(delay)
+        attempts += 1
+        try:
+            _require_curated_origin(url)
+            jobs.append(fetch_dataroles_job(url))
+        except (requests.RequestException, ValueError) as exc:
+            last_error = exc
+            _warn_page_skip(url, exc)
+    if attempts and not jobs:
+        raise requests.RequestException(
+            f"dataroles: none of {attempts} fetched pages yielded a posting"
+        ) from last_error
+    return jobs
+
+
+def _require_curated_origin(url: str) -> None:
+    """Reject page URLs not rooted at the dataroles.co HTTPS origin.
+
+    The ``/jobs/`` filter inside :func:`list_dataroles_job_urls` is a loc
+    shape check, not a host check, so sitemap-derived entries are
+    re-asserted to the curated origin before each GET.
+
+    Raises:
+        ValueError: if ``url`` is not a dataroles.co page URL.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.netloc != "dataroles.co":
+        raise ValueError(f"not a dataroles.co page URL: {url}")
+
+
+def _warn_page_skip(url: str, exc: Exception) -> None:
+    """One-line stderr note for a skipped curator page.
+
+    Board status (the run manifest's outcome map) can only see fetch-level
+    outcomes, so a page-level skip surfaces here instead. The URL is
+    whitespace-normalized and capped like the body, since a sitemap ``loc``
+    may embed control characters.
+    """
+    body = " ".join(f"{exc}".split()) or exc.__class__.__name__
+    link = " ".join(url.split())[:200]
+    print(f"dataroles: skipping page {link}: {body[:120]}", file=sys.stderr)
 
 
 def parse_dataroles_job(html: str, url: str) -> ScrapedJob:
@@ -461,10 +556,54 @@ def _from_millis(value: Any) -> str | None:
     return datetime.fromtimestamp(value / 1000, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-if __name__ == "__main__":
-    jobs = list_dataroles_job_urls()
+# --- Board-fetch dispatch interface ------------------------------------------
+#
+# uniform (board, limit) fetchers for raw.board_fetch; the dispatch maps the
+# registry's source names onto these.
 
-    for job in jobs[:1]:
+
+def _ashby_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Whole-board Ashby fetch; ``limit`` cuts intake post-fetch, not here."""
+    return fetch_ashby_jobs(board)
+
+
+def _greenhouse_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Whole-board Greenhouse fetch; ``limit`` cuts intake post-fetch."""
+    return fetch_greenhouse_jobs(board)
+
+
+def _lever_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Whole-board Lever fetch; ``limit`` cuts intake post-fetch."""
+    return fetch_lever_jobs(board)
+
+
+def _dataroles_board_fetch(board: str, limit: int | None = None) -> list[ScrapedJob]:
+    """Bounded dataroles.co walk for the registry dispatch.
+
+    Args:
+        board: The synthetic registry slug (``"curated"``) — dataroles has
+            one global corpus, not per-company boards; any other slug is
+            rejected so a ``--boards`` override cannot fetch the whole
+            corpus under a mislabeled board. The slug keeps the fetch
+            signatures uniform.
+        limit: Page-fetch budget (attempts; ``None`` walks the whole
+            sitemap).
+
+    Returns:
+        A list of :class:`ScrapedJob` in sitemap document order.
+
+    Raises:
+        ValueError: if ``board`` is not ``"curated"``.
+    """
+    if board != "curated":
+        raise ValueError(
+            f"dataroles has one corpus; board must be 'curated', not {board!r}"
+        )
+    return fetch_dataroles_jobs(limit)
+
+
+if __name__ == "__main__":
+    for job in itertools.islice(list_dataroles_job_urls(), 1):
         val = fetch_dataroles_job(job)
 
         print(val)
