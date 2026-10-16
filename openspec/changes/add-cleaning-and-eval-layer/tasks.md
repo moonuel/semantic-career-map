@@ -1,0 +1,35 @@
+## 1. Lake branch key builders
+
+- [ ] 1.1 Add `artifacts/`, `eval/datasets|results|type|variant|version`, and `manifests/datasets|runs` key builders to `backend/storage/keys.py` with hive-style segment validation; verify: `pytest tests/ -v` including new key-builder tests mirroring existing `keys.py` test placement
+- [ ] 1.2 Inspect one payload per source for `posting_id` presence; record the finding in `design.md` (resolves the open question before row writing exists); verify: finding documented with sample keys/fields quoted
+
+## 2. Raw reader + profiling evidence
+
+- [ ] 2.1 Add a raw-payload reader helper (list + fetch over `ObjectStore` returning parsed payloads with their `source_hash`) to `backend/storage/`; verify: unit test against a local fixture payload, store-agnostic
+- [ ] 2.2 Implement `backend/pipeline/profiling.py`: per-source counts, `description_html` length quantiles (median/p90/max), HTML tag-family frequency, boilerplate-marker incidence, malformed-payload listing (per `subset-sampling` spec); verify: run over raw lake, output tables match `aws s3 ls` per-source counts (dataroles 6,224; greenhouse 788; ashby 257; lever 348; hiringcafe 130; linkedin 39)
+- [ ] 2.3 Implement `backend/pipeline/sampling.py`: seeded source-stratified sampler (quotas × length bands) writing a pinned sample manifest (postings by `source_hash` + `source_id`, sampling params, seed); verify: two runs with same params yield byte-identical manifests; distinct employers where available
+- [ ] 2.4 Distill profiling findings into `docs/experiments/007-*.md` draft (noise inventory + sampler params + chosen sample manifest reference); verify: per-source sections present, exp number consistent with index
+
+## 3. Cleaning stage
+
+- [ ] 3.1 Extract LLM-calling logic from `scripts/003_llm_extraction/extract_clean_text.py` into `backend/pipeline/cleaning/` (verbatim prompt/template, Kilo Gateway client, empty-response RuntimeError) — experiment scripts untouched; verify: `ruff check backend/ scripts/003_llm_extraction/` clean and prompt text matches original
+- [ ] 3.2 Add html→plain-text normalization inside the cleaning module; verify: unit tests over synthetic fixture HTML (headers, lists, entities) assert no tags survive and boilerplate sections are still intact for the LLM stage
+- [ ] 3.3 Compute `configuration_hash` (SHA-256 over model + system prompt + user template) and thread it through rows and manifests; verify: unit test — changed template yields different hash, identical config yields identical hash
+- [ ] 3.4 Implement artifact row writer: one row per posting into `artifacts/type=cleaned_text/variant=llm/version=v1/` Parquet (part files per run) with the §5–6 schema; verify: round-trip read via pyarrow asserts schema, row-per-posting, source_hash join back to raw
+- [ ] 3.5 Implement cache resolution: before an LLM call, look up existing artifact rows by (raw-text hash, configuration_hash); on hit, reuse without API call; never write `data/.llm_clean_cache.json`; verify: unit test with a stubbed LLM client — second run performs zero client calls
+- [ ] 3.6 Write dataset manifest (`manifests/datasets/`: dataset_id, input_dataset, model, configuration_hash, pipeline_version git sha, record_count, created_at) and run record (`manifests/runs/`: run_id, timestamps, input manifest reference, output dataset id, counters, status) including partial-failure accounting; verify: integration test with stubbed client counts cleaned/cache-hit/failed correctly on a run that fails one posting
+- [ ] 3.7 Wire a cleaning CLI (`python -m backend.pipeline.cleaning --sample-manifest <path>`): fail-fast per posting, counters persisted; verify: run over a 5–10 posting pinned manifest against the real lake, `aws s3 ls` shows artifact parts + manifests, rerun shows all cache hits
+
+## 4. Evaluation layer
+
+- [ ] 4.1 Author golden set as `eval/datasets/type=cleaning_golden/variant=author/version=v1/` Parquet (source hash/id, golden text, annotator, created_at) migrated from `data/golden_cleaned.json` via a one-off script (configurable output path per AGENTS.md output-path rule); verify: row count matches legacy JSON, legacy file untouched
+- [ ] 4.2 Extract eval logic from `scripts/003_llm_extraction/eval_cleaning.py` into `backend/pipeline/eval/`: Jaccard, 7 boilerplate patterns, hallucination (word-set difference vs raw text, first-10 sample), over-deletion (golden−cleaned ratio, >5% flagged) — metric definitions verbatim; verify: unit tests reproduce exp 003's per-posting table values on legacy fixture inputs
+- [ ] 4.3 Write eval results to `eval/results/type=cleaning_quality/...` Parquet with posting identity, metric values, evaluation configuration_hash, evaluation_version, created_at; verify: round-trip read asserts lineage fields, and a second eval under a different version writes a new prefix without overwriting
+- [ ] 4.4 Wire eval CLI producing the exp-003-style summary table over an artifacts dataset version; verify: run over the §3.7 outputs produces the table for all sampled postings
+
+## 5. Verification, docs, wrap-up
+
+- [ ] 5.1 Full run over the pinned sample manifest end-to-end (cleaning → eval); verify: `pytest tests/ -v`, `ruff format .`, `ruff check .` pass; dataset → run → eval-result lineage reconstructs via manifests alone
+- [ ] 5.2 Finalize `docs/experiments/007-*.md` with cleaning + eval results over the sample, over-deletion findings, and next-variant candidates (org-context field); verify: follows the exp-003 report pattern
+- [ ] 5.3 Update README "Current Status" and `docs/architecture/data.md` migration-table rows for `artifacts/`, `eval/`, `manifests/`; run docs-sync skill for cross-references; verify: no doc page contradicts the landed branches
+- [ ] 5.4 Append dev-log entry (decisions D1–D7, open question resolved in 1.2); verify: open threads moved to `docs/TODO.md`
