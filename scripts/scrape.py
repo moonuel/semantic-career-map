@@ -51,6 +51,7 @@ from backend.ingestion import raw, sources
 from backend.ingestion.manifest import (
     BatchObservation,
     build_ingestion_manifest,
+    event_to_observation,
     write_ingestion_manifest,
 )
 from backend.ingestion.raw import FileSink, Sink
@@ -97,7 +98,7 @@ def _pipeline_version() -> str:
             cwd=_REPO_ROOT,
             check=True,
         )
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return "unknown"
     return out.stdout.strip() or "unknown"
 
@@ -247,16 +248,7 @@ def _scrape_board(
         return [], _error_text(exc)
     observed_at = datetime.now(UTC)
     observations = [
-        BatchObservation(
-            source=event.source,
-            action=event.event,
-            content_sha256=event.content_sha256,
-            source_id=event.source_id or None,
-            board=event.board,
-            employer=event.employer or None,
-            observed_at=observed_at,
-        )
-        for event in events
+        event_to_observation(event, observed_at=observed_at) for event in events
     ]
     return observations, "ok"
 

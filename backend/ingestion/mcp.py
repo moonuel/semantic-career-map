@@ -17,6 +17,7 @@ of server behavior changes.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import requests
@@ -28,6 +29,10 @@ _CLIENT_NAME = "semantic-career-map"
 # The endpoint's documented per-call result cap (1-25); the client clamps
 # to this before sending so request bodies stay deterministic.
 SEARCH_CAP = 25
+
+# The lake raw-source partition name for everything this module fetches
+# (admitted in ``backend.storage.keys.RAW_SOURCES``).
+SOURCE = "hiringcafe"
 
 
 def normalize_job(record: dict[str, Any]) -> dict[str, Any]:
@@ -75,6 +80,30 @@ def normalize_job(record: dict[str, Any]) -> dict[str, Any]:
     payload["extracted"] = extracted
     payload["extra"] = extra
     return payload
+
+
+def board_slug(query: str) -> str:
+    """Slugify a query text into the manifest ``board`` label.
+
+    The query is the observation lens for a HiringCafe run; the manifest
+    board column records it as a stable lowercase token (same alphabet as
+    the lake key segments). Distinct queries slugify independently — callers
+    de-duplicate the slab before use (see :func:`scripts.query`).
+
+    Args:
+        query: The search query text as given on the command line.
+
+    Returns:
+        A non-empty lowercase slug, e.g. ``"machine-learning-engineer"``.
+
+    Raises:
+        ValueError: if the query yields no slugifiable text (e.g. only
+            punctuation).
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", query.lower()).strip("-")
+    if not slug:
+        raise ValueError(f"query {query!r} slugifies to an empty board label")
+    return slug
 
 
 # MCP record field -> payload field, for the lakes normalized posting fields.
