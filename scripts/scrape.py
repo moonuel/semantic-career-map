@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import argparse
 import random
-import subprocess
 import sys
 import threading
 import time
@@ -52,6 +51,7 @@ from backend.ingestion.manifest import (
     BatchObservation,
     build_ingestion_manifest,
     event_to_observation,
+    pipeline_version,
     write_ingestion_manifest,
 )
 from backend.ingestion.raw import FileSink, Sink
@@ -78,29 +78,6 @@ _FETCH_ATTEMPTS = 3
 _BACKOFF_S = 0.5
 _RETRY_STATUSES = frozenset({429, 502, 503, 504})
 _RETRY_AFTER_CAP_S = 60.0
-
-
-def _pipeline_version() -> str:
-    """Version of the pipeline code: short git sha, or ``unknown``.
-
-    Args:
-        None.
-
-    Returns:
-        A non-empty git short sha when available, else ``"unknown"`` (the
-        manifest contract requires a non-empty version).
-    """
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd=_REPO_ROOT,
-            check=True,
-        )
-    except OSError, subprocess.SubprocessError:
-        return "unknown"
-    return out.stdout.strip() or "unknown"
 
 
 @dataclass(frozen=True)
@@ -295,7 +272,6 @@ def run(
     board_status: dict[str, str] = {}
     boards_attempted = 0
     total_written = 0
-    total_duplicates = 0
     interrupted = False
 
     executor = ThreadPoolExecutor(max_workers=min(max_workers, len(tasks) or 1))
@@ -305,7 +281,7 @@ def run(
         task: _BoardTask, observations: list[BatchObservation], status: str
     ) -> None:
         """Merge one finished board into the run's aggregates and print its line."""
-        nonlocal total_written, total_duplicates, boards_attempted
+        nonlocal total_written, boards_attempted
         absorbed.add(task)
         all_observations.extend(observations)
         board_status[f"{task.source}/{task.board}"] = status
@@ -313,7 +289,6 @@ def run(
         written = sum(o.action == "stored" for o in observations)
         duplicates = sum(o.action == "duplicate" for o in observations)
         total_written += written
-        total_duplicates += duplicates
         print(
             f"{task.source}/{task.board}: {status}"
             if status != "ok"
@@ -386,7 +361,7 @@ def run(
         sorted(all_observations, key=lambda o: (o.source, o.board, o.content_sha256)),
         ingestion_id=ingestion_id,
         ingested_on=run_started_at.date(),
-        pipeline_version=_pipeline_version(),
+        pipeline_version=pipeline_version(),
         configuration_hash=ids.content_sha256(
             raw.canonical_json(
                 {
