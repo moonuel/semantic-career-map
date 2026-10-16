@@ -100,4 +100,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-16**
 
     Survey of ESCO (European Skills, Competences, Qualifications and Occupations) — the EU's free multilingual taxonomy: ISCO-08-anchored occupations (3,039), the skills pillar (13,939 concepts with reuse levels, green/digital labels), v1.2.1 AI-driven maintenance and delta files, the 19-file CSV download + HAL web API, CC BY 4.0 licensing, O*NET/EURES crosswalks, and how NLP practitioners extract & map job skills onto it — with pin-the-snapshot recommendations for partitioning anchors and taxonomy label generation.
+
+-   [**017 — Near-Duplicate Text Detection**](017-near-duplicate-text-detection.md){ .md-button }
+
+    **2026-10-16**
+
+    Tools and measures for detecting significant posting duplication in two shapes — containment/trim (one text a near-superset of another: RapidFuzz partial_ratio, suffix-array substring dedup, MinHash LSH Ensemble) and near-exact reposts differing by a date or a few words (RapidFuzz ratios, SimHash, char n-gram TF-IDF cosine) — plus volatile-field masking, scale math (pairwise vs LSH), and a zero-new-dependency layered pipeline for this project.
 </div>

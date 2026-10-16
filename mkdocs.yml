@@ -78,6 +78,7 @@ nav:
     - "014 - Semantic Search Tools & Architecture": research-reports/014-semantic-search-tools-architecture.md
     - "015 - HiringCafe MCP": research-reports/015-hiringcafe-mcp.md
     - "016 - ESCO EU Jobs Taxonomy": research-reports/016-esco-eu-jobs-taxonomy.md
+    - "017 - Near-Duplicate Text Detection": research-reports/017-near-duplicate-text-detection.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md
