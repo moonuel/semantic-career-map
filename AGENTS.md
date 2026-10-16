@@ -6,7 +6,7 @@
 
 ## Project at a Glance
 
-- **Stack:** Python 3.12+, Sentence Transformers, FastAPI, Docker
+- **Stack:** Python 3.14+, Sentence Transformers, FastAPI, Docker
 - **Package manager:** uv + pip (pyproject.toml + requirements.txt)
 - **Virtual environment** — ensure activation of the virtual environment by the activation script in `.venv/` before using commands.
 - **Automated testing** — compare output against single-responsibility tests to ensure intended behaviour.
