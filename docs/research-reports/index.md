@@ -83,6 +83,12 @@ Research log for exploratory reports that fuel experiments and the final design.
 
     Survey of ATS public job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee, Personio vs. Workday/Teamtailor and curators like dataroles.co) — per-source field coverage, pagination/sorting, change and deletion semantics, polling frequency, board-token discovery, dedup, and rate-limit/ToS posture. Mapped onto `backend/ingestion/scrapers.py`.
 
+-   [**014 — Semantic Search Tools and Architecture**](014-semantic-search-tools-architecture.md){ .md-button }
+
+    **2026-10-09**
+
+    Survey of the semantic search stack — retriever families (bi-encoder, sparse, late-interaction, cross-encoder), ANN index algorithms, vector database engines (FAISS, Qdrant, Weaviate, Milvus, pgvector, Chroma, LanceDB), the 2026 two-stage default (hybrid RRF + reranker), and the graduation ladder from exact NumPy cosine. Mapped onto `backend/retrieval.py`.
+
 -   [**015 — HiringCafe MCP**](015-hiringcafe-mcp.md){ .md-button }
 
     **2026-10-13**
