@@ -25,10 +25,12 @@ post-fetch — while the dataroles walk honors it as its page-fetch budget.
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
 import sys
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -207,21 +209,23 @@ class ScrapedJob:
     source_id: str | None
 
 
-def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
-    """Return every job-page URL on dataroles.co, via its sitemaps.
+def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> Iterator[str]:
+    """Yield every job-page URL on dataroles.co, via its sitemaps.
 
     This is the documented read path for automated readers
     (``docs/architecture``): the sitemap index references paged ``jobs-data``
-    sitemaps, whose entries point at individual ``/jobs/`` pages.
+    sitemaps, whose entries point at individual ``/jobs/`` pages. URLs are
+    yielded lazily, de-duplicated in document order, so a consumer that stops
+    early (e.g. a page-fetch budget) never downloads the remaining sitemap
+    pages.
 
     Args:
         base: The sitemap index URL; default is dataroles.co's.
 
-    Returns:
-        A list of job-page URLs, de-duplicated in document order.
+    Yields:
+        Job-page URLs, de-duplicated in document order.
     """
     seen: set[str] = set()
-    urls: list[str] = []
     index = requests.get(base, timeout=30)
     index.raise_for_status()
     for sitemap_url in _loc_urls(index.text):
@@ -232,8 +236,7 @@ def list_dataroles_job_urls(base: str = _SITEMAP_INDEX) -> list[str]:
         for loc in _loc_urls(sitemap.text):
             if "/jobs/" in loc and loc not in seen:
                 seen.add(loc)
-                urls.append(loc)
-    return urls
+                yield loc
 
 
 def fetch_dataroles_job(url: str) -> ScrapedJob:
@@ -600,9 +603,7 @@ def _dataroles_board_fetch(board: str, limit: int | None = None) -> list[Scraped
 
 
 if __name__ == "__main__":
-    jobs = list_dataroles_job_urls()
-
-    for job in jobs[:1]:
+    for job in itertools.islice(list_dataroles_job_urls(), 1):
         val = fetch_dataroles_job(job)
 
         print(val)

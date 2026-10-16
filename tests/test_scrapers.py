@@ -247,7 +247,7 @@ class TestDatarolesFetched:
             return _FakeResponse(jobs_sitemap)
 
         monkeypatch.setattr("backend.ingestion.scrapers.requests.get", fake_get)
-        urls = list_dataroles_job_urls()
+        urls = list(list_dataroles_job_urls())
         # The index lists 4 non-job sitemaps (filtered) + 4 jobs sitemaps
         # (each returned as the same trimmed fixture in this test).
         assert len(urls) == 20  # trimmed fixture holds 20 real job URLs
@@ -296,7 +296,7 @@ class TestDatarolesFetched:
             return _FakeResponse(page)
 
         monkeypatch.setattr("backend.ingestion.scrapers.requests.get", fake_get)
-        urls = list_dataroles_job_urls()
+        urls = list(list_dataroles_job_urls())
         job = fetch_dataroles_job(urls[0])
         assert job.employer == "Capital One"
         assert job.title == "Senior Manager, Data Analyst - Product Analytics"
