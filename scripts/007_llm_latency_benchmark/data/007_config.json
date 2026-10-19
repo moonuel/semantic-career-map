@@ -1,7 +1,7 @@
 {
   "experiment": "007_llm_latency_benchmark",
-  "written_utc": "2026-10-16T16:50:54-0400",
-  "commit": "cdc553b47f579768f4440607e60153a0a4081eb4",
+  "written_utc": "2026-10-17T22:16:49-0400",
+  "commit": "47b5e76283401e3dd424d4aabb5edc908f0c11cc",
   "models": [
     "meta-llama/llama-3.1-8b-instruct",
     "google/gemma-3-4b-it",
@@ -24,10 +24,12 @@
     "google/gemini-2.5-flash-lite",
     "openai/gpt-5-nano"
   ],
-  "passes": 3,
+  "ttft_passes": 10,
+  "throughput_passes": 3,
   "pace_s": 1.0,
   "seed": 8008,
-  "prompt": "Recite the first five paragraphs of Lorem Ipsum. Reproduce the standard Lorem Ipsum text verbatim.",
+  "ttft_prompt_sha256": "7f1965ec1d4815384e89e82ea5afaf1eb6a754c1be0a7dff30dfe649dfa2eba8",
+  "throughput_prompt_sha256": "20e53109f27390a1d6d0f86cab9bc8b9dbcd277d0c566392073ada16bfb00c94",
   "pricing": {
     "meta-llama/llama-3.1-8b-instruct": [
       2e-08,

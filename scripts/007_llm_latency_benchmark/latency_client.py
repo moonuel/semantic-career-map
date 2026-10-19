@@ -1,13 +1,19 @@
-"""Streaming latency client for the exp-007 response-time benchmark.
+"""Latency client for the exp-007 two-track response-time benchmark.
 
-Tracks, per call, the arrival timestamp of every content delta so ITL
+Two call modes share one record shape. ``measure()`` streams the reply and
+tracks, per call, the arrival timestamp of every content delta so ITL
 (inter-token latency) and tail time can be reported alongside TTFT, E2E
-latency, and token counts. Calls are always live — no cache — because cached
-responses would corrupt the latency measurement.
+latency, and token counts (Track A). ``measure_nonstream()`` posts one
+request with ``stream=False`` and reports E2E latency, token counts from the
+usage block, and ``finish_reason`` (Track B).
+
+Calls are always live — no cache — because cached responses would corrupt
+the latency measurement.
 
 Every call yields exactly one record; nothing is dropped silently. Transport
 faults retry once; the exhausted retry yields an ``ok=False`` row with the
-error taxonomy.
+error taxonomy. A completed response without content (streaming deltas or
+nonstreaming body) is likewise classified ``ok=False`` / "empty response".
 """
 
 from __future__ import annotations
@@ -17,7 +23,7 @@ import json
 import math
 import os
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import httpx
@@ -113,15 +119,19 @@ class LatencyClient:
             "Content-Type": "application/json",
         }
 
-    def _payload(self, user_prompt: str) -> dict[str, Any]:
-        return {
+    def _payload(
+        self, user_prompt: str, max_tokens: int, stream: bool
+    ) -> dict[str, Any]:
+        payload = {
             "model": self.model,
             "temperature": TEMPERATURE,
-            "max_tokens": MAX_TOKENS,
+            "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": user_prompt}],
-            "stream": True,
-            "stream_options": {"include_usage": True},
+            "stream": stream,
         }
+        if stream:
+            payload["stream_options"] = {"include_usage": True}
+        return payload
 
     def _is_retriable(self, exc: Exception) -> bool:
         """Return whether a fault is transient and worth one retry."""
@@ -130,7 +140,9 @@ class LatencyClient:
         status = getattr(getattr(exc, "response", None), "status_code", None)
         return status in RETRYABLE_STATUS
 
-    def _measure_once(self, user_prompt: str, record: dict[str, Any]) -> None:
+    def _measure_once(
+        self, user_prompt: str, record: dict[str, Any], max_tokens: int
+    ) -> None:
         """Execute one streamed call and fill ``record`` in place.
 
         Raises:
@@ -145,7 +157,7 @@ class LatencyClient:
             "POST",
             BASE_URL,
             headers=self.headers,
-            json=self._payload(user_prompt),
+            json=self._payload(user_prompt, max_tokens, stream=True),
             timeout=httpx.Timeout(REQUEST_TIMEOUT_S),
         ) as response:
             response.raise_for_status()
@@ -184,8 +196,62 @@ class LatencyClient:
         if not content_seen:
             record["error"] = "empty response"
 
+    def _measure_once_nonstream(
+        self, user_prompt: str, record: dict[str, Any], max_tokens: int
+    ) -> None:
+        """Execute one ``stream=False`` call and fill ``record`` in place.
+
+        Raises:
+            httpx.HTTPError: transport or HTTP fault (caller's taxonomy).
+        """
+        start = time.perf_counter()
+        response = httpx.post(
+            BASE_URL,
+            headers=self.headers,
+            json=self._payload(user_prompt, max_tokens, stream=False),
+            timeout=httpx.Timeout(REQUEST_TIMEOUT_S),
+        )
+        response.raise_for_status()
+        record["latency_s"] = time.perf_counter() - start
+        body = response.json()
+        choice = body.get("choices", [{}])[0]
+        content = choice.get("message", {}).get("content")
+        record["finish_reason"] = choice.get("finish_reason")
+        usage = body.get("usage") or {}
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        record.update(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            usage_missing=not (prompt_tokens and completion_tokens),
+        )
+        if not content:
+            record["error"] = "empty response"
+
+    def _with_retry(
+        self, record: dict[str, Any], once: Callable[[], None], tries: int
+    ) -> None:
+        for attempt in range(1, tries + 1):
+            record["attempt"] = attempt
+            try:
+                once()
+                record["ok"] = not record.get("error")
+                return
+            except Exception as exc:  # noqa: BLE001 — every fault class logged
+                record["error"] = f"{type(exc).__name__}: {exc}"
+                if attempt < tries and self._is_retriable(exc):
+                    time.sleep(RETRY_BACKOFF_S)
+                    continue
+                return
+        raise AssertionError("unreachable")
+
     def measure(
-        self, user_prompt: str, prompt_index: int, pass_index: int, tries: int = 2
+        self,
+        user_prompt: str,
+        prompt_index: int,
+        pass_index: int,
+        max_tokens: int = MAX_TOKENS,
+        tries: int = 2,
     ) -> dict[str, Any]:
         """Measure one live streaming call with a single transport retry.
 
@@ -193,22 +259,45 @@ class LatencyClient:
             user_prompt: Prompt text.
             prompt_index: Prompt slot recorded in the raw row.
             pass_index: Repetition pass recorded in the raw row.
+            max_tokens: Output cap for this call (Track A uses 32).
             tries: Total attempts across transient faults.
 
         Returns:
             One complete raw protocol row; ``ok=False`` rows carry ``error``.
         """
         record = base_record(self.model, prompt_index, pass_index)
-        for attempt in range(1, tries + 1):
-            record["attempt"] = attempt
-            try:
-                self._measure_once(user_prompt, record)
-                record["ok"] = not record.get("error")
-                return record
-            except Exception as exc:  # noqa: BLE001 — every fault class logged
-                record["error"] = f"{type(exc).__name__}: {exc}"
-                if attempt < tries and self._is_retriable(exc):
-                    time.sleep(RETRY_BACKOFF_S)
-                    continue
-                return record
-        raise AssertionError("unreachable")
+        self._with_retry(
+            record,
+            lambda: self._measure_once(user_prompt, record, max_tokens),
+            tries,
+        )
+        return record
+
+    def measure_nonstream(
+        self,
+        user_prompt: str,
+        prompt_index: int,
+        pass_index: int,
+        max_tokens: int = MAX_TOKENS,
+        tries: int = 2,
+    ) -> dict[str, Any]:
+        """Measure one live ``stream=False`` call with a single retry.
+
+        Args:
+            user_prompt: Prompt text.
+            prompt_index: Prompt slot recorded in the raw row.
+            pass_index: Repetition pass recorded in the raw row.
+            max_tokens: Output cap for this call (Track B uses 4096).
+            tries: Total attempts across transient faults.
+
+        Returns:
+            One complete raw protocol row with streaming-only metric fields
+            left null; ``ok=False`` rows carry ``error``.
+        """
+        record = base_record(self.model, prompt_index, pass_index)
+        self._with_retry(
+            record,
+            lambda: self._measure_once_nonstream(user_prompt, record, max_tokens),
+            tries,
+        )
+        return record
