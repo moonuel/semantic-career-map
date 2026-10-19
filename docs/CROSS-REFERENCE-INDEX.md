@@ -34,6 +34,7 @@
 | Self-retrieval: 100% (all) | `technical/evaluation.md:24-43` | `results.md:29-35` (commented-out) | `experiments/003-llm-extraction.md:222-226` |
 | LLM extraction quality (Jaccard, boilerplate, hallucinations, over-deletion) | `technical/data-processing.md:79-87` | `results.md:39-49` (commented-out) | `experiments/003-llm-extraction.md:144-150` |
 | LLM model tested (gpt-5.4-nano) | `technical/data-processing.md:68` | `results.md:41` (commented-out) | `experiments/003-llm-extraction.md:138` |
+| LLM latency & cost (TTFT, E2E, tok/s, $/req; exps 004, 007) | `technical/evaluation.md` (Results note — orthogonal to proxy-metric table) | `results.md` (October 2026 bullets) | `experiments/007-llm-latency-benchmark.md` |
 
 **When a new experiment produces new metrics:** Update or uncomment the summary table in `results.md`, `experiments/index.md`, and `research-reports/index.md`. Add a new experiment page and register it in `experiments/index.md` and `mkdocs.yml`.
 

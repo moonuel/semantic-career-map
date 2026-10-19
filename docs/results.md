@@ -14,6 +14,12 @@ As of July 27, 2026:
 - LLM-extracted job-context improves separation gap by 5.6× over raw text, but LLM-extracted role-context shows a negative separation gap (-0.0074), suggesting this dimension is harder to extract cleanly.
 - LLM-driven taxonomy labeling (13 categories) produces 22 unique tag sets across 27 postings with 80% golden recall. `deep-learning` + `mlops-production` is the dominant co-occurrence pair (10/27 postings). Tag-set-colored UMAP visualization confirms that function-based clusters align with embedding similarity, enabling honest clustering evaluation beyond noisy title labels.
 
+As of October 19, 2026:
+
+- A two-track benchmark of 20 cheap instruct models ([Experiment 007](./experiments/007-llm-latency-benchmark.md)) splits latency measurement into streaming TTFT and a non-streaming fixed-length copy task. The round-1 `empty response` failure class is streaming-only — every affected model completes non-streaming calls cleanly (openai/gpt-5-nano 0/10 streaming vs 3/3 non-streaming).
+- `nemotron-3-nano-30b-a3b` (best E2E, 2.45s median) and `gemini-2.5-flash-lite` (best consistency) lead on speed; `gemma-3-4b-it` and `llama-3.1-8b-instruct` are the budget lane (~$5-6e-5/request). Cost varies ~14× across the "cheap" tier.
+- No model reproduced the 398-word reference exactly (deviations +222 to +6,988 output tokens), so Track B resolution stays speed/cost-only; deviation is reported per model rather than fetishized.
+
 <!-- 
 ## Summary Dashboard
 

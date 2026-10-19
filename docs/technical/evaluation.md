@@ -88,6 +88,8 @@ Experiment 005 demonstrated that semantic partitioning of job postings into job-
 
 Experiment 006 introduced function-based role labeling using a 13-category ML/AI responsibility taxonomy. LLM-assigned function tags provide a more honest clustering target than noisy title-based labels. Tag-set-colored UMAP visualization qualitatively confirms that function-based clusters align with embedding similarity. The taxonomy enables richer evaluation beyond the surface-level title proxy used by separation gap.
 
+Experiment 007 measures a different axis entirely — LLM response latency and cost (streaming TTFT, non-streaming E2E, tokens/s, $/request) across 20 cheap instruct models. These numbers live in the [experiment report](../experiments/007-llm-latency-benchmark.md) rather than the proxy-metric table above, which is scoped to embedding-quality metrics.
+
 ---
 
 ## IR Metrics (Planned — Phase 1.9)
