@@ -44,6 +44,7 @@ nav:
     - Overview: architecture/overview.md
     # - Design Decisions: architecture/design-decisions.md
     - Data Architecture: architecture/data.md
+    - AWS Migration Roadmap: architecture/aws-migration-roadmap.md
   - Technical Details:
     - Overview: technical/overview.md
     - Favourite Resources: technical/resources.md

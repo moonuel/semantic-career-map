@@ -12,6 +12,10 @@ This section documents the system design of the Semantic Career Map: how the dat
 
     Lakehouse layout for raw postings, derived artifacts, and embeddings — content-addressed raw JSON, Parquet datasets, Hive-style partitions, Athena tables over the Glue catalog, and manifests for provenance.
 
+-   [**AWS Migration Roadmap**](aws-migration-roadmap.md){ .md-button }
+
+    Phased move of the object store and scraper automation onto AWS — S3 as the drop-in Garage replacement, Lambda + EventBridge scheduler, IAM least privilege, Glue/Athena query layer, with per-phase gates and cost guardrails.
+
 </div> -->
 
 ---
@@ -64,4 +68,4 @@ For a high level overview, the pipeline converts job postings into vectors so th
 
 Each stage has a corresponding capability spec in `openspec/specs/` defining its requirements. Experiment numbers reference the validation artifacts — see [Experiment Log](../experiments/index.md).
 
-As the pipeline is productionized, each stage's inputs and outputs move to versioned datasets in the S3 lakehouse and are tracked as MLflow runs. The lakehouse layout for that migration -- raw JSON layer, Parquet datasets, and Athena tables over the Glue catalog -- is defined in [Data Layout & Object Storage Naming](data.md).
+As the pipeline is productionized, each stage's inputs and outputs move to versioned datasets in the S3 lakehouse and are tracked as MLflow runs. The lakehouse layout for that migration -- raw JSON layer, Parquet datasets, and Athena tables over the Glue catalog -- is defined in [Data Layout & Object Storage Naming](data.md). The step-by-step move of the object store and scraper automation onto AWS is tracked in the [AWS Migration Roadmap](aws-migration-roadmap.md).
