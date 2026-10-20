@@ -1,4 +1,4 @@
-"""Exp 008 7-arm boilerplate-only extraction runner with cache/resume.
+"""Exp 008 8-arm boilerplate-only extraction runner with cache/resume.
 
 Phase 1.4c — Experiment 008, Step 3. Runs every (arm, posting) pair once
 through the Kilo Gateway at temperature 0.0, non-streaming, storing cleaned
@@ -6,7 +6,7 @@ text per arm in
 scripts/008_boilerplate_only_cleaning/data/008_clean_outputs.json
 (jobs.json is NOT mutated — unlike Exp 003's in-place clean_batch).
 
-Arms (top-5 survivors of Exp 007 + 003-model controls):
+Arms (top-5 survivors of Exp 007 + 003-model controls + v3 prompt ablation):
     A1 nvidia/nemotron-3-nano-30b-a3b      new prompt
     A2 google/gemma-3-4b-it                new prompt
     A3 google/gemini-2.5-flash-lite        new prompt
@@ -14,6 +14,7 @@ Arms (top-5 survivors of Exp 007 + 003-model controls):
     A5 inclusionai/ling-3.0-flash          new prompt
     C1 openai/gpt-5.4-nano                 new prompt   (003 model, fixed prompt)
     C2 openai/gpt-5.4-nano                 old prompt   (003 baseline control)
+    C3 openai/gpt-5.4-nano                 v3 prompt    (workpad-taxonomy refinement)
 
 Cache lives in scripts/008_boilerplate_only_cleaning/data/.008_llm_cache.json
 keyed per (prompt_sha256, posting_id, model); reruns hit cache and perform
@@ -67,16 +68,18 @@ ARM_ROSTER: dict[str, dict[str, str]] = {
     "A5": {"model": "inclusionai/ling-3.0-flash", "prompt": prompts.PROMPT_VARIANT_NEW},
     "C1": {"model": "openai/gpt-5.4-nano", "prompt": prompts.PROMPT_VARIANT_NEW},
     "C2": {"model": "openai/gpt-5.4-nano", "prompt": prompts.PROMPT_VARIANT_OLD},
+    "C3": {"model": "openai/gpt-5.4-nano", "prompt": prompts.PROMPT_VARIANT_V3},
 }
 
 
 def load_outputs() -> dict[str, Any]:
     if OUTPUTS_PATH.exists():
-        return json.loads(OUTPUTS_PATH.read_text())
-    return {
-        "experiment": "008_boilerplate_only_cleaning",
-        "arms": {
-            arm_id: {
+        outputs = json.loads(OUTPUTS_PATH.read_text())
+    else:
+        outputs = {"experiment": "008_boilerplate_only_cleaning", "arms": {}}
+    for arm_id, spec in ARM_ROSTER.items():
+        if arm_id not in outputs["arms"]:
+            outputs["arms"][arm_id] = {
                 "model": spec["model"],
                 "prompt_variant": spec["prompt"],
                 "temperature": 0.0,
@@ -85,9 +88,7 @@ def load_outputs() -> dict[str, Any]:
                 "outputs": {},
                 "faults": {},
             }
-            for arm_id, spec in ARM_ROSTER.items()
-        },
-    }
+    return outputs
 
 
 def run_arm(
@@ -147,8 +148,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--arms",
-        default="A1,A2,A3,A4,A5,C1,C2",
-        help="Comma-separated arm ids to run (default: all 7)",
+        default="A1,A2,A3,A4,A5,C1,C2,C3",
+        help="Comma-separated arm ids to run (default: all 8)",
     )
     parser.add_argument(
         "--max-postings",

@@ -18,7 +18,8 @@ stdlib), reusing Exp 003's whitespace-tokenization methodology verbatim so
 Primary comparisons:
   C2 (old prompt, gpt-5.4-nano) vs 003 published numbers → rerun
   reproducibility (also byte-compares against jobs.json llm_clean_text).
-  C1 vs C2 → isolated prompt effect. A1–A5 vs C1 → isolated model effect.
+  C1 vs C2 → isolated prompt effect. C3 vs C1/C2 → workpad-taxonomy v3
+  prompt effect. A1–A5 vs C1 → isolated model effect.
 
 Writes scripts/008_boilerplate_only_cleaning/data/008_eval_results.json
 (config, per-posting rows, per-arm summary, limitations) and prints a
@@ -166,8 +167,9 @@ def main() -> None:
     per_arm = {}
     LIMITATIONS = [
         (
-            "Golden curation covers signed-off postings only; per-arm means use "
-            "postings with a golden entry (39 target, 5 initially present)."
+            "Golden covers all 39 postings via the workpad curation flow "
+            "(pad-as-sign-off, ported by pad_to_golden.py; the 5 pre-workpad "
+            "golden entries were kept verbatim when the pad diverged)."
         ),
         (
             "12 of 39 postings are md-only and role-unlabeled; separation-gap "

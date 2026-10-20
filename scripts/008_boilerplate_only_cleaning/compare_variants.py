@@ -6,10 +6,12 @@ hand-rolled self-retrieval with partial credit, O(n^2) pairwise separation
 gap, UMAP grid plot with CATEGORY_COLORS) so 008 numbers stay directly
 comparable with 003's.
 
-Variants: raw, section-cleaned, golden, C2 (003 prompt baseline), C1, and
-the five model arms A1–A5 — 10 panels. Missing texts (md-only postings
-lack section-cleaned text; golden and arm outputs may lack postings) fall
-back to raw text so every panel plots the same 39 points; separation gap
+Variants: raw, section-cleaned, golden, C2 (003 prompt baseline), C1,
+C3 (workpad-taxonomy v3 prompt), and the five model arms A1–A5 —
+11 panels. Missing texts (md-only postings lack section-cleaned text; arm
+outputs may lack postings until the full run) fall
+back to raw text so every panel plots the same 39 points; golden is
+complete for all 39 (workpad curation flow); separation gap
 is computed on the labeled 27-posting subset only in every panel.
 
 Limitation recorded in output: 12 of 39 postings are md-only and
@@ -196,6 +198,13 @@ def main() -> None:
             "C1 gpt-5.4-nano new-prompt",
             [
                 outputs["arms"]["C1"]["outputs"].get(pid, {}).get("text") or raw[i]
+                for i, pid in enumerate(ids)
+            ],
+        ),
+        (
+            "C3 gpt-5.4-nano v3-prompt",
+            [
+                outputs["arms"]["C3"]["outputs"].get(pid, {}).get("text") or raw[i]
                 for i, pid in enumerate(ids)
             ],
         ),

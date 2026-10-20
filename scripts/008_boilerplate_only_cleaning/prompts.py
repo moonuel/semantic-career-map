@@ -1,8 +1,10 @@
 """System prompts for Exp 008 boilerplate-only cleaning.
 
-Single source of truth for the corrected (new) prompt and the Exp 003
-legacy (old) prompt ported verbatim as the C2 control. The cache keys on
-the SHA-256 of system prompt + user template, so any edit here creates a
+Single source of truth for the corrected (new) prompt, the Exp 003
+legacy (old) prompt ported verbatim as the C2 control, and the v3
+prompt (built from the taxonomy of classes actually stripped during the
+Exp 008 workpad golden curation) as the C3 arm. The cache keys on the
+SHA-256 of system prompt + user template, so any edit here creates a
 new cache namespace without invalidating existing entries.
 
 Phase 1.4c — Experiment 008.
@@ -65,12 +67,12 @@ Output only the cleaned text. No headers, prefixes, explanations, or formatting.
 
 USER_MESSAGE_TEMPLATE = "Clean this job posting:\n\n---\n{raw_full_text}"
 
-# Draft for future experiments — derived from the classes actually stripped during
-# the Exp 008 workpad golden curation (workpad diff taxonomy). Not used by any
-# 008 arm; the new-prompt arms above are frozen for the 008 run.
-PROMPT_VARIANT_V2 = "workpad_taxonomy_draft"
+# V3 — remove-list and preserve-list rebuilt from the taxonomy of classes
+# actually stripped during the Exp 008 workpad golden curation; runs as the
+# C3 arm (same model as C1/C2) to isolate the prompt effect against both.
+PROMPT_VARIANT_V3 = "v3_prompt_008"
 
-V2_SYSTEM_PROMPT = """You are a job posting cleaner. Your only job is to remove text that \
+V3_SYSTEM_PROMPT = """You are a job posting cleaner. Your only job is to remove text that \
 is not about this specific job, its team, or its work context. When unsure, keep \
 the text.
 
@@ -121,5 +123,5 @@ formatting of your own."""
 PROMPTS: dict[str, str] = {
     PROMPT_VARIANT_NEW: NEW_SYSTEM_PROMPT,
     PROMPT_VARIANT_OLD: OLD_SYSTEM_PROMPT,
-    PROMPT_VARIANT_V2: V2_SYSTEM_PROMPT,
+    PROMPT_VARIANT_V3: V3_SYSTEM_PROMPT,
 }
