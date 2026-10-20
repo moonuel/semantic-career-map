@@ -74,6 +74,8 @@ The `scripts/003_llm_extraction/extract_clean_text.py` script processes each pos
 
 Content systematically removed: company descriptions, salary/compensation, benefits, EEO statements, recruiter notes, office locations, and employee testimonials.
 
+**Experiment 008 correction:** the 003 prompt's over-deletion (12.8–39.4% vs golden) was confirmed at scale on a hand-curated 39-posting golden set (22.8% mean over-deletion with the original prompt). A revised **boilerplate-only** prompt family — including a v3 variant distilled from measured human strip behavior — reduces over-deletion to 2.3–5.2% at zero hallucination, and `gemini-2.5-flash-lite` edges `gpt-5.4-nano` on fidelity (Jaccard 0.894 vs 0.858). See the [experiment report](../experiments/008-boilerplate-only-cleaning.md) and `scripts/008_boilerplate_only_cleaning/`.
+
 ### Step 3: Semantic Partitioning (New)
 
 Experiment 005 introduced a two-pass LLM partitioning approach that separates job postings into two semantic dimensions:

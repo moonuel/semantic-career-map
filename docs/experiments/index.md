@@ -70,6 +70,12 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
     20 cheap instruct models benchmarked on two tracks: streaming TTFT (micro-prompt) and non-streaming fixed-length copy task. The round-1 `empty response` fault class is confirmed streaming-only; `nemotron-3-nano-30b-a3b` and `gemini-2.5-flash-lite` lead on speed with clean failure records; no model actually copied the reference exactly.
 
+-   [**008 — Boilerplate-Only LLM Cleaning**](008-boilerplate-only-cleaning.md){ .md-button }
+
+    **2026-10-20**
+
+    Corrected boilerplate-only prompt fixes 003's over-deletion at scale (22.8% → 2.3–5.2% on one model) on a 39-posting hand-curated golden set. Prompt v3, distilled from human strip behavior, lifts Jaccard 0.826 → 0.858. Deploy recommendation: `gemini-2.5-flash-lite` (Jaccard 0.894, $0.00036/posting).
+
 </div>
 
 <!-- ## Results at a Glance

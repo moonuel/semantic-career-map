@@ -20,6 +20,13 @@ As of October 19, 2026:
 - `nemotron-3-nano-30b-a3b` (best E2E, 2.45s median) and `gemini-2.5-flash-lite` (best consistency) lead on speed; `gemma-3-4b-it` and `llama-3.1-8b-instruct` are the budget lane (~$5-6e-5/request). Cost varies ~14× across the "cheap" tier.
 - No model reproduced the 398-word reference exactly (deviations +222 to +6,988 output tokens), so Track B resolution stays speed/cost-only; deviation is reported per model rather than fetishized.
 
+As of October 20, 2026:
+
+- [Experiment 008](./experiments/008-boilerplate-only-cleaning.md) confirms the 003 diagnosis on a hand-curated 39-posting golden set: the extractive prompt over-deletes (22.8% mean, 32/39 flagged), and the corrected boilerplate-only prompt fixes it (2.3%) at zero hallucination cost.
+- The v3 prompt — distilled from the golden curation's actual human strip taxonomy — improves gpt-5.4-nano Jaccard 0.826 → 0.858 with moderate over-deletion (5.2%). Prompt iteration should be feedback-driven, not composed from intuition.
+- Golden separation gap reaches +0.0657 (11× raw) on the expanded corpus; aggressive-but-faulty arms (ling, gemini-flash-lite) exceed golden separation itself, so separation gap and text fidelity must be read jointly.
+- Deploy recommendation: `gemini-2.5-flash-lite` + corrected prompt (Jaccard 0.894, $0.00036/posting); `nemotron-3-nano-30b-a3b` as the cheap lane. `ling-3.0-flash` is not deployable as-is (persistently empty responses on 3 postings, 2048-token ceiling saturation).
+
 <!-- 
 ## Summary Dashboard
 

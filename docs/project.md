@@ -88,9 +88,9 @@ FastAPI backend + Docker + Cloud deployment
 
 | # | Deliverable | Status |
 |---|---|---|
-| 1 | Data Ingestion Pipeline | 🟡 27 postings collected, expanding |
+| 1 | Data Ingestion Pipeline | 🟡 39 postings collected (12 role labels pending) |
 | 2 | Embedding Pipeline | ✅ all-MiniLM-L6-v2, L2-normalized |
-| 3 | Embedding Optimization & Feature Engineering | 🟡 7 experiments complete, more planned |
+| 3 | Embedding Optimization & Feature Engineering | 🟡 8 experiments complete — deploy-ready cleaning (exp 008); feature engineering next |
 | 4 | Clustering and Similarity Scoring | 🟡 Cosine distance implemented |
 | 5 | FastAPI Backend | 🔴 Not started |
 | 6 | Docker Containerization | 🔴 Not started |
