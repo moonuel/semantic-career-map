@@ -1,9 +1,5 @@
 # affirm-ai-solutions-engineer
 
-About the job
-
-Affirm is reinventing credit to make it more honest and friendly, giving consumers the flexibility to buy now and pay later without any hidden fees or compounding interest.
-
 About The Team
 
 People Tech & Analytics (PTA) builds and owns the data, AI, and technology infrastructure for Affirm's People function. The team runs like a product engineering group embedded in HR. We own the full stack: data ingestion, transformation, dashboards, AI tools, and production applications deployed on Snowflake.
@@ -40,8 +36,6 @@ Why You'll Love This Role
 
 About the job
 
-Affirm is reinventing credit to make it more honest and friendly, giving consumers the flexibility to buy now and pay later without any hidden fees or compounding interest.
-
 On the Servicing ML team, you will build and improve machine learning and AI systems that automate customer operations such as disputes, returns, fraud, and chargebacks to make the best decisions for Affirm and our customers. You will work closely with experienced ML engineers, platform partners, and cross-functional stakeholders to take models from idea to prototype to production, and to keep them healthy with strong measurement and monitoring.
 
 What You'll Do
@@ -66,41 +60,11 @@ What We Look For
      Your experience demonstrates that you take ownership of your growth, proactively seeking feedback from your team, your manager, and your stakeholders.
      You have strong verbal and written communication skills that support effective collaboration with our global engineering team.
 
-Pay Grade - L
-
-Equity Grade - 5
-
-Employees new to Affirm typically come in at the start of the pay range. Affirm focuses on providing a simple and transparent pay structure which is based on a variety of factors, including location, experience and job-related skills.
-
-Base pay is part of a total compensation package that may include monthly stipends for health, wellness and tech spending, and benefits (including 100% subsidized medical coverage, dental and vision for you and your dependents). In addition, the employees may be eligible for equity rewards offered by Affirm Holdings, Inc. (parent company).
-
-CAN base pay range per year: $123,000 - $183,000
-
 # amd-software-systems-designer-2
 
 Software System Designer
-
-    MARKHAM, Canada
     Engineering
-    91827
-    CAD $86,400.00/Yr.
-    CAD $129,600.00/Yr.
 
-Get future jobs matching this search
-or
-Job Description
-
-ADVANCE YOUR CAREER. ADVANCE THE WORLD. 
-
-At AMD, we believe technology has the power to solve the world’s most important challenges. From advancing healthcare and scientific discovery to powering AI and the technologies people rely on every day, innovation at AMD is shaping the future. 
-
- 
-
-Whether you’re designing next-gen processors, enabling AI breakthroughs, or bringing leading edge products to market, every role at AMD contributes to something bigger — technology that moves the world forward. Join us and, together, we’ll advance your career.
-
-SOFTWARE SYSTEM DESIGNER 2 
-
- 
 
 THE ROLE: 
 
@@ -141,47 +105,10 @@ ACADEMIC CREDENTIALS:
 
     Bachelors or Masters degree in Electrical Engineering, Mathematics, Computer Science, Engineering, or an equivalent 
 
- 
-
-#LI-CC2
-
-Benefits offered are described:  AMD benefits at a glance.
-
- 
-
-AMD does not accept unsolicited resumes from headhunters, recruitment agencies, or fee-based recruitment services. AMD and its subsidiaries are equal opportunity, inclusive employers and will consider all applicants without regard to age, ancestry, color, marital status, medical condition, mental or physical disability, national origin, race, religion, political and/or third-party affiliation, sex, pregnancy, sexual orientation, gender identity, military or veteran status, or any other characteristic protected by law.   We encourage applications from all qualified candidates and will accommodate applicants’ needs under the respective laws throughout all stages of the recruitment and selection process.
-
- 
-
-AMD may use Artificial Intelligence to help screen, assess or select applicants for this position.  AMD’s “Responsible AI Policy” is available here.
-
- 
-
-This posting is for an existing vacancy.
-
 # bmo-analyst-data-scientist
 
 Analyst, Data Scientist
-Apply
 
-locations
-    Toronto, ON, CAN
-
-posted on
-    Posted 17 Days Ago
-
-job requisition id
-    R260026946
-
-Application Deadline:
-
-Address:
-100 King Street West
-
-Job Family Group:
-Capital Mrkts Sales & Service
-
-BMO Capital Markets is a leading, full-service financial services provider. We offer corporate and investment banking, treasury management, as well as research and advisory services to clients around the world. #bmocapitalmarkets
 
 About the Role
 
@@ -237,60 +164,8 @@ Nice to Have
 
 · Familiarity with MLOps tools and practices for model deployment and monitoring.
 
-What We Offer
-
-Join our dynamic team at BMO Capital Markets and contribute to solving complex challenges in investment banking and global markets using innovative technologies. We offer opportunities for professional growth, access to cutting-edge tools, and the chance to make a significant impact on critical business operations. Apply today with your resume, highlighting your relevant experience in data science and finance.
-
-Base Salary: $100,000 CAD 
-
-(subject to negotiation and subject to the candidate meeting the specific skills, experience, education, and qualification requirements)
-
-Salary:
-
-Pay Type: 
-Salaried
-
-The above represents BMO Financial Group’s pay range and type.
-
-Salaries will vary based on factors such as location, skills, experience, education, and qualifications for the role, and may include a commission structure. Salaries for part-time roles will be pro-rated based on number of hours regularly worked. For commission roles, the salary listed above represents BMO Financial Group’s expected target for the first year in this position.
-
-BMO Financial Group’s total compensation package will vary based on the pay type of the position and may include performance-based incentives, discretionary bonuses, as well as other perks and rewards. BMO also offers health insurance, tuition reimbursement, accident and life insurance, and retirement savings plans. To view more details of our benefits, please visit: https://jobs.bmo.com/global/en/Total-Rewards
-
-About Us
-
-At BMO we are driven by a shared Purpose: Boldly Grow the Good in business and life. It calls on us to create lasting, positive change for our customers, our communities and our people. By working together, innovating and pushing boundaries, we transform lives and businesses, and power economic growth around the world.
-
-As a member of the BMO team you are valued, respected and heard, and you have more ways to grow and make an impact. We strive to help you make an impact from day one – for yourself and our customers. We’ll support you with the tools and resources you need to reach new milestones, as you help our customers reach theirs. From in-depth training and coaching, to manager support and network-building opportunities, we’ll help you gain valuable experience, and broaden your skillset.
-
-To find out more visit us at https://jobs.bmo.com/ca/en.
-
-BMO is committed to an inclusive, equitable and accessible workplace. By learning from each other’s differences, we gain strength through our people and our perspectives. Accommodations are available on request for candidates taking part in all aspects of the selection process. To request accommodation, please contact your recruiter.
-
-Note to Recruiters: BMO does not accept unsolicited resumes from any source other than directly from a candidate. Any unsolicited resumes sent to BMO, directly or indirectly, will be considered BMO property. BMO will not pay a fee for any placement resulting from the receipt of an unsolicited resume. A recruiting agency must first have a valid, written and fully executed agency agreement contract for service to submit resumes.
-
 # bmo-associate-data-engineer
 
-Associate, Data Engineer
-Apply
-
-locations
-    Toronto, ON, CAN
-
-posted on
-    Posted 23 Days Ago
-
-job requisition id
-    R250030897
-
-Application Deadline:
-
-Address:
-100 King Street West
-
-Job Family Group:
-Capital Mrkts Sales & Service
-
-BMO Capital Markets is a leading, full-service North American-based financial services provider, with over 2,700 professionals in 30 locations around the world, including 20 offices in North America, offering corporate, institutional and government clients access to a complete range of investment and corporate banking products and services. BMO Capital Markets is a member of BMO Financial Group (NYSE, TSX: BMO), one of the largest diversified financial services providers in North America with US$1.0 trillion total assets and approximately 54,000 employees as of January 31, 2025.
 
 About the Role
 
@@ -346,42 +221,7 @@ Nice to Have
 
 · Experience with Generative AI or Agentic AI technologies, including integration into data-driven solutions.
 
-What We Offer
-
-Join our Data Cognition Team at BMO Capital Markets and help drive data innovation in investment banking and global markets. We offer opportunities for professional growth, access to cutting-edge technologies, and the chance to make a significant impact on critical business operations. Apply today with your resume, highlighting your experience in data engineering and distributed systems.
-
-Base Salary: $90,000-$120,000 CAD 
-
-(subject to negotiation and subject to the candidate meeting the specific skills, experience, education, and qualification requirements)
-
-Salary:
-
-Pay Type: 
-Salaried
-
-The above represents BMO Financial Group’s pay range and type.
-
-Salaries will vary based on factors such as location, skills, experience, education, and qualifications for the role, and may include a commission structure. Salaries for part-time roles will be pro-rated based on number of hours regularly worked. For commission roles, the salary listed above represents BMO Financial Group’s expected target for the first year in this position.
-
-BMO Financial Group’s total compensation package will vary based on the pay type of the position and may include performance-based incentives, discretionary bonuses, as well as other perks and rewards. BMO also offers health insurance, tuition reimbursement, accident and life insurance, and retirement savings plans. To view more details of our benefits, please visit: https://jobs.bmo.com/global/en/Total-Rewards
-
-About Us
-
-At BMO we are driven by a shared Purpose: Boldly Grow the Good in business and life. It calls on us to create lasting, positive change for our customers, our communities and our people. By working together, innovating and pushing boundaries, we transform lives and businesses, and power economic growth around the world.
-
-As a member of the BMO team you are valued, respected and heard, and you have more ways to grow and make an impact. We strive to help you make an impact from day one – for yourself and our customers. We’ll support you with the tools and resources you need to reach new milestones, as you help our customers reach theirs. From in-depth training and coaching, to manager support and network-building opportunities, we’ll help you gain valuable experience, and broaden your skillset.
-
-To find out more visit us at https://jobs.bmo.com/ca/en.
-
-BMO is committed to an inclusive, equitable and accessible workplace. By learning from each other’s differences, we gain strength through our people and our perspectives. Accommodations are available on request for candidates taking part in all aspects of the selection process. To request accommodation, please contact your recruiter.
-
-Note to Recruiters: BMO does not accept unsolicited resumes from any source other than directly from a candidate. Any unsolicited resumes sent to BMO, directly or indirectly, will be considered BMO property. BMO will not pay a fee for any placement resulting from the receipt of an unsolicited resume. A recruiting agency must first have a valid, written and fully executed agency agreement contract for service to submit resumes.
-
 # bmo-associate-data-scientist
-
-About the job
-
-BMO Capital Markets is a leading, full-service North American-based financial services provider, with over 2,700 professionals in 30 locations around the world, including 20 offices in North America, offering corporate, institutional and government clients access to a complete range of investment and corporate banking products and services. BMO Capital Markets is a member of BMO Financial Group (NYSE, TSX: BMO), one of the largest diversified financial services providers in North America with US$1.0 trillion total assets and approximately 54,000 employees as of January 31, 2025.
 
 About The Role
 
@@ -421,61 +261,12 @@ Nice to Have
      Knowledge of investment banking concepts, trading strategies, and financial data formats.
      Familiarity with MLOps tools and practices for model deployment and monitoring.
 
-
-What We Offer
-
-Join our dynamic team at BMO Capital Markets and contribute to solving complex challenges in investment banking and global markets using innovative technologies. We offer opportunities for professional growth, access to cutting-edge tools, and the chance to make a significant impact on critical business operations. Apply today with your resume, highlighting your relevant experience in data science and finance.
-
-Base Salary: $90,000-$120,000 CAD 
-
-(subject to negotiation and subject to the candidate meeting the specific skills, experience, education, and qualification requirements)
-
-Salary:
-
-Pay Type:
-
-Salaried
-
-The above represents BMO Financial Group’s pay range and type.
-
-Salaries will vary based on factors such as location, skills, experience, education, and qualifications for the role, and may include a commission structure. Salaries for part-time roles will be pro-rated based on number of hours regularly worked. For commission roles, the salary listed above represents BMO Financial Group’s expected target for the first year in this position.
-
-BMO Financial Group’s total compensation package will vary based on the pay type of the position and may include performance-based incentives, discretionary bonuses, as well as other perks and rewards. BMO also offers health insurance, tuition reimbursement, accident and life insurance, and retirement savings plans. To view more details of our benefits, please visit: https://jobs.bmo.com/global/en/Total-Rewards
-
-About Us
-
-At BMO we are driven by a shared Purpose: Boldly Grow the Good in business and life. It calls on us to create lasting, positive change for our customers, our communities and our people. By working together, innovating and pushing boundaries, we transform lives and businesses, and power economic growth around the world.
-
-As a member of the BMO team you are valued, respected and heard, and you have more ways to grow and make an impact. We strive to help you make an impact from day one – for yourself and our customers. We’ll support you with the tools and resources you need to reach new milestones, as you help our customers reach theirs. From in-depth training and coaching, to manager support and network-building opportunities, we’ll help you gain valuable experience, and broaden your skillset.
-
-To find out more visit us at https://jobs.bmo.com/ca/en
-
-BMO is committed to an inclusive, equitable and accessible workplace. By learning from each other’s differences, we gain strength through our people and our perspectives. Accommodations are available on request for candidates taking part in all aspects of the selection process. To request accommodation, please contact your recruiter.
-
-Note to Recruiters: BMO does not accept unsolicited resumes from any source other than directly from a candidate. Any unsolicited resumes sent to BMO, directly or indirectly, will be considered BMO property. BMO will not pay a fee for any placement resulting from the receipt of an unsolicited resume. A recruiting agency must first have a valid, written and fully executed agency agreement contract for service to submit resumes.
-
 # canada-life-data-analyst
-
 Data Analyst
-Description: 
-
- 
-
-Permanent Full Time 
-
--
-
- 
-
- 
 
 As a Data Analyst, you will join Canada Life’s Canada Operations & Business Enablement, Data Analytics and Reporting team. In this role you will support all Canada Operations and Business Enablement teams with the development, implementation, and maintenance of analytics solutions ranging from descriptive and diagnostic to predictive.
 
- 
-
 The Analyst, Data & Analytics supports decision making, monitors business performance, and provides actionable insights using analytics and statistical techniques.
-
- 
 
 In this role, you will assist in modelling, analysing, and predicting business processes. You will translate business requirements into data, reporting, and analytics projects, which you will support throughout their entire lifecycle.
 
@@ -497,7 +288,6 @@ What you will do
 
 What you will bring
 
-    Reliability Status Security Clearance – this can only be completed with candidates who receive an offer of employment. This is a personal security status that is required as a condition of employment before an employee can gain access to Protected B information, assets or work sites as outlined by the Government of Canada  website. The cost of submitting these checks will be covered by Canada Life
     1-3 years of relevant experience and a bachelor’s degree in a related field of study, or an equivalent combination of education and experience
     Microsoft Certified: Power BI Data Analyst Associate (PL-300) certification is preferred
     Demonstrated experience in working with data analytics tools (SQL, Python), Databases (SQL Server), Cloud (Azure, Databricks), data visualisation tools (Power BI) with experience at creating interactive dashboards
@@ -509,54 +299,13 @@ What you will bring
     Proven ability to learn quickly and independently and handle multiple priorities in a challenging work environment
     Experience within the Financial Services sector would be an asset
 
- 
-
-Given the size and scope of our organization, we have the flexibility for this position to be located in the following head office locations: Toronto, London, Winnipeg. This role follows a hybrid work model, with an in-office presence required three days per week.
-
--
-
-The base salary for this position is between $65,800 - $109,700 annually. This represents base salary only and does not represent other variable compensation components of our total compensation ( i.e. annual bonus, commission etc). If you are selected to move forward in our recruitment process, your recruiter will be able to discuss additional details of our total rewards program with you.
-
-Career opportunities will be open a minimum of 5 business days from the date of posting, closing dates will vary depending on the search activity. All applications received will be reviewed on a rolling basis.
-
-Grow with Canada Life 
-
-We’re united by a shared purpose: to improve the financial, physical and mental well-being of Canadians. Our company is trusted by 1 in 3 Canadians and contributes to the strength of communities across the country.  
-
-We’re looking for people who live our values everyday: we step up, we do the right thing, and we deliver – for our customers, communities and each other. Are you someone who always strives to do the right thing, who steps up for themselves and others, and who delivers with impact? Then we want to hear from you! 
-
-What we offer:  
-
-We’re committed to supporting our employees through every stage of their career. Here’s what you can expect as a full-time or part-time permanent team member: 
-
-    Career Development: Opportunities for career advancement, access to industry-leading learning programs and up to $2,000 annually towards education reimbursement. 
-
-    Health & Wellness: Flexible health and dental benefits, plus a $5,000 mental health benefit to support your well-being. 
-
-    Time Off: In addition to regular vacation and personal days, we support community involvement with a volunteer day.  
-
-    Financial Security: Company-matching pension plan, share ownership program and additional investment options. 
-
-    Rewards and Recognition: Employee recognition programs, service milestone celebrations, employee discounts and more!  
-    Emphasis on Community: We provide a workplace where employees feel connected and supported through Employee Resource Groups (ERGs), mentorship programs, social clubs and events.  
-
-Learn more about Canada Life.  
-
-We’re committed to removing barriers and ensuring equal access to employment. Applicants requiring reasonable accommodation during the application process may contact  talentacquisitioncanada@canadalife.com. All information provided will be handled in accordance with applicable laws and Canada Life policies.  
-
-Canada Life would like to thank all applicants, however only those who qualify for an interview will be contacted. 
-
-#LI-Hybrid
-
 # cerebras-ml-performance-benchmarking-engineer
 
 About the job
 
-Cerebras Systems builds the world's largest AI chip, 56 times larger than GPUs. This architecture allows Cerebras to deliver industry-leading training and inference speeds; over 10 times faster than GPU-based hyperscale cloud inference services.
 
 This order of magnitude increase in speed is transforming the user experience of AI applications, unlocking real-time iteration and increasing intelligence via additional agentic computation.
 
-Cerebras works with the leading model labs, global enterprises, and cutting-edge AI-native startups. OpenAI recently announced a multi-year partnership with Cerebras, to deploy 750 megawatts of scale, transforming key workloads with ultra high-speed inference.
 
 About The Role
 
@@ -588,67 +337,16 @@ Preferred Skills & Qualifications
     Familiarity with problem-solving at the intersection of hardware and software.
     Hands-on experience with AI workloads and architectures is a plus.
 
-Location
-
-    On-site or hybrid at our Toronto office
-
-Why Join Cerebras
-
-About
-
-People who are serious about software make their own hardware. At Cerebras, we have built a breakthrough architecture that is unlocking new opportunities for the AI industry. With dozens of model releases and rapid growth, we’ve reached an inflection point in our business. Members of our team tell us there are five main reasons they joined Cerebras:
-
-    Build a breakthrough AI platform beyond the constraints of the GPU.
-    Publish and open source their cutting-edge AI research.
-    Work on one of the fastest AI supercomputers in the world.
-    Enjoy job stability with startup vitality.
-    Our simple, non-corporate work culture that respects individual beliefs.
-
 # cibc-analyst-global-investment-banking
 
 Analyst, Global Investment Banking
-Apply
-
-locations
-    Toronto, ON
-
-time type
-    Full time
-
-posted on
-    Posted 5 Days Ago
-
-time left to apply
-    End Date: October 13, 2026 (9 days left to apply)
-
-job requisition id
-    2619733
-
-We’re building a relationship-oriented bank for the modern world. We need talented, passionate professionals who are dedicated to doing what’s right for our clients.
-
-At CIBC, we embrace your strengths and your ambitions, so you are empowered at work. Our team members have what they need to make a meaningful impact and are truly valued for who they are and what they contribute.
-
-To learn more about CIBC, please visit CIBC.com
 
 What You’ll Be Doing 
-
-CIBC Capital Markets provides corporate, government, and institutional clients with innovative solutions to help them raise capital, and grow and invest actively throughout North America, Latin America, and key financial centres around the world. Our mission is to bring Canadian Capital Markets products to Canada and the rest of the world, and also bring the world to Canada.
- 
 
 CIBC Capital Markets Mergers & Acquisitions group of professionals are dedicated specifically to advising clients on mergers, acquisitions, joint ventures, hostile takeovers, buyouts, takeover defense and restructurings.  There is an extensive amount of interaction with other groups within the firm in order to provide clients with customized financing and advisory solutions. 
 
 As part of the M&A group, you will be expected to provide a broad range of analytical, research and presentation preparation support to all the professionals as well as gaining exposure to working with individuals from various groups across the firm. A team approach to executing coverage and financing assignments is designed to provide progressive, on-the-job training. The role of an Analyst within CIBC’s Mergers & Acquisitions (M&A) Investment Banking group is challenging and fast-paced.  It requires dedication, a passion for excellence, and an exceptional work ethic.
  
-
-At CIBC we enable the work environment most optimal for you to thrive in your role. To successfully perform the work, you'll be on-site full-time.
-
-The expected annualized base salary for this role is $105,000.
-
-The base salary is determined by a variety of factors, including the candidate’s skills, experience, and job-related knowledge, as well as geographic location and specific business needs. Our compensation philosophy supports ongoing growth and development, enabling progression within the salary range as team members advance in their roles.
-
-In addition to base pay, compensation for this role includes participation in an annual discretionary incentive or bonus program.
-
-We are committed to providing fair, equitable, and competitive compensation opportunities for all employees and we encourage open conversations about compensation throughout the recruitment process.
 
 How You’ll Succeed
 
@@ -673,105 +371,20 @@ Who You Are
     You have advanced internal and client-focused communication skills. Excellent oral and written communication skills are important to ensuring smooth transaction execution and timely delivery of materials. Ability to comfortably liaise with equivalent professionals on the client side is considered a strong asset.
     You’re motivated by collective success. Well-developed interpersonal and relationship-building skills in order to develop, manage and leverage relationships with clients, and internal and/or external business partners. Well-developed written and verbal communication skills sufficient to provide detailed explanation and interpretation of factual and conceptual information and ideas related to complex technical and conceptual issues. Unquestioned professionalism, ethics and reputation and proven ability to exercise strong independent judgment when making business decisions and/or representing CIBC Capital Markets.
 
-#LI-TA
-
-What CIBC Offers
-
-At CIBC, your goals are a priority. We start with your strengths and ambitions as an employee and strive to create opportunities to tap into your potential. We aspire to give you a career, rather than just a paycheck.
-
-    We work to recognize you in meaningful, personalized ways including a competitive salary, incentive pay, banking benefits, a benefits program*, defined benefit pension plan*, an employee share purchase plan, a vacation offering, wellbeing support, and MomentMakers, our social, points-based recognition program.
-
-    Our spaces and technological toolkit will make it simple to bring together great minds to create innovative solutions that make a difference for our clients.
-
-    We cultivate a culture where you can express your ambition through initiatives like Purpose Day; a paid day off dedicated for you to use to invest in your growth and development.
-
-*Subject to plan and program terms and conditions
-
-What you need to know
-
-    CIBC is committed to creating an inclusive environment where all team members and clients feel like they belong. We seek applicants with a wide range of abilities and we provide an accessible candidate experience. If you need accommodation, please contact Mailbox.careers-carrieres@cibc.com
-
-    CIBC is committed to clarity in our hiring process. All roles posted are opportunities we’re actively recruiting for, unless stated otherwise.
-
-    You need to be legally eligible to work at the location(s) specified above and, where applicable, must have a valid work or study permit.
-
-    We may ask you to complete an attribute-based assessment and other skills test (such as simulation, coding, French proficiency).
-
-    We use artificial intelligence tools during the recruitment process. Our goal for the application process is to get to know more about you, all that you have to offer, and give you the opportunity to learn more about us. 
-
-Job Location
-Toronto-161 Bay St., 6th
-
-Employment Type
-Regular
-
-Weekly Hours
-37.5
 
 Skills
 Analytical Thinking, Capital Markets, Financial Markets Analysis, Investment Banking, Investment Valuation, Mergers and Acquisitions (M&A), Research Analysis, Wealth Management, Work Collaboratively
 
 # cibc-quantitative-analyst
 
-Quantitative Analyst/Senior Quantitative Analyst
-Apply
-
-locations
-    Toronto, ON
-
-time type
-    Full time
-
-posted on
-    Posted 4 Days Ago
-
-time left to apply
-    End Date: October 13, 2026 (9 days left to apply)
-
-job requisition id
-    2619473
-
-We’re building a relationship-oriented bank for the modern world. We need talented, passionate professionals who are dedicated to doing what’s right for our clients.
-
-At CIBC, we embrace your strengths and your ambitions, so you are empowered at work. Our team members have what they need to make a meaningful impact and are truly valued for who they are and what they contribute.
-
-To learn more about CIBC, please visit CIBC.com
 
 What you'll be doing
 
- 
-
 The Quantitative Research Team at CIBC Global Asset Management is responsible for developing and managing systematic investment strategies across equities and fixed income, as well as improving the investment process of discretionary mandates. As a Quantitative Research Analyst, you'll contribute to the research and development of systematic active equity strategies with an AUM of over $11 Billion. You'll support the design and implementation of quantitative models, conduct empirical research, and help translate investment ideas into actionable insights. Working alongside portfolio managers and senior researchers, you'll play an important role in advancing alpha research and portfolio construction methodologies.
 
- 
-
-At CIBC we enable the work environment most optimal for you to thrive in your role. To successfully perform the work, you'll be on-site full-time.
-
- 
-
-The expected annualized base salary range for this role is $100,000 to $170,000.
-
- 
-
-The base salary is determined by a variety of factors, including the candidate’s skills, experience, and job-related knowledge, as well as geographic location and specific business needs. Our compensation philosophy supports ongoing growth and development, enabling progression within the salary range as team members advance in their roles.
-
- 
-
-In addition to base pay, compensation for this role includes participation in an annual discretionary incentive or bonus program.
-
- 
-
-We are committed to providing fair, equitable, and competitive compensation opportunities for all employees and we encourage open conversations about compensation throughout the recruitment process.
-
- 
-
-Please note, we are open to hiring at either a Quantitative Analyst or a Senior Quantitative Analyst level based on skills and experience. We encourage applications from people at different stages of their career, from recent graduates to experienced professionals.
-
- 
+Please note, we are open to hiring at either a Quantitative Analyst or a Senior Quantitative Analyst level based on skills and experience.
 
 How you'll succeed
-
- 
 
     Quantitative Research & Modelling – Contribute to the development and validation of quantitative models, including factor models and portfolio construction frameworks, to support systematic investment strategies.
     Data Analysis & Insights – Analyze large datasets to identify patterns, test hypotheses, and generate actionable investment insights that support the team's research agenda.
@@ -779,11 +392,7 @@ How you'll succeed
     Technology & Tools – Support the development and maintenance of analytical tools and codebases, primarily using Python and SQL, to enhance research workflows and investment processes.
     Communication – Present research findings and analytical results clearly to diverse audiences, including Analysts, Portfolio Managers, and IT professionals, with varying levels of technical expertise.
 
- 
-
 Who you are
-
- 
 
     You're motivated by collective success. You know that teamwork can transform a good idea into a great one. You know that an inclusive team that enjoys working together can bring a vision to life.
     You give meaning to data. You enjoy investigating complex problems and making sense of information. You communicate detailed information in a meaningful way.
@@ -791,44 +400,6 @@ Who you are
     You're passionate about financial markets and investing. You have a genuine interest in how markets work and are driven by the opportunity to apply quantitative methods to real-world investment challenges.
     You can demonstrate experience in Python (required) and SQL (preferred), including strong knowledge of machine learning libraries (e.g., scikit-learn, PyTorch, or TensorFlow). It's an asset if you have familiarity with quantitative research tools and financial data platforms.
     You have a degree in a STEM field (Computer Science/Engineering, Physics, Mathematics, Statistics, or a related discipline). A graduate degree (Master's or PhD) is preferred.
-
-
-#LI-TA 
-
-
-
-What CIBC Offers
-
-At CIBC, your goals are a priority. We start with your strengths and ambitions as an employee and strive to create opportunities to tap into your potential. We aspire to give you a career, rather than just a paycheck.
-
-    We work to recognize you in meaningful, personalized ways including a competitive salary, incentive pay, banking benefits, a benefits program*, defined benefit pension plan*, an employee share purchase plan, a vacation offering, wellbeing support, and MomentMakers, our social, points-based recognition program.
-
-    Our spaces and technological toolkit will make it simple to bring together great minds to create innovative solutions that make a difference for our clients.
-
-    We cultivate a culture where you can express your ambition through initiatives like Purpose Day; a paid day off dedicated for you to use to invest in your growth and development.
-
-*Subject to plan and program terms and conditions
-
-What you need to know
-
-    CIBC is committed to creating an inclusive environment where all team members and clients feel like they belong. We seek applicants with a wide range of abilities and we provide an accessible candidate experience. If you need accommodation, please contact Mailbox.careers-carrieres@cibc.com
-
-    CIBC is committed to clarity in our hiring process. All roles posted are opportunities we’re actively recruiting for, unless stated otherwise.
-
-    You need to be legally eligible to work at the location(s) specified above and, where applicable, must have a valid work or study permit.
-
-    We may ask you to complete an attribute-based assessment and other skills test (such as simulation, coding, French proficiency).
-
-    We use artificial intelligence tools during the recruitment process. Our goal for the application process is to get to know more about you, all that you have to offer, and give you the opportunity to learn more about us. 
-
-Job Location
-Toronto-141 Bay, 18th Floor
-
-Employment Type
-Regular
-
-Weekly Hours
-37.5
 
 Skills
 Analytical Thinking, Decision Making, Machine Learning (ML), Professional Presentation, Python (Programming Language), Quantitative Financial Analysis, Quantitative Models, Researching, Research Reporting
@@ -879,8 +450,6 @@ Summary:
 
 We are currently seeking a Machine Learning Engineer to join our rapidly growing engineering team. This role is for someone who is passionate about building innovative solutions and being exposed to new challenges and technologies while making an impact.
 
-This role is available to candidates across Canada (excluding Quebec). If you are local to one of our hubs (Burnaby, Calgary, or Toronto) you will be expected to be in office minimum twice per week on one of our Anchor Days.
-
 What your team does:
 
 We at Clio have an amazing team that is on a mission to transform the legal experience for all, and our engineering team’s goal is to deliver an incredible experience to our customers. In the AI team in Clio, we use the latest technology in the space of NLP and GenAI to provide our customers with solutions to make their work more streamlined and efficient allowing them to have more time to focus on their clients’ needs.
@@ -903,62 +472,7 @@ What you may have:
     Exceptional communication skills and the ability to build trust with both internal teams and external customers;
     A strong desire to continuously learn, challenge yourself, and refine your craft as a machine learning engineer.
 
-This posting is for an existing vacancy.
-
-What you will find here:
-
-Compensation is one of the main components of Clio’s Total Rewards Program. We have developed a series of programs and processes to ensure we are creating fair and competitive pay practices that form the foundation of our human and high-performing culture.
-
-Some highlights of our Total Rewards program include: 
-
-    Competitive, equitable salary with top-tier health benefits, dental, and vision insurance 
-    Hybrid work environment, with expectation for local Clions (Vancouver, Calgary, Toronto, Dublin, London, New York City and Sydney) to be in office min. twice per week. 
-    Flexible time off policy, with an encouraged 20 days off per year.
-    $2000 annual counseling benefit
-    RRSP matching and RESP contribution 
-    Clioversary recognition program with special acknowledgement at 3, 5, 7, and 10 years
-
-The expected salary range* for this role is $129,200 to $152,000 to $174,800 CAD. There are a separate set of salary bands for other regions based on local currency.
-
 # coca-cola-data-scientist
-
-Job details
-Here’s how the job details align with your profile.
-Pay
-
-&nbsp;
-Location
-Toronto, ON•Hybrid work
-&nbsp;
-Benefits
-
-Pulled from the full job description
-
-    Employee assistance program
-    Paid vacation
-
-&nbsp;
-Full job description
-Coke Canada Bottling is Canada’s Local Bottler. We’re Made Local.
-
-
-Proudly independent, we are a Canadian, family-owned business. Coke Canada Bottling makes, distributes, merchandises, and sells the most-loved beverages Canadians enjoy. With over 6,000 diverse employees coast-to-coast, we operate in every province through 50+ sales and distribution centres, and five manufacturing facilities.
-
-
-Coke Canada supplies some of Canada’s favourite beverage brands, and we want to continue to be the leading beverage partner in Canada, creating a better future and delivering optimism by bringing sustainable value to our employees, customers, consumers, and communities.
-
-Advancing a high-performing, collaborative and inclusive culture is at the core of our vision to be the World’s Greatest Bottler, Built by the Best People, and we’re looking for exceptional talent to help get us there.
-
-
-For more information about Coke Canada Bottling and our products, visit cokecanada.com/our-product.
-
-
-Role Details
-
-    Work Location – Toronto
-    Hybrid Environment – This position currently offers a hybrid work schedule. Subject to change. The in-office requirement is a minimum of three days per week (Tuesday, Wednesday & Thursday), with the flexibility to work remotely on the remaining days.
-    Salary – The base salary range for this position is from $82,800 - $105,000 annually. The starting base salary offered is based on market location and may vary depending on job-related knowledge, role complexity, skills, experience, and internal equity.
-    Initial Posting Close Date – July 30, 2026
 
 About This Opportunity
 
@@ -989,41 +503,11 @@ Qualifications
     Ability to communicate analytical concepts clearly to both technical and non-technical audiences.
     Proactive mindset with the ability to work through ambiguity, take initiative, and suggest new analytical approaches or opportunities to improve business outcomes.
 
-#CBSAS
-#LI-KS1
-
-
-Why work with us?
-
-    Join a local, family-owned business that’s part of a globally recognized brand, where you can develop your capabilities, competencies, and career.
-    Coke Canada has a culture of learning, and we offer several channels to support your development, including on-the-job training and a library of free courses for just-in-time learning.
-    We are committed to offering a comprehensive benefits package designed to help our employees achieve their best physical, mental, financial, and overall health and well-being. This includes a competitive compensation package, access to retirement and saving programs, family and employee assistance program, paid vacation and floater days.
-    We have close, local connections with the communities in which we operate across Canada. We’re determined to make a positive difference in our communities; this includes opportunities for employee volunteerism.
-    We’re building our business responsibly and our mission is to work Toward a Better Future Together. We have a plan that outlines how we are reducing, reusing, recycling, decreasing our carbon footprint, and using water responsibly. For more information visit cokecanada.com/sustainability/
-
 # dayforce-product-ai-intern
 
-About the job
-
-Dayforce, a global leader in Human Capital Management (HCM) with headquarters in Toronto, Ontario, and Minneapolis, Minnesota, operates across North America, EMEA, and APJ regions. Our Cloud HCM platform, recognized for its unified database and continuous calculation engine, enhances efficiency, productivity, and compliance for global workforces. We are committed to "Making Work Life Better™" for employees, customers, and partners worldwide.
-
-As an Intern at Dayforce, you’ll gain real-world experience with meaningful responsibilities, access to development programs, and the chance to collaborate globally, bringing new ideas and optimizing processes across multiple business units. 
 
 Job Title: Product & AI Intern
 
-Location: Virtual
-
-Duration: Fall 2026 – 4 months (September 2026 – December 2026)
-
-Availability: *Full-time availability of 37.5 – 40 hours weekly is required to be eligible for this opportunity.
-
-Benefits For Students
-
-    Experience working for one of the fastest growing Human Capital Management technology companies in the world Access to Dayforce’s development programs and resources 
-    Ability to work with as well as create relationships with members across the globe 
-    Autonomy to bring forth new ideas and optimize existing structures within the organization 
-    Meaningful responsibilities, enabling you to obtain ‘real-world’ experience 
-    Dynamic hands-on exposure to multiple business-units and stakeholders across Dayforce 
 
 About The Opportunity
 
@@ -1057,23 +541,7 @@ What Would Really Make You Stand Out
 
 About the job
 
-Analyst/Consultant, AI/ML Models - Financial Engineering & Modeling (Permanent / Contract)
-
-Posting Start Date: 5/29/26
-
-Job Type: PermanentWork Model: HybridReference code: 133514Primary Location: Toronto, ONAll Available Locations: Toronto, ON
-
-Our Purpose
-
-At Deloitte, our Purpose is to make an impact that matters. We exist to inspire and help our people, organizations, communities, and countries to thrive by building a better future. Our work underpins a prosperous society where people can find meaning and opportunity. It builds consumer and business confidence, empowers organizations to find imaginative ways of deploying capital, enables fair, trusted, and functioning social and economic institutions, and allows our friends, families, and communities to enjoy the quality of life that comes with a sustainable future. And as the largest 100% Canadian-owned and operated professional services firm in our country, we are proud to work alongside our clients to make a positive impact for all Canadians.
-
-By living our Purpose, we will make an impact that matters.
-
-    Have many careers in one Firm.
-    Enjoy flexible, proactive, and practical benefits that foster a culture of well-being and connectedness.
-    Learn from deep subject matter experts through mentoring and on the job coaching
-
---
+Analyst/Consultant, AI/ML Models - Financial Engineering & Modeling
 
 What will your typical day look like?
 
@@ -1087,9 +555,7 @@ About The Team
 
 Deloitte’s Risk, Regulatory & Forensics practice delivers highly specialized advisory solutions for companies facing critical business events where significant value is at stake, in every phase of the economic cycle.
 
-Our work is often high profile, high impact, and highly rewarding. If you’re looking for a challenge and an opportunity to grow your career alongside the best and brightest in the industry, you’ll find it in Risk, Regulatory & Forensics at Deloitte. Broaden your skills. Broaden your reach. Broaden your career. It’s all possible at Deloitte.
-
-Enough About Us, Let’s Talk About You
+Our work is often high profile, high impact, and highly rewarding.
 
 You are someone with:
 
@@ -1102,21 +568,7 @@ You are someone with:
     Exceptional problem-solving abilities, meticulous attention to detail and a talent for logical reason
     Curiosity and enthusiasm about new and unfamiliar technologies with ability to learn technical/scientific concepts quickly with minimal direction
 
-Total Rewards
-
-The salary range for this position is $56,000 - $84,000 (Analyst) or $68,000 - $102,000 (Consultant), and individuals may be eligible to participate in our bonus program. Deloitte is fair and competitive when it comes to the salaries of our people. We regularly benchmark across a variety of positions, industries, sectors, targets, and levels. Our approach is grounded on recognizing people's unique strengths and contributions and rewarding the value that they deliver.
-
-Our Total Rewards Package extends well beyond traditional compensation and benefit programs and is designed to recognize employee contributions, encourage personal wellness, and support firm growth. Along with a competitive base salary and variable pay opportunities, we offer a wide array of initiatives that differentiate us as a people-first organization. On top of our regular paid vacation days, some examples include: $4,000 per year for mental health support benefits, a $1,300 flexible benefit spending account, firm-wide closures known as "Deloitte Days", dedicated days of for learning (known as Development and Innovation Days), flexible work arrangements and a hybrid work structure.
-
 # ebay-applied-researcher-1
-
-About the job
-
-At eBay, we're more than a global ecommerce leader — we’re changing the way the world shops and sells. Our platform empowers millions of buyers and sellers in more than 190 markets around the world. We’re committed to pushing boundaries and leaving our mark as we reinvent the future of ecommerce for enthusiasts.
-
-Our customers are our compass, authenticity thrives, bold ideas are welcome, and everyone can bring their unique selves to work — every day. We're in this together, sustaining the future of our customers, our company, and our planet.
-
-Join a team of passionate thinkers, innovators, and dreamers — and help us connect people and build communities to create economic opportunity for all.
 
 About The Team And The Role
 
@@ -1143,13 +595,6 @@ What You Will Bring
     Strong programming skills in Python or R, and in at least one of Java, Scala, or C/C++, with a focus on building production-quality solutions.
     A track record of scientific impact demonstrated by 2 or more related publications in reputable conferences or journals, and the ability to clearly communicate research findings to both technical and non-technical audiences.
 
-
-Additional Details
-
-The base pay range for this position is expected in the range below:
-
-C$118,000 - C$157,500
-
 # fgf-brands-ai-engineer-new-grad
 
 About the job
@@ -1159,14 +604,6 @@ Summary
 FGF Brands is on a mission to lead the food manufacturing industry through innovation, speed, and smart execution. As we enter the next phase of our Digital and AI transformation, we are creating a unique, high-impact role designed for a curious, tech-savvy, business-minded young graduate who wants to be at the intersection of technology, executive leadership, and industry reinvention. 
 
 We’re hiring an AI Engineer who builds with AI. This is not a passive “learn AI on the job” role. It’s for someone who has prototypes, ships, and experiments—turning real operational problems into working software. You’ll work directly with senior leaders across supply chain and operations, building agentic AI tools that solve real business problems and get used in production.
-
- What FGF Offers: 
-
-     FGF believes in Home Grown Talent, accelerated career growth with leadership training. Unleashing Your Potential 
-     Competitive Compensation, Health Benefits, & a generous flexible medical / Health spending account 
-     RRSP matching program 
-     Tuition reimbursement 
-     Discount program that covers almost everything under the sun - Restaurants, gyms, shopping etc. 
 
 Primary Responsibilities
 
@@ -1213,31 +650,6 @@ Sound a-peeling? Here's what we're looking for
     A passion for building developer tools and platforms that improve productivity and enable other teams to scale ML adoption.
     Ability to communicate complex technical findings to both technical and non-technical stakeholders.
 
-Let’s cut to the cheese, this is why you'll love it here
-
-    Box Discount - Amazing discounts on 1 box per week! 75% discount on weekly HelloFresh and Chefs Plate meal kits AND 50% off weekly Factor meal box.
-    Health & Wellness - Health & Dental benefits from day 1, a Health Spending Account, unlimited access to the Headspace app to meet your self-care needs, and 25% discount on GoodLife fitness memberships!
-    Vacation & PTO - Time off is also an important part of self-care! We offer generous vacation and PTO to help you create a good work-life balance. 
-    Family Benefits - A parental leave top-up program for expectant parents.
-    Growth & Development - We support your career progression and invest in your continued learning through experiences and initiatives owned by our dedicated L&D team
-    Work Hard & Have Fun - From team socials to engaging company days, you’ll have plenty of opportunity to experience the fun!
-    Diversity & Inclusion Initiatives - With impactful ERG’s like FreshPride, Women Empowered and LIMES, we are committed to our diversity, equity & inclusion efforts.
-    Food Puns - this one is kind of a big dill if you haven’t already noticed. We even have some punny meeting room names!
-
-Flexible Hybrid Approach
-
-At HelloFresh, we know that flexible work arrangements are essential in enabling you to do your best work, while balancing your personal and life needs. Offering remote work flexibility, along with the opportunity to interact and collaborate in the office are all a part of creating a great employee experience.
-
-To meet these needs, we are pleased to provide Flexible Hybrid work. Flexible Hybrid is a people-first approach that is based on choice, trust, personalization, and empowers teams to choose when and how often they work from the office and work from home, in addition to team days and company days. This means a minimum of 2 days in office per week, with most teams in office between 2-3 days a week.
-
-HelloFresh Canada uses AI-integrated technology to help us process and evaluate applications more efficiently. This includes tools that screen and assess candidate qualifications based on the requirements for this role. While these tools assist our workflow, all final selection decisions are made by our hiring team.
-
-This is a posting for an existing vacancy. We are actively seeking to fill this position.
-
-Toronto, ON Pay Range
-
-$135,000—$155,000 CAD
-
 # huawei-ai-ml-researcher
 
 Huawei Canada has an immediate permanent opening for a Researcher.
@@ -1256,8 +668,6 @@ About the job:
     Contribute to a culture of technical excellence through reproducible experiments, thorough documentation, code review, and knowledge sharing.
     Publish and patent innovations at top-tier venues when appropriate.
 
-The total target annual compensation for this position ranges from $106,000 - $156,000 depending on education, experience, and demonstrated expertise.
-
 Job requirements
 
 About the ideal candidate:
@@ -1271,23 +681,11 @@ About the ideal candidate:
     Excellent problem-solving, communication, and collaboration skills in cross-functional, fast-moving environments.
     Research contributions via publications, patents, or open-source projects are an asset.
 
-Additional Information:
-
-Huawei Canada is committed to a fair, inclusive, and accessible recruitment process. If you require accommodation during any stage of the hiring process, please let us know and we will work with you to meet your needs.
-
-All applications for this position are reviewed directly by our hiring team, we do not use artificial intelligence tools to screen or select candidates.
-
 # industrial-and-commercial-bank-of-china-data-science-analyst
 
-ull job description
 
 Job Title: Data Science Analyst
 
-Reporting to: Head of Information Technology Department
-
-Employment Type: 6-Month Contract/12-Month Contract/Full Time Permanent
-
-Location: Richmond Hill, Ontario
 
 Job Description and Responsibilities:
 
@@ -1307,19 +705,6 @@ Qualifications:
     Ability to set priorities and work efficiently under pressure of high volume;
     Must be an independent problem solver with troubleshooting, decision making and analytical skills.
 
-Job Types: Full-time, Fixed term contract
-
-Benefits:
-
-    Company pension
-    Dental care
-    Disability insurance
-    Employee assistance program
-    Extended health care
-    Life insurance
-    Paid time off
-    Tuition reimbursement
-    Vision care
 
 Education:
 
@@ -1329,36 +714,8 @@ Licence/Certification:
 
     CISA, CISM, CRISC, CISSP (preferred)
 
-Work Location: In person
 
 # intact-data-scientist-2
-
-About the job
-
-Our employees are at the heart of everything we do. Together, we help people, businesses, and society prosper in good times and be resilient in bad times.
-
-Our employee promise represents Intact’s commitment to you in exchange for living our Values, striving to do your best work, being open to change and investing in your career. In return, we promise to provide support, opportunities and performance-led financial rewards at a workplace where you can shape the future, win as a team and grow with us.
-
-Pay at Intact is about much more than just salary.
-
-    Flexible work arrangements and a hybrid work model
-    Possibility to purchase up to 5 extra days off per year
-    Multiple benefits offered to support physical and mental wellbeing, including telemedicine, Wellness account and much more
-    Share plan & other savings: up to 12% of salary or even more (ask how you could earn guaranteed income for life)
-
-Salary Range (but Not Limited To)
-
-94,200 - 115,200
-
-Annual Bonus Target, Based On The Base Salary, With a Potential Payout Of Up To Double The Target (subject To Personal And Company Performance)
-
-10%
-
-As part of our commitment to Win As A Team, we share our success with employees through our annual bonus plan and Employee Share Purchase Plan (ESPP) – with Intact matching 50% of your net shares.
-
-Our pension offerings provide flexibility and long-term security for our employees beyond their careers. We are one of the few companies offering the opportunity to receive guaranteed income for life via our defined benefit pension plan.
-
-Salary for the candidate will be determined taking into consideration a number of factors including: experience, skills, qualifications, anticipated contribution to role, internal equity, etc. The salary range presented above is based on a 35-hour workweek and would represent a majority of different candidate profiles. However, we encourage candidates who may fall outside of this range to apply as well.
 
 About The Role
 
@@ -1394,15 +751,10 @@ Assets (nice to have)
     Intelligent Document Processing and Information Retrieval (e.g., document preprocessing, classification and summarization, advanced information retrieval, LLM-assisted and Agentic workflows, Complex decision making). 
     Usage-Based Insurance (UBI) / telematics (e.g., time-series feature engineering, driver scoring, monitoring drift/seasonality).
 
+
 # kinaxis-data-analytics-coop-intern
 
-About the job
 
-About Kinaxis
-
-In 1984, we started out as a team of three engineers. Today, we have grown to become a global organization with over 2000 employees around the world, with a brand-new HQ based in Kanata North in Ottawa. As one of Canada’s Top Employers for Young People (2024), we want to help you take the first step in crafting your career journey.
-
-At Kinaxis, we power the world’s supply chains to help preserve the planet’s resources and enrich the human experience. As a global leader in end-to-end supply chain management, we enable supply chain excellence for all industries, with more than 40,000 users in over 100 countries. We are expanding our team as we continue to innovate and revolutionize how we support our customers.
 
 About The Team
 
@@ -1410,27 +762,6 @@ The Data & Analytics team at Kinaxis drives transformation into a data-driven or
 
 As a Data & Analytics Intern/Co-op Student, you will have the opportunity to gain hands-on experience and develop skills in data integration, engineering, modeling, business intelligence, and observability. Working alongside experienced team members, you will help transform legacy systems into a cloud-native, modern data stack and create innovative data products that drive Kinaxis’ decision-making. By contributing to the innovation of Kinaxis' data ecosystem, you will gain practical experience while playing a part in the company’s growth and success.
 
- Location: 
-
-Hybrid - Ottawa
-
-Term Duration
-
-This is a full-time, 8 month p osition, starting September, 2026.
-
-Co-op or Int ern 
-
-This position is open to co-ops and interns. To be eligible for a Co-op or Intern position at Kinaxis, you must either be currently enrolled in full-time education or, if you are a recent/upcoming graduate, your graduation date must be within 12 months of the placement end date.
-
-Compensation Rang e
-
-$25.24- $37.02 hourly rate. The final offer within this range will reflect the candidate’s skills, year of education and experience.
-
-Vacancy Status
-
-This is an existing job vacancy.
-
-Canadian Citizenship or Permanent Residency is required to obtain CGRP Security Clearance, a requirement of the role.
 
 What You Will Do
 
@@ -1479,10 +810,6 @@ What We Are Looking For
 
 About the job
 
-Our Purpose
-
-Mastercard powers economies and empowers people in 200+ countries and territories worldwide. Together with our customers, we’re helping build a sustainable economy where everyone can prosper. We support a wide range of digital payments choices, making transactions secure, simple, smart and accessible. Our technology and innovation, partnerships and networks combine to deliver a unique set of products and services that help people, businesses and governments realize their greatest potential.
-
 Title And Summary
 
 Data Scientist II
@@ -1530,30 +857,11 @@ Essential Skills to be successful:
      Good communication skills, enabling effective collaboration with team members and stakeholders
      Self-driven with a collaborative mindset and enthusiasm for learning in a fast-paced, innovative environment
 
-
-Mastercard is a merit-based, inclusive, equal opportunity employer that considers applicants without regard to gender, gender identity, sexual orientation, race, ethnicity, disabled or veteran status, or any other characteristic protected by law. We hire the most qualified candidate for the role. In the US or Canada, if you require accommodations or assistance to complete the online application process or during the recruitment process, please contact reasonable_accommodation@mastercard.com and identify the type of accommodation or assistance you are requesting. Do not include any medical or health information in this email. The Reasonable Accommodations team will respond to your email promptly.
-
-Corporate Security Responsibility
-
- All activities involving access to Mastercard assets, information, and networks comes with an inherent risk to the organization and, therefore, it is expected that every person working for, or on behalf of, Mastercard is responsible for information security and must:
-
-    Abide by Mastercard’s security policies and practices;
-    Ensure the confidentiality and integrity of the information being accessed;
-    Report any suspected information security violation or breach, and
-    Complete all periodic mandatory security trainings in accordance with Mastercard’s guidelines.
-
-
-In line with Mastercard’s total compensation philosophy and assuming that the job will be performed in Canada, the successful candidate will be offered a competitive pay based on location, experience and other qualifications for the role and may be eligible to participate in a discretionary annual incentive program. This posting reflects one or more current openings on our team.
-
-Pay Ranges
-
-Toronto, Canada: $91,000 - $140,000 CAD
-
 # motion-recruitment-ml-engineer
 
 About the job
 
-An exciting opportunity based in Toronto, Canada (hybrid), with a fast-growing, product-driven company building innovative financial technology solutions. This full time role focuses on designing and scaling modern machine learning systems using technologies such as Python, PyTorch, Scikit-learn, and cloud platforms.
+An exciting opportunity with a fast-growing, product-driven company building innovative financial technology solutions. This full time role focuses on designing and scaling modern machine learning systems using technologies such as Python, PyTorch, Scikit-learn, and cloud platforms.
 
 This is a unique chance to join a high-growth team at a pivotal stage - where product-market fit is established and innovation is accelerating. The company is looking for someone who thrives on building impactful ML solutions end-to-end and enjoys working in a fast-paced environment. If you're passionate about deploying scalable AI systems, optimizing perfor,ance, and influencing criticical production decisions - this role is for you.
 
@@ -1586,12 +894,7 @@ Daily Responsibilities
     10% Management Duties 
     25% Team Collaboration 
 
-You Will Receive The Following Benefits
 
-     Medical, Dental, and Vision Insurance 
-    Vacation Time 
-
-Current Vacancy: Yes
 
 # ontario-teachers-pension-plan-data-scientist
 
@@ -1646,31 +949,10 @@ What You'll Need
     Strong problem-solving skills working in a team-based environment
     Previous experience in investments, capital markets, private equity, or private markets is an asset.
 
-,
-
-What We’re Offering
-
-Pay-for-performance with base salary and annual incentive based on individual and enterprise performance. The Base Salary range for this level is as follows: $105,000 - $155,000. Individual compensation and placement of this role in the range is based on different factors unique to each candidate, including but not limited to relevant experience, skills, demonstrated competencies, and internal equity as they relate to the role.
-
-    Numerous opportunities for professional growth and development
-    Comprehensive employer paid benefits coverage
-    Retirement income through a defined benefit pension plan 
-    The opportunity to invest back into the fund through our Deferred Incentive Program
-    A flexible work environment combining in office collaboration and remote working
-    Competitive time off
-    Our Flexible Travel Program gives you the option to work abroad in another region/country for up to a month each year
-    Employee discount programs including Edvantage and Perkopolis
-
-At Ontario Teachers', diversity is one of our core strengths. We take pride in ensuring that the people we hire and the culture we create, reflect and embrace diversity of thought, background and experience. Through our Diversity, Equity and Inclusion strategy and our Employee Resource Groups (ERGs), we celebrate diversity and foster inclusion through events for colleagues to connect for professional development, networking & mentoring. We are building an inclusive and equitable workplace where our talent is respected, accepted and empowered to be themselves. To learn more about our commitment to Diversity, Equity and Inclusion, check out Life at Teachers'.
 
 # opendoor-applied-scientist-aiml
 
 Applied Scientist AI/ML
-
-About Opendoor
-
-At Opendoor our mission is to tilt the world in favor of homeowners and those who aim to become one. Homeownership matters. It's how people build wealth, stability, and community. It's how families put down roots, how neighborhoods strengthen, how the future gets built. We're building the modern system of homeownership giving people the freedom to buy and sell on their own terms. We’ve built an end-to-end online experience that has already helped thousands of people and we’re just getting started.
-About the Role
 
 We’re looking for an Applied Scientist (ALL LEVELS) to push the boundaries of applied machine learning and AI at Opendoor. While this role will have a significant impact on our valuation systems — ensuring we provide the most accurate and transparent pricing possible — the scope goes well beyond pricing. You’ll work across a range of challenging ML problems, from multi-modal modeling to operational optimization, helping us rethink how we use structured and unstructured data to make better decisions for our customers.
 What You'll Need
@@ -1699,21 +981,15 @@ What You'll Do
     Rethink our risk and optimization models using real-world data and domain insight
     We’re a small, nimble team — there’s ample opportunity to work across the entire research and modeling stack.
 
-#LI-RO
 
 # opentable-applied-ml-scientist-2
 
 About the job
 
-This hybrid role requires working in the office two days per week.
-
-With millions of diners, 70,000+ restaurant partners and 25+ years of experience, OpenTable, part of Booking Holdings, Inc. (NASDAQ: BKNG), is an industry leader with a passion for helping restaurants thrive. Our world-class technology empowers restaurants to focus on what matters most – their team, their guests, and their bottom line – while enabling diners to discover and book the perfect restaurant for every occasion.
-
-Every employee at OpenTable has a tangible impact on what we do and how we do it. You’ll also be part of a global team and its portfolio of metasearch brands. Hospitality is all about taking care of others, and it defines our culture.
 
 Why this role at OpenTable?
 
-OpenTable seats 25 million diners each month across 70 000+ restaurants and taps into more than 20 years of booking data—an ideal launchpad for an early‑career ML scientist. In our tight‑knit team, every experiment you run and every model you ship goes live quickly and at scale. You’ll start with well‑scoped projects and close mentorship, then rapidly earn the freedom to pitch and implement research ideas that deliver measurable value for diners, restaurants, and the business. We celebrate agency, speed, and relentless experimentation, balanced by disciplined prioritization rooted in ML expertise and real‑world production and business constraints. This posting is for an existing vacancy.
+In our tight‑knit team, every experiment you run and every model you ship goes live quickly and at scale. You’ll start with well‑scoped projects and close mentorship, then rapidly earn the freedom to pitch and implement research ideas that deliver measurable value for diners, restaurants, and the business. We celebrate agency, speed, and relentless experimentation, balanced by disciplined prioritization rooted in ML expertise and real‑world production and business constraints. This posting is for an existing vacancy.
 
 Responsibilities
 
@@ -1740,57 +1016,9 @@ Preferred Qualifications
     Experience with human-in-the-loop machine learning systems supporting operational or editorial workflows.
     Demonstrated applied curiosity through substantial technical projects, research, open-source contributions, or internships.
 
-Benefits And Perks
-
-    Generous paid vacation + time off for your birthday
-    Work from (almost) anywhere for up to 20 days per year
-    Focus on mental health and well-being:
-        Company-paid therapy sessions through SpringHealth
-        Company-paid subscription to Headspace
-        Annual company-wide week off a year - the whole team fully recharges (and returns without a pile-up of work!)
-    Paid parental leave
-    Paid volunteer time
-    Focus on your career growth:
-        Development Dollars
-        Leadership development
-        Access to thousands of on-demand e-learnings
-    Travel Discounts
-    Employee Resource Groups
-    20 days of paid time off
-    Private health and dental insurance
-    Life and Disability insurance
-
-The best connections happen face-to-face, whether you’re sitting down to dinner or having coffee with a coworker. That’s why OpenTable has adopted a hybrid workplace model. This role aligns with that approach, with an expectation of coming into the office two days a week—giving employees the best of both worlds: in-person collaboration and flexibility.
-
-The expected range of compensation for this position based in Toronto, Canada, including commission and/or bonuses is $170,000 - $190,000 CAD. There are a variety of factors that go into determining a compensation range, including but not limited to external market benchmark data, geographic location, and years of experience sought/required.
-
-We offer a competitive base salary and benefits including: health benefits; flexible spending account; retirement benefits; life insurance; paid time off (including PTO, paid sick leave, medical leave, bereavement leave, floating holidays and paid holidays); and parental leave benefits. This role is eligible to be considered for an annual bonus and equity grant.
-
-Work Environment & Flexibility
-
-At OpenTable, we pride ourselves on fostering a global and dynamic work environment. As a team member with us, you will benefit from a schedule tailored to accommodate a global workforce operating across multiple time zones. While the majority of your responsibilities may align with conventional business hours, there will be instances where you are expected to manage communications - via calls, Slack messages, or emails - outside of regular working hours to effectively collaborate with international colleagues, respond to restaurant partners, and/or address urgent matters. OpenTable will always abide by and consider local laws and regulations.
-
-Inclusion
-
-We’re committed to creating a workplace where everyone feels they belong and can thrive. We know the best ideas come when we bring different voices to the table, so we're building a team as dynamic as the diners and restaurants we serve—and fostering a culture where everyone feels welcome to be themselves.
-
-If you need accommodations during the application or interview process, or on the job, we’re here to support you. Please reach out to your recruiter to request any accommodations.
 
 # pinterest-ml-engineer-2
 
-About the job
-
-About Pinterest
-
-Millions of people around the world come to our platform to find creative ideas, dream about new possibilities and plan for memories that will last a lifetime. At Pinterest, we’re on a mission to bring everyone the inspiration to create a life they love, and that starts with the people behind the product.
-
-Discover a career where you ignite innovation for millions, transform passion into growth opportunities, celebrate each other’s unique experiences and embrace the flexibility to do your best work. Creating a career you love? It’s Possible.
-
-At Pinterest, AI isn't just a feature, it's a powerful partner that augments our creativity and amplifies our impact, and we’re looking for candidates who are excited to be a part of that. To get a complete picture of your experience and abilities, we’ll explore your foundational skills and how you collaborate with AI.
-
-Through our interview process, what matters most is that you can always explain your approach, showing us not just what you know, but how you think. You can read more about our AI interview philosophy and how we use AI in our recruiting process here.
-
-With more than 500 million users around the world and 300 billion ideas saved, Pinterest Machine Learning engineers build personalized experiences to help Pinners create a life they love. With just over 4,000 global employees, our teams are small, mighty, and still growing. At Pinterest, you’ll experience hands-on access to an incredible vault of data and contribute large-scale recommendation systems in ways you won’t find anywhere else.
 
 What You’ll Do
 
@@ -1816,35 +1044,9 @@ Nice To Have
     Familiarity with LLM-powered productivity tools for documentation search, experiment analysis, SQL/data exploration, and engineering workflow acceleration.
 
 
-This job posting is for an open vacancy. Please note that the company utilizes artificial intelligence to screen applicants for the positions.
-
-Relocation Statement: 
-
-     This position is not eligible for relocation assistance. Visit our PinFlex page to learn more about our working model.
-
-
-In-Office Requirement Statement
-
-    We let the type of work you do guide the collaboration style. That means we're not always working in an office, but we continue to gather for key moments of collaboration and connection.
-    This role will need to be in the office for in-person collaboration 1-2 times per quarter and therefore needs to be in a commutable distance from the Toronto office (85 Richmond St. W).
-
-
-At Pinterest we believe the workplace should be equitable, inclusive, and inspiring for every employee. In an effort to provide greater transparency, we are sharing the base salary range for this position. Final salary is based on a number of factors including location, travel, relevant prior experience, or particular skills and expertise.
-
-Information regarding the culture at Pinterest and benefits available for this position can be found here.
-
-Canada based applicants only
-
-$170,840—$220,840 CAD
 
 # promise-robotics-software-developer
 
-Software Developer
-Remote, Canada / Calgary, AB / Edmonton, AB
-Software /
-Full Time /
-Hybrid
-Promise Robotics is pioneering Physical AI for homebuilding — a rapidly growing, venture-backed company bringing together AI, robotics, and manufacturing to help the homebuilding industry meet the growing demand for housing. Our robotic systems, built and operated inside  AI-powered factories, give the industry the production capacity, consistency, and speed to build more high-quality homes than traditional methods allow. Our team spans AI researchers and roboticists to factory operators, technicians, and production teams — all building the future of homebuilding together. 
 
 We’re looking for an Software Developer to join our team and contribute to developing cutting-edge solutions for our core robotic manufacturing technologies. The ideal candidate will have a strong background in advanced algorithms and AI systems with hands-on experience in building and deploying complex software systems. As a Software Developer, you will work closely with cross-functional teams to design, implement, and optimize software algorithms and systems that address real-world challenges in the construction industry.
 You might be a good fit if you:
@@ -1875,17 +1077,6 @@ What you'll need to succeed:
     Being an excellent problem solver and quick learner
     (Preferred) Knowledge of robotics solutions and robotic manipulators
 
-Benefits:
-Competitive salary: we believe in data-driven, equitable compensation decisions. We recently completed a compensation review and implemented salary bands that enable us to pay mid to above-average Canadian salaries across various industries.
-Stock options: everyone has a stake in our company.
-Holistic benefits: we have a comprehensive benefits package that includes paramedical, dental, vision, and drug coverage for you and your dependents, as well as a health care spending account. These benefits start right from Day 1.
-Flexible personal days and vacation policies: we care deeply about the well-being of our team.
-Open, collaborative, and supportive culture: you will be part of an incredibly high-performing and collaborative team changing the future of an industry!
-Relocation assistance package (if required)
- 
- 
-Promise Robotics is proud to be an equal-opportunity workplace. We are committed to equal employment opportunity regardless of race, colour, ancestry, religion, sex, national origin, sexual orientation, age, citizenship, marital status, disability, and gender identity.
-We may use artificial intelligence (AI) tools to support parts of the hiring process, such as reviewing applications, analyzing resumes, or assessing responses and identifying potential inconsistencies or verification signals in application materials based on available information. These tools assist our recruitment team but do not replace human judgment. Final hiring decisions are ultimately made by humans. If you would like more information about how your data is processed, please contact us.
 
 # rbc-ai-engineer
 
@@ -1899,7 +1090,6 @@ RBC Capital Markets is seeking an AI Engineer with deep expertise in Generative 
 
 The Capital Markets Data AI and Research Technology (DART) team is looking for a hands-on AI Engineer to drive Generative AI initiatives that empower our Sales organization. You will build and deploy AI solutions that give sales professionals real-time insights, automate routine tasks, and enable them to focus on client relationships and closing deals.
 
-Hybrid Schedule: In-office 4 days per week
 
 What will you do?
 
@@ -1919,78 +1109,16 @@ Must-have
     Understanding of sales workflows, client intelligence use cases, or familiarity with how sales teams operate.
     Embraces an AI-first approach: Someone who actively incorporates AI tools and technologies into daily workflows to enhance productivity, streamline routine tasks, and drive efficiency. Demonstrates curiosity about emerging AI capabilities and applies them thoughtfully to deliver better outcomes for clients and internal stakeholders.
 
-What's in it for you?
 
-We thrive on the challenge to be our best, progressive thinking to keep growing, and working together to deliver trusted advice to help our clients thrive and communities prosper. We care about each other, reaching our potential, making a difference to our communities, and achieving success that is mutual.
-
-    A comprehensive Total Rewards Program including bonuses and flexible benefits, competitive compensation, and stock where applicable.
-    Leaders who support your development through coaching and meaningful opportunities for growth.
-    The ability to make a lasting impact on how our Sales teams compete and win business at scale.
-    Work in a dynamic, collaborative, and high-performing team tackling some of the most challenging AI problems in financial services sales.
-    A world-class training program in financial services and AI best practices.
-    Flexible work/life balance options and progressive career opportunities across RBC.
-    Access to challenging work and the chance to build close relationships with Sales leadership and clients.
-
-#LI-POST
 
 Job Skills
 Active Learning, Agile Methodology, AI Agents, AI Concepts, AI Frameworks, Application Integrations, Detail-Oriented, Enterprise Application Delivery, Group Problem Solving, Machine Learning (ML), Programming Languages, Python (Programming Language), Retrieval-Augmented Generation, Software Development Life Cycle (SDLC)
-
-Additional Job Details
-
-Address:
-RBC CENTRE, 155 WELLINGTON ST W:TORONTO
-
-City:
-Toronto
-
-Country:
-Canada
-
-Work hours/week:
-37.5
-
-Employment Type:
-Full time
-
-Platform:
-CAPITAL MARKETS
-
-Job Type:
-Regular
-
-Pay Type:
-Salaried
-
-Posted Date:
-2026-08-04
-
-Application Deadline:
-2026-08-29
-
-Note: Applications will be accepted until 11:59 PM on the day prior to the application deadline date above
-
-Our Employment Opportunities
-
-At RBC, we are guided by living shared values of Client First, Integrity, Collaboration, Respect and Excellence and winning together as One RBC. We believe an inclusive workplace that has diverse perspectives is core to our continued growth as one of the largest and most successful banks in the world. Maintaining a workplace where our employees feel supported to perform at their best, effectively collaborate, drive innovation, and grow professionally helps to bring our Purpose to life and create value for our clients and communities. RBC strives to deliver this through policies and programs intended to foster a workplace based on respect, belonging and opportunity for all.
-
-Join our Talent Community
-
-Stay in-the-know about great career opportunities at RBC. Sign up and get customized info on our latest jobs, career tips and Recruitment events that matter to you.
-
-Expand your limits and create a new future together at RBC. Find out how we use our passion and drive to enhance the well-being of our clients and communities at jobs.rbc.com.
-
-RBC is presently inviting candidates to apply for this existing vacancy. Applying to this posting allows you to express your interest in this current career opportunity at RBC. Qualified applicants may be contacted to review their resume in more detail.
 
 # rbc-data-scientist-ai-model-risk
 
 About the job
 
-Job Description
-
-What is the opportunity?
-
-RBC is a global leader in applying Artificial Intelligence (AI) in the banking sector in order to create value for our clients, with capabilities ranging from LLM-powered digital banking to voice assistants in customer service. A failure to effectively prepare for and manage emerging model risk related to AI would subject RBC to financial, regulatory, and reputational risks and, as a result, RBC would not be able to provide its clients with the best quality service. Therefore, the AI validation team within RBC's Enterprise Model Risk Management (RBC Group Risk Management) is tasked with assessing, and managing the model risk that may arise from these AI capabilities.
+A failure to effectively prepare for and manage emerging model risk related to AI would subject RBC to financial, regulatory, and reputational risks and, as a result, RBC would not be able to provide its clients with the best quality service. Therefore, the AI validation team within RBC's Enterprise Model Risk Management (RBC Group Risk Management) is tasked with assessing, and managing the model risk that may arise from these AI capabilities.
 
 The AI validation team uses machine learning, statistical, and computational strategies to assess model risk. In doing so, RBC is able to identify model weaknesses early and enhance the reliability of production models across all lines of business.
 
@@ -2020,86 +1148,16 @@ Nice-to-have
     Comfortable with command line tools
     Familiarity with popular machine learning frameworks and libraries
 
-What's in it for you?
-
-As a team, we thrive on the challenge to be our best, encourage progressive thinking for continued growth, and collaborate with one another to deliver trusted advice to help our clients thrive and our communities prosper. We respect and care about all of our team members and support one another in reaching our fullest potential. We work together to make a difference in our communities and to achieve success that is mutual.
-
-This opportunity will provide you with:
-
-    Work in a dynamic, collaborative, progressive, and high-performing team
-    Opportunities to do challenging work, make a difference and lasting impact
-    Continuous learning and flexibility to work on projects that you are passionate about
-    Leaders who support your development through coaching and managing opportunities
-
-#TECHPJ
 
 Job Skills
 
 Artificial Intelligence (AI), Client Counseling, Communication, Critical Thinking, Financial Instruments, Group Problem Solving, Investment Risk Management, Market Risk, Python (Programming Language), Quantitative Methods, Risk Management
 
-Additional Job Details
-
-Address:
-
-180 WELLINGTON ST W:TORONTO
-
-City:
-
-Toronto
-
-Country:
-
-Canada
-
-Work hours/week:
-
-37.5
-
-Employment Type:
-
-Full time
-
-Platform:
-
-GROUP RISK MANAGEMENT
-
-Job Type:
-
-Regular
-
-Pay Type:
-
-Salaried
-
-Posted Date:
-
-2026-06-24
-
-Application Deadline:
-
-2026-07-31
-
-Note: Applications will be accepted until 11:59 PM on the day prior to the application deadline date above
-
-Our Employment Opportunities
-
-At RBC, we are guided by living shared values of Client First, Integrity, Collaboration, Respect and Excellence and winning together as One RBC. We believe an inclusive workplace that has diverse perspectives is core to our continued growth as one of the largest and most successful banks in the world. Maintaining a workplace where our employees feel supported to perform at their best, effectively collaborate, drive innovation, and grow professionally helps to bring our Purpose to life and create value for our clients and communities. RBC strives to deliver this through policies and programs intended to foster a workplace based on respect, belonging and opportunity for all.
-
-Join our Talent Community
-
-Stay in-the-know about great career opportunities at RBC. Sign up and get customized info on our latest jobs, career tips and Recruitment events that matter to you.
-
-Expand your limits and create a new future together at RBC. Find out how we use our passion and drive to enhance the well-being of our clients and communities at jobs.rbc.com</a/span>
-
-RBC is presently inviting candidates to apply for this existing vacancy. Applying to this posting allows you to express your interest in this current career opportunity at RBC. Qualified applicants may be contacted to review their resume in more detail.
 
 # scotiabank-ai-ml-data-scientist
 
 About the job
 
-Requisition ID: 267509
-
-Join a purpose driven winning team, committed to results, in an inclusive and high-performing culture.
 
 Overview
 
@@ -2144,48 +1202,8 @@ Do you have the skills that will enable you to succeed in this role? - We'd love
     Ability to translate technical knowledge into tangible business value and collaborate effectively across technical and non-technical teams.
     Working knowledge of visualization tools such as Power BI.
 
-What’s in it for you?
-
-    The opportunity to join a forward-thinking company surrounded by a collaborative team of innovative thinkers at the forefront of AI implementation in finance.
-    A rewarding career path with diverse opportunities for professional development and internal support to enhance your skills.
-    A competitive compensation and benefits package.
-    An inclusive and collaborative working environment that encourages creativity, curiosity, and celebrates success!
-    An organization committed to making a difference in our communities—for you and our customers.
 
 # scotiabank-ai-software-engineer
-
-Location 40 King St W, Toronto, Ontario, Canada
-    Company Name Scotiabank
-
-Basic Information
-
-Posted: July 15, 2026
-
-Application Deadline: September 25, 2026 (27 day(s) 6 hour(s) from now)
-Position Details
-
-Job Level: Entry Level or Junior
-
-Job Type: Permanent (Full Time)
-
-Profession: Software Engineer
-
-Remote Work: On-Site / No Remote
-
-Compensation: Paid - Salary
-
-Compensation Amount: $70,000.00 - $100,000.00 annually
-
-Start of Work Term: ASAP
-
-End of Work Term: Open-ended
-
-Required Attachments: Resume
-
-Number of Open Positions: 3
-Description
-
-Role Overview
 
 The AI Engineer is a contributor responsible for designing, building, and operationalizing enterprise grade AI solutions in a highly regulated banking environment. This role will execute AI engineering and MLOps/LLMOps, ensuring AI solutions are secure, scalable, auditable, and production ready. You will work with Senior Engineers to build and deploy production grade AI systems end to end.
 Is this role right for you? In this role, you will:
@@ -2225,20 +1243,6 @@ We'd love to work with you if you have:
     Experience with or a strong understanding of enterprise MLOps / LLMOps tooling and platform design.
     Can design platform level AI capabilities, not just individual models.
 
-Compensation and Benefits
-
-    Compensation $70,000 to $100000 depending on experience.
-    Hybrid working environment.
-    Diversity, Equity, Inclusion & Allyship - We strive to create an inclusive culture where every employee is empowered to reach their fullest potential, respected for who they are, and are embraced through bias-free practices and inclusive values across Scotiabank. We embrace diversity and provide opportunities for all employees to learn, grow & participate through our various Employee Resource Groups (ERGs) that span across diverse gender identities, ethnicity, race, age, ability & veterans.
-    Accessibility and Workplace Accommodations - We value the unique skills and experiences each individual brings to the Bank, and are committed to creating and maintaining an inclusive and accessible environment for everyone. Scotiabank continues to locate, remove and prevent barriers so that we can build a diverse and inclusive environment while meeting accessibility requirements.
-    Upskilling through online courses, cross-functional development opportunities, and tuition assistance.
-    Competitive Rewards program including bonus, flexible vacation, personal, sick days and benefits will start on day one.
-    Dynamic Ecosystem - Free tea & coffee, universal washrooms, and lots of space for team collaboration.
-    Community Engagement - No matter where you choose to work from; we offer opportunities for community engagement & belonging with our various programs.
-
-Languages: English - Required
-
-Work Eligibility: Canada - Required
 Requirements Summary
 Candidates must meet both the Education and Experience Requirements.
 Degree in One of 2 Subjects Requirement
@@ -2262,19 +1266,6 @@ Preferred year of study:
 
 About the job
 
-Scribd, Inc. is on a mission to advance human understanding. Our four products — Scribd®, Slideshare®, Everand™, and Fable — help billions of people across the globe move beyond access and into insight, application, and expertise.
-
-Culture at Scribd, Inc.
-
-We support a culture where our employees can be real and be bold; where we debate and commit as we embrace plot twists; and where every employee is empowered to take action as we prioritize the customer.
-
-We believe the best work happens when individual flexibility is balanced with meaningful community connection. Scribd Flex empowers employees to choose the workstyle and location that support their best performance, while committing to intentional in-person moments that strengthen collaboration and culture. Occasional in-person attendance is required for all Scribd, Inc. employees, regardless of location.
-
-So what are we looking for in new team members? At Scribd, Inc., we hire for “GRIT.” Traditionally defined as the intersection of passion and perseverance toward long-term goals, GRIT reflects the mindset we expect from every employee. For us, it also serves as a practical framework for how we work: setting and achieving Goals, delivering Results within your role, contributing Innovative ideas and solutions, and strengthening the broader Team through collaboration and attitude.
-
-This posting reflects an approved, open position within the organization.
-
-About The Team
 
 The Applied Research team is a group of data scientists and content specialists who are experts in leveraging machine learning, natural language processing and generative AI models to develop solutions which deliver value to our users and business.
 
@@ -2304,36 +1295,9 @@ Requirements
     Intermediate level or greater experience with SQL or PySpark.
     Bachelors or Masters in relevant quantitative discipline including but not limited to Statistics, Computer Science, Data Science, Artificial Intelligence or another field with a strong quantitative focus.
 
-At Scribd, your base pay is one part of your total compensation package and is determined within a range. Our pay ranges are based on the local cost of labor benchmarks for each specific role, level, and geographic location. San Francisco is our highest geographic market in the United States. In the state of California, the reasonably expected salary range is between $118,000 [minimum salary in our lowest geographic market within California] to $184,000 [maximum salary in our highest geographic market within California].
-
-In the United States, outside of California, the reasonably expected salary range is between $97,000 [minimum salary in our lowest US geographic market outside of California] to $175,000 [maximum salary in our highest US geographic market outside of California].
-
-In Canada, the reasonably expected salary range is between $123,000 CAD[minimum salary in our lowest geographic market] to $150,000 CAD[maximum salary in our highest geographic market].
-
-We carefully consider a wide range of factors when determining compensation, including but not limited to experience; job-related skill sets; relevant education or training; and other business and organizational needs. The salary range listed is for the level at which this job has been scoped. In the event that you are considered for a different level, a higher or lower pay range would apply. This position is also eligible for a competitive equity ownership, and a comprehensive and generous benefits package.
-
 # tactable-data-engineer
 
 About the job
-
-Our Mission at Tactable
-
-
-What if you could build software that didn’t just scale, but transformed entire organizations?
-
-
-At Tactable, this is what drives us. We’re building a world-class cloud, data, and API engineering firm with a mission to power the most influential tech of tomorrow, through expert-led delivery, strong partnerships, and a relentless focus on quality.
-
-
-We don’t just consult. We build.
-
-
-Founded by engineers who care deeply about people, process, and product, we go beyond just solving problems. We embed with clients, work across full project lifecycles, and operate at the speed of startups while upholding the rigor of enterprise-grade engineering.
-
-From financial institutions to emerging tech ventures, our work is behind some of the most mission-critical systems in production today, and we’re just getting started. With growing demand from top-tier clients and a strong runway for expansion, we’re building a team of curious, ambitious developers who want to build meaningful things with meaningful people.
-
-
-Take a look at tactable.io to learn more about our work and what sets us apart.
 
 
 The Role: Data Engineer (Cloud, Python)
@@ -2417,38 +1381,9 @@ Why This Might Not Be a Fit
     You’re more comfortable in a vendor-style delivery model than deep technical partnerships
 
 
-Compensation, Benefits & Perks
-
-    Salary Range: $100,000 – $140,000 CAD, based on experience and role fit
-    Comprehensive health and dental plan
-    Generous PTO and holidays
-    Laptop & home office equipment provided
-    Career coaching and personalized development plans
-    Regular social events, team outings, and wellness activities
 
 # td-applied-ml-scientist-1
 
-About the job
-
-Work Location:
-
-Toronto, Ontario, Canada
-
-Hours
-
-37.5
-
-Line Of Business
-
-Analytics, Insights, & Artificial Intelligence
-
-Pay Details
-
-$105,500 - $125,000 CAD
-
-TD is committed to providing fair and equitable compensation opportunities to all colleagues. Growth opportunities and skill development are defining features of the colleague experience at TD. Our compensation policies and practices have been designed to allow colleagues to progress through the salary range over time as they progress in their role. The base pay actually offered may vary based upon the candidate's skills and experience, job-related knowledge, geographic location, and other specific business and organizational needs.
-
-As a candidate, you are encouraged to ask compensation related questions and have an open dialogue with your recruiter who can provide you more specific details for this role.
 
 Job Description
 
@@ -2488,37 +1423,6 @@ Nice to Have
 
 # td-applied-ml-scientist-graduate
 
-About the job
-
-Role Type
-
-Masters and Advanced Degrees
-
-Work Location:
-
-Toronto, Ontario, Canada
-
-Hours
-
-37.5
-
-Pay Details
-
-105000 - 105000 CAD
-
-TD is committed to providing fair and equitable compensation opportunities to all colleagues. Growth opportunities and skill development are defining features of the colleague experience at TD. Our compensation policies and practices have been designed to allow colleagues to progress through the salary range over time as they progress in their role. The base pay actually offered may vary based upon the candidate's skills and experience, job-related knowledge, geographic location, and other specific business and organizational needs.
-
-As a candidate, you are encouraged to ask compensation related questions and have an open dialogue with your recruiter who can provide you more specific details for this role.
-
-Job Description
-
-DEPARTMENT OVERVIEW
-
-Our Associate Programs offer new graduates the opportunity to work in one of TD's many lines of business, and the chance to work on challenging projects and assignments, alongside experienced colleagues, and receive coaching and mentorship from business leaders and the Early Talent Experience team, to set you up for success in your career at TD.
-
-Associate Role Profile: Our Associates are full-time employees participating in an 18-month rotational program (two nine-month rotations) to gain exposure and experience to opportunities and to a variety of business areas within the Analytics Insights & AI team in-depth experience, complemented by programming, coaching, tools and support.
-
-As an Associate, you will also have access to programming, tools and a community of support for your pursuits and interests beyond the 9-5. This includes leadership talks, lunch and learns, self-development workshops, TD sponsored conferences, socials, team challenges, volunteer opportunities, career coaching and more. You will be part of a cohort along with other TD Associates from across Canada!
 
 Job Description
 
@@ -2545,66 +1449,9 @@ Job Requirements
     Able to participate as part of a team with targeted deliverables, working on initiatives designed to improve decisions, processes, systems, and applications which support our key businesses. 
     Remain current with emerging trends and technologies in Data Science 
 
-Additional Information
-
-    Application Deadline: September 25th 2026
-    Anticipated Start Date: January 4th, 2027 (pending academic completion) 
-    Applications must include a transcript, cover letter (one letter-sized page or less) and a resume (maximum of 2 pages). 
-    We welcome all applications; however, we will only contact qualified candidates chosen for an interview. Thank you for your interest. 
-    TD requires employees to reside in the country where the role is located, irrespective of remote working arrangements 
-    TD is committed to providing you with the best candidate experience in these unique circumstances. As such, work location and start dates are subject to change. 
-
-HOURS
-
-Monday-Friday, standard business hours.
-
-INCLUSIVENESS
-
-At TD, we are committed to fostering an inclusive, accessible environment, where all employees and customers feel valued, respected and supported. We are dedicated to building a workforce that reflects the diversity of our customers and communities in which we live and serve. If you require an accommodation for the recruitment/interview process (including alternate formats of materials, or accessible meeting rooms or other accommodation), please let us know and we will work with you to meet your needs.
-
-Who We Are
-
-TD is one of the world's leading global financial institutions and is the fifth largest bank in North America by branches/stores. Every day, we strive to make every interaction, product, and experience remarkably human and refreshingly simple for over 27 million households and businesses in Canada, the United States and around the world. More than 95,000 TD colleagues bring their skills, talent, and creativity to foster deeper relationships, ensure disciplined execution, and build a simpler, faster banking experience. TD is deeply committed to being a leader in client experience, that is why we believe that all colleagues, no matter where they work, are client facing. Together, we are reimagining what banking can be for our clients, colleagues and communities.
-
-Our Total Rewards Package
-
-Our Total Rewards package reflects the investments we make in our colleagues to help them and their families achieve their financial, physical, and mental well-being goals. Total Rewards at TD includes a base salary, variable compensation, and several other key plans such as health and well-being benefits, savings and retirement programs, paid time off, banking benefits and discounts, career development, and reward and recognition programs. Learn more
-
-Additional Information
-
-We’re delighted that you’re considering building a career with TD. Through regular development conversations, training programs, and a competitive benefits plan, we’re committed to providing the support our colleagues need to thrive both at work and at home.
-
-Please be advised that this job opportunity is subject to provincial regulation for employment purposes. It is imperative to acknowledge that each province or territory within the jurisdiction of Canada may have its own set of regulations, requirements.
-
-Colleague Development 
-
-If you’re interested in a specific career path or are looking to build certain skills, we want to help you succeed. You’ll have regular career, development, and performance conversations with your manager, as well as access to an online learning platform and a variety of mentoring programs to help you unlock future opportunities.
-
-If you’re passionate about helping clients and building deep, lasting relationships, TD offers diverse career paths where you can grow your expertise and make a meaningful impact.
-
-We're committed to your success and foster a respectful workplace where diverse perspectives are valued, everyone has fair opportunities to grow, and you can unlock your full potential to achieve your career goals. Here at TD, we hire and develop the best.
-
-Training & Onboarding
-
-We will provide training and onboarding sessions to ensure that you’ve got everything you need to succeed in your new role.
-
-Interview Process 
-
-We’ll reach out to candidates of interest to schedule an interview. We do our best to communicate outcomes to all applicants by email or phone call.
-
-Accommodation 
-
-Your accessibility is important to us. Please let us know if you’d like accommodations (including accessible meeting rooms, captioning for virtual interviews, etc.) to help us remove barriers so that you can participate throughout the interview process.
-
-We look forward to hearing from you!
 
 # thumbtack-data-scientist-2-monetization-pricing
 
-About the job
-
-Thumbtack helps millions of people confidently care for their homes.
-
-Thumbtack is the one app you need to take care of and improve your home — from personalized guidance to AI tools and a best-in-class hiring experience. Every day in every county of the U.S., people turn to Thumbtack to complete urgent repairs, seasonal maintenance and bigger improvements. We help homeowners know which projects to do, when to do them and who to hire from our growing community of 300,000 local service businesses. If making an impact inspires you, join us. Imagine what we’ll build together.
 
 About The Data Science Team
 
@@ -2635,21 +1482,7 @@ In order to be successful, you must bring
 
 # venterra-realty-data-decision-scientist
 
-About the job
-
-Description
-
-ROLE: Data Scientist or Decision Scientist
-
-REPORTS TO: Director, Data Science 
-
-LOCATION: Hybrid / Corporate Office in Richmond Hill, Ontario
-
-SALARY: $110,000-$140,000, up to 10% discretionary incentive target* 
-
- THE OPPORTUNITY 
-
-Technology is in the DNA of its founders. The Chairman and Co-Founder holds an Engineering Degree and a Master's Degree in Artificial Intelligence. Earlier in their careers, the Chairman and the CEO jointly led the growth and sale of a highly successful software business focused on logistics optimization, subsequently applying their business and technology acumen to the real estate industry, creating Venterra. As a result, the organization is one of the few in the industry with its own in-house property management stack (full spectrum of applications covering rent management, pricing optimization, purchasing, utility billing, work order, and capital expenditure management, etc.), resulting in greater control over its technology destiny. The organization views this capability as a crucial competitive advantage to compete at the highest level of the industry. Venterra has an established competence in Decision Science and is investing heavily in AI - including increasing integration of agentic AI solutions in operational workflows. Current projects on AI/ML/LLM solutions have the potential to revolutionize management, customer experience, and decision optimization.
+Venterra has an established competence in Decision Science and is investing heavily in AI - including increasing integration of agentic AI solutions in operational workflows. Current projects on AI/ML/LLM solutions have the potential to revolutionize management, customer experience, and decision optimization.
 
 We are looking for a Data Scientist or Decision Scientist to join our growing team, adding and augmenting the strength of our current team.
 
