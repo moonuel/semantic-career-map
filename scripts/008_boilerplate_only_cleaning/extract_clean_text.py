@@ -32,6 +32,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import time
 from pathlib import Path
@@ -158,6 +159,16 @@ def main() -> None:
         help="Smoke flag: only the first N corpus postings",
     )
     args = parser.parse_args()
+
+    # fd must stay open for the whole run — flock releases when the process exits
+    lock = open(SCRIPT_DATA_DIR / ".008_extract.lock", "w")  # noqa: SIM115
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise SystemExit(
+            "Another extractor process holds the extraction lock — "
+            "refusing to start (concurrent runs corrupt the shared cache)."
+        )
 
     arm_ids = [a.strip().upper() for a in args.arms.split(",") if a.strip()]
     unknown = [a for a in arm_ids if a not in ARM_ROSTER]

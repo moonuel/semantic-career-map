@@ -89,8 +89,12 @@ def save_cache(cache: dict[str, Any]) -> None:
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
     cache["meta"]["updated_utc"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     cache["meta"]["n_entries"] = len(cache["entries"])
-    with open(CACHE_PATH, "w") as f:
+    # Atomic replace — a torn or concatenated file is worse than a lost write
+    # (two concurrent writers produced exactly that once; see .json.corrupt.bak).
+    tmp = CACHE_PATH.with_suffix(".json.tmp")
+    with open(tmp, "w") as f:
         json.dump(cache, f, indent=2, ensure_ascii=False)
+    tmp.replace(CACHE_PATH)
 
 
 def cache_key(prompt_hash: str, posting_id: str, model: str) -> str:

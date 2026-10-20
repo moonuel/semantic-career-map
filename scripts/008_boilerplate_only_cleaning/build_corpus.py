@@ -45,11 +45,13 @@ def build_corpus() -> list[dict]:
             role = job.get("role_category")
             company = job.get("company")
             title = job.get("title_raw")
+            clean_text = job.get("clean_text")
         else:
             source = "md"
             role = None
             company = None
             title = None
+            clean_text = None
         postings.append(
             {
                 "posting_id": posting_id,
@@ -59,6 +61,7 @@ def build_corpus() -> list[dict]:
                 "company": company,
                 "title_raw": title,
                 "raw_full_text": raw_text,
+                "clean_text": clean_text,
             }
         )
     return postings
