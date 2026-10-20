@@ -6,18 +6,28 @@ Currently in-progress. For more details, see the **documentation site:** [semant
 
 ---
 
-## Querying the Garage object store
+## Object store access (Garage or S3)
 
-Garage serves the S3 API on `127.0.0.1:3900` (host networking, see `garage.toml`), region `garage`. The keys live in `.env` as `GARAGE_S3_*` — the same ones `ObjectStore.from_env` (`backend/storage/store.py`) reads. AWS CLI v2 respects the `AWS_ENDPOINT_URL` environment variable, so no `--endpoint-url` flag per command.
+`ObjectStore.from_env` (`backend/storage/store.py`) reads `STORE_S3_*` variables from `.env`. `STORE_S3_ENDPOINT` selects the store:
 
-### Configure (one-time per shell)
+- **Set** → local Garage (`127.0.0.1:3900`, host networking, see `garage.toml`, region `garage`); the `STORE_S3_ACCESS_KEY_ID` / `STORE_S3_SECRET_ACCESS_KEY` pair is required — Garage has no credential chain of its own.
+- **Empty/absent** → real S3; credentials must come from the default chain (`aws login` locally, IAM role in AWS) — static keys are refused.
+
+### Configure — Garage (one-time per shell)
 
 ```bash
-source .env   # loads GARAGE_S3_* without printing them
-export AWS_ACCESS_KEY_ID=$GARAGE_S3_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$GARAGE_S3_SECRET_ACCESS_KEY
+source .env   # loads STORE_S3_* without printing them
+export AWS_ACCESS_KEY_ID=$STORE_S3_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$STORE_S3_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION=garage
 export AWS_ENDPOINT_URL=http://127.0.0.1:3900
+```
+
+### Configure — real S3
+
+```bash
+aws login     # refresh the profile session; no static keys anywhere
+aws sts get-caller-identity   # verify who boto3/the CLI will act as
 ```
 
 ### Query
@@ -45,7 +55,7 @@ aws s3 ls s3://live/raw/ --recursive | wc -l
 Notes:
 
 - For `s3api` commands, wrap keys containing `=` in double quotes; unneeded in the `s3://` URI form.
-- `127.0.0.1` is an IP endpoint, so AWS CLI uses path-style addressing automatically — this matches Garage's requirement and the `Config(s3={"addressing_style": "path"})` in `backend/storage/store.py`.
+- Garage requires path-style addressing; against an IP endpoint the AWS CLI uses it automatically, and against real S3 the SDK's default resolution applies (`backend/storage/store.py` only pins path-style when `STORE_S3_ENDPOINT` is set).
 - Keep the exports shell-local; never commit credentials to any file.
 
 ---

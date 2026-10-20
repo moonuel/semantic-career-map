@@ -11,7 +11,7 @@
 | Component | Today | Target on AWS |
 |---|---|---|
 | Object store | Garage v2.4.1 container, `127.0.0.1:3900`, `data/objectstore/garage/` | S3 bucket `lake`, same key namespace, zero file-format changes |
-| Store client | `backend/storage/store.py` via `GARAGE_S3_*` env | Same `ObjectStore`, env generalized, IAM role instead of static keys |
+| Store client | `backend/storage/store.py` via `STORE_S3_*` env (`STORE_S3_ENDPOINT` set → Garage; empty/absent → real S3, default credential chain, static keys refused) | Same `ObjectStore`, IAM role instead of static keys in AWS contexts |
 | Scraper run | `python scripts/scrape.py`, manually, `SOURCE_BOARDS` registry | Same script, **two compute tiers**: Lambda for ATS boards (seconds), Fargate task for the dataroles curator (> Lambda's 15-min ceiling; politeness-paced, wall-time grows with the sitemap) |
 | Scheduling | none (manual) | EventBridge Scheduler, `rate(1 day)`, two targets (Lambda + ECS RunTask) — scraping stays **daily per Report 013 §5** |
 | Failure visibility | run summary + manifest | SQS dead-letter queue + CloudWatch alarm → email |

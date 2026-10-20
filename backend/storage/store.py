@@ -1,6 +1,6 @@
 """S3-compatible object store client for the semantic-career-map objects.
 
-The single S3-compatible store (remote S3 or the local Garage container) holds
+The single S3-compatible store (real S3 or the local Garage container) holds
 every branch of ``docs/architecture/data.md`` — the legacy ``live``/``configs``
 branches and the lakehouse ``lake`` branch. This module extracts the inline
 round-trip client from ``scripts/migrate_selected_postings`` now that a second
@@ -37,8 +37,10 @@ def _is_not_found(exc: ClientError) -> bool:
 class ObjectStore:
     """Thin boto3 S3-compatible client, validated through ``keys``.
 
-    Points at remote S3 or a local Garage store by endpoint override; the two
-    are behaviourally identical. Keys are always validated before use.
+    Points at real S3 (no endpoint override; credentials resolved by
+    boto3's default chain) or at a local Garage store (endpoint override;
+    explicit keys) — the two are behaviourally identical from the caller's
+    side. Keys are always validated before use.
     """
 
     def __init__(
@@ -47,8 +49,8 @@ class ObjectStore:
         bucket: str,
         endpoint_url: str | None,
         region: str,
-        access_key: str,
-        secret_key: str,
+        access_key: str | None = None,
+        secret_key: str | None = None,
     ) -> None:
         self._bucket = bucket
         self._client = boto3.client(
@@ -57,31 +59,59 @@ class ObjectStore:
             region_name=region,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            config=Config(s3={"addressing_style": "path"}),
+            # Endpoint-style servers (Garage) require path-style addressing;
+            # real S3 keeps boto3's auto resolution.
+            config=Config(s3={"addressing_style": "path"}) if endpoint_url else None,
         )
 
     @classmethod
     def from_env(cls) -> ObjectStore:
-        """Construct from the ``GARAGE_S3_*`` variables loaded from ``.env``."""
+        """Construct from the ``STORE_S3_*`` variables loaded from ``.env``.
+
+        ``STORE_S3_ENDPOINT`` selects the store. Set, it targets a local
+        S3-compatible server (Garage) and the explicit
+        ``STORE_S3_ACCESS_KEY_ID`` / ``STORE_S3_SECRET_ACCESS_KEY`` pair is
+        required — Garage has no credential chain of its own. Empty or
+        absent, it targets real S3: credentials must come from boto3's
+        default chain (CLI profile locally, execution role in AWS), and
+        static keys in the environment are refused, not used.
+
+        Raises:
+            RuntimeError: if required variables are missing or the
+                endpoint/key pairing is invalid.
+        """
+        bucket = os.environ.get("STORE_S3_BUCKET")
+        endpoint_url = os.environ.get("STORE_S3_ENDPOINT")
+        region = os.environ.get("STORE_S3_REGION")
+        access_key = os.environ.get("STORE_S3_ACCESS_KEY_ID")
+        secret_key = os.environ.get("STORE_S3_SECRET_ACCESS_KEY")
+
         missing = [
             name
-            for name in (
-                "GARAGE_S3_BUCKET",
-                "GARAGE_S3_ENDPOINT",
-                "GARAGE_S3_REGION",
-                "GARAGE_S3_ACCESS_KEY_ID",
-                "GARAGE_S3_SECRET_ACCESS_KEY",
+            for name, value in (
+                ("STORE_S3_BUCKET", bucket),
+                ("STORE_S3_REGION", region),
             )
-            if not os.environ.get(name)
+            if not value
         ]
+        if endpoint_url:
+            if not access_key or not secret_key:
+                missing += ["STORE_S3_ACCESS_KEY_ID", "STORE_S3_SECRET_ACCESS_KEY"]
+        elif access_key or secret_key:
+            raise RuntimeError(
+                "STORE_S3_ENDPOINT is empty (real S3): static keys are not "
+                "accepted; remove STORE_S3_ACCESS_KEY_ID and "
+                "STORE_S3_SECRET_ACCESS_KEY and let the default credential "
+                "chain resolve (CLI profile locally, IAM role in AWS)"
+            )
         if missing:
             raise RuntimeError(f"missing environment variables: {', '.join(missing)}")
         return cls(
-            bucket=os.environ["GARAGE_S3_BUCKET"],
-            endpoint_url=os.environ["GARAGE_S3_ENDPOINT"],
-            region=os.environ["GARAGE_S3_REGION"],
-            access_key=os.environ["GARAGE_S3_ACCESS_KEY_ID"],
-            secret_key=os.environ["GARAGE_S3_SECRET_ACCESS_KEY"],
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+            region=region,
+            access_key=access_key,
+            secret_key=secret_key,
         )
 
     def put(self, key: str, data: bytes) -> None:
