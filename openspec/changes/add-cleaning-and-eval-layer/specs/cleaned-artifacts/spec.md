@@ -33,6 +33,21 @@ The system SHALL make repeated cleaning runs idempotent: a posting is sent to th
 - **WHEN** the system prompt, user template, or model changes between runs
 - **THEN** the run SHALL resolve to a different `configuration_hash`, no cached row matches, and every posting is re-cleaned — previously generated versions remain preserved under their own version prefix
 
+### Requirement: Flush commits carry their own checkpoint manifests
+The system SHALL buffer completed posting results in the writer thread and commit them as one Parquet part per flush, where a flush is triggered by any of: a row threshold, a byte threshold, a dwell-time threshold, input-queue drainage, or a stop event. Each flushed part SHALL be followed by one flush checkpoint manifest under `manifests/runs/` covering exactly the rows in that part, written after the part exists.
+
+#### Scenario: Flush trigger and commit ordering
+- **WHEN** the writer buffer reaches any flush trigger (rows, bytes, dwell, drained queue, or stop)
+- **THEN** the run SHALL append exactly one Parquet part to the dataset prefix and SHALL record one flush checkpoint manifest (batch range, source hashes, row count, counters, latency aggregates, part key) referencing that part, before the batches are acknowledged
+
+#### Scenario: Orphan part healing
+- **WHEN** a part exists without its checkpoint manifest (interruption between the two writes)
+- **THEN** the next run's aggregation step SHALL back-fill the checkpoint from the part's contents and treat those rows as durable
+
+#### Scenario: Interrupt loses only in-flight work
+- **WHEN** a run is interrupted after some flushes are committed
+- **THEN** completed flushes SHALL remain durable and their rows SHALL resolve as cache hits on rerun; only unflushed postings are re-cleaned, and that replay SHALL be idempotent under the artifact-row cache
+
 ### Requirement: Record run-level accounting for pipeline runs
 The system SHALL record each cleaning run in `manifests/runs/` with `run_id`, `pipeline_version`, `started_at`, `completed_at`, the input sample reference, the output dataset id, `configuration_hash`, per-run counters (cleaned, cache-hit, failed), LLM-call latency aggregates (n_calls, median, p90, max `duration_s`), and final status.
 
