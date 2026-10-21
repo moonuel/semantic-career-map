@@ -31,14 +31,12 @@ from backend.ingestion.manifest import (
     pipeline_version,
     write_ingestion_manifest,
 )
-from backend.ingestion.raw import FileSink, Sink
+from backend.ingestion.raw import Sink
 from backend.storage import ids
 from backend.storage.store import ObjectStore
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SOURCE_DIR = _REPO_ROOT / "data" / "selected-job-postings"
-_DEFAULT_DATA_DIR = _REPO_ROOT / "data"
-
 # The corpus has no ATS board; manifest rows need a non-empty board.
 _BOARD = "curated-md"
 
@@ -48,7 +46,7 @@ def run(*, source_dir: Path, sink: Sink) -> int:
 
     Args:
         source_dir: Directory of curated markdown postings.
-        sink: The ingestion sink (store or file mirror).
+        sink: The ingestion sink (the object store).
 
     Returns:
         Process exit code (0 on success).
@@ -124,30 +122,16 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--target",
-        choices=("store", "files"),
-        default="store",
-        help="write to the S3-compatible store or the local mirror (default: store)",
-    )
-    parser.add_argument(
         "--source-dir",
         type=Path,
         default=_SOURCE_DIR,
         help=f"curated markdown corpus (default: {_SOURCE_DIR})",
     )
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=_DEFAULT_DATA_DIR,
-        help=f"mirror root for --target files (default: {_DEFAULT_DATA_DIR})",
-    )
     args = parser.parse_args(argv)
 
     try:
-        sink: Sink = FileSink(args.data_dir)
-        if args.target == "store":
-            load_dotenv(_REPO_ROOT / ".env")
-            sink = ObjectStore.from_env()
+        load_dotenv(_REPO_ROOT / ".env")
+        sink: Sink = ObjectStore.from_env()
         return run(source_dir=args.source_dir, sink=sink)
     except (BotoCoreError, ClientError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -54,14 +54,13 @@ from backend.ingestion.manifest import (
     pipeline_version,
     write_ingestion_manifest,
 )
-from backend.ingestion.raw import FileSink, Sink
+from backend.ingestion.raw import Sink
 from backend.ingestion.scrapers import ScrapedJob
 from backend.ingestion.sources import SOURCE_BOARDS
 from backend.storage import ids
 from backend.storage.store import ObjectStore
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_DEFAULT_DATA_DIR = _REPO_ROOT / "data"
 _DEFAULT_LIMIT = 25
 _DEFAULT_MAX_WORKERS = 4
 _MAX_WORKERS_CAP = 16
@@ -249,7 +248,7 @@ def run(
         run_sources: Sources to scrape, in registry order.
         boards_override: Per-source board list when ``--boards`` was given;
             registry defaults otherwise.
-        sink: The ingestion sink (store or file mirror).
+        sink: The ingestion sink (the object store).
         limit: Per-board posting bound; ``None`` takes whole boards.
         max_workers: Upper bound on concurrent board workers.
 
@@ -430,18 +429,6 @@ def main(argv: list[str] | None = None) -> int:
         "override several sources; defaults to registry boards",
     )
     parser.add_argument(
-        "--target",
-        choices=("store", "files"),
-        default="store",
-        help="write to the S3-compatible store or the local mirror (default: store)",
-    )
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=_DEFAULT_DATA_DIR,
-        help=f"mirror root for --target files (default: {_DEFAULT_DATA_DIR})",
-    )
-    parser.add_argument(
         "--limit",
         type=int,
         default=_DEFAULT_LIMIT,
@@ -466,10 +453,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.max_workers < 1:
         parser.error("--max-workers must be positive")
 
-    sink: Sink = FileSink(args.data_dir)
-    if args.target == "store":
-        load_dotenv(_REPO_ROOT / ".env")
-        sink = ObjectStore.from_env()
+    load_dotenv(_REPO_ROOT / ".env")
+    sink: Sink = ObjectStore.from_env()
 
     # _BoardOverride binds each --boards to the --source named before it;
     # sources riding registry defaults need nothing here.

@@ -326,7 +326,7 @@ def write_ingestion_manifest(
     string-interpolate manifest keys.
 
     Args:
-        sink: The storage to write through (``ObjectStore`` or ``FileSink``).
+        sink: The storage to write through (``ObjectStore``).
         manifest_bytes: Output of :func:`build_ingestion_manifest`.
         ingested_on: The run date the manifest was built with.
         ingestion_id: The run id the manifest was built with.

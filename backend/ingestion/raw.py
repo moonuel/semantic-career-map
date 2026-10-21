@@ -23,7 +23,6 @@ import json
 import threading
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Protocol
 
 from backend.ingestion.scrapers import (
@@ -39,38 +38,14 @@ from backend.storage import ids, keys
 class Sink(Protocol):
     """The put/exists subset of a storage backend the ingestion path needs.
 
-    ``backend.storage.store.ObjectStore`` satisfies this directly;
-    :class:`FileSink` is the local-mirror variant. Keys arrive pre-validated,
-    and mints of :func:`keys.raw_payload` are the only keys ever passed in.
+    ``backend.storage.store.ObjectStore`` satisfies this directly. Keys arrive
+    pre-validated, and mints of :func:`keys.raw_payload` are the only keys
+    ever passed in.
     """
 
     def put(self, key: str, data: bytes) -> None: ...
 
     def exists(self, key: str) -> bool: ...
-
-
-class FileSink:
-    """A :class:`Sink` that mirrors keys as files under ``root``.
-
-    The local-cache variant of the store for pipeline development and store
-    downtime; keys are safe path fragments (no traversal) because they are
-    validated by :func:`keys.validate_key` before reaching a sink.
-    """
-
-    def __init__(self, root: Path) -> None:
-        self._root = root
-
-    def put(self, key: str, data: bytes) -> None:
-        """Write ``data`` at ``key`` beneath the mirror root (overwrite)."""
-        keys.validate_key(key)
-        path = self._root / key
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
-
-    def exists(self, key: str) -> bool:
-        """Return whether ``key`` exists beneath the mirror root."""
-        keys.validate_key(key)
-        return (self._root / key).exists()
 
 
 @dataclass(frozen=True)
@@ -143,7 +118,7 @@ def ingest_payload(
     Args:
         source: Allowlisted raw source partition.
         payload: Canonical payload bytes; hashed for identity.
-        sink: Where the object is written (store or file mirror).
+        sink: Where the object is written (the object store).
         existing_hashes: Hashes seen this run, mutated when the payload is
             written so a caller loop stays dedup-correct without repeat
             existence calls.

@@ -5,7 +5,7 @@ The system SHALL accept raw posting payloads from the object store (`lake/raw/so
 
 #### Scenario: Cleaning run over a sample manifest
 - **WHEN** a cleaning run is given a pinned sample manifest of posting identities
-- **THEN** each posting in the manifest produces exactly one artifact row with `posting_id`, `source_hash`, `variant`, `version`, `cleaned_text`, `configuration_hash`, `pipeline_version`, and `created_at` populated
+- **THEN** each posting in the manifest produces exactly one artifact row with `source_hash`, `variant`, `version`, `cleaned_text`, `configuration_hash`, `pipeline_version`, and `created_at` populated
 
 #### Scenario: No HTML markup in cleaned output
 - **WHEN** the input payload's text carries HTML markup
