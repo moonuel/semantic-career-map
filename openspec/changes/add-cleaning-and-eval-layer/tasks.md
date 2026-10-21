@@ -1,6 +1,6 @@
 ## 1. Lake branch key builders
 
-- [ ] 1.1 Add `artifacts/`, `eval/datasets|results|type|variant|version`, and `manifests/datasets|runs` key builders to `backend/storage/keys.py` with hive-style segment validation; verify: `pytest tests/ -v` including new key-builder tests mirroring existing `keys.py` test placement
+- [x] 1.1 Add `artifacts/`, `eval/datasets|results|type|variant|version`, and `manifests/datasets|runs` key builders to `backend/storage/keys.py` with hive-style segment validation; verify: `pytest tests/ -v` including new key-builder tests mirroring existing `keys.py` test placement
 - [ ] 1.2 Inspect one payload per source for `posting_id` presence; record the finding in `design.md` (resolves the open question before row writing exists); verify: finding documented with sample keys/fields quoted
 
 ## 2. Raw reader + profiling evidence

@@ -7,10 +7,9 @@ them rather than by string interpolation.
 
 This module implements the legacy ``live`` and ``configs`` branches plus the
 lakehouse ``lake`` branch. The lakehouse is being migrated branch-by-branch,
-key builders first; the ``raw`` and ``manifests/ingestion`` builders have
-landed, while ``artifacts``, ``embeddings``, ``eval``, and the remaining
-``manifests`` (datasets, runs) are reserved by the layout and added here when
-those phases arrive.
+key builders first; the ``raw``, ``artifacts``, ``eval``, and all ``manifests``
+builders have landed, while ``embeddings`` remains reserved by the layout and
+is added here when that phase arrives.
 
 Lakehouse ``raw`` objects are **content-addressed**: identity is the SHA-256 of
 the verbatim payload, not a posting id. ``raw_payload`` emits
@@ -33,6 +32,16 @@ Public builders:
     - ``raw_payload(source, content_hash)`` -> ``lake/raw/source=<source>/sha256=<hash>.json``
     - ``manifest_ingestion(ingested_on, ingestion_id)`` ->
       ``lake/manifests/ingestion/ingested_on=<date>/ingestion_id=<uuid7>.parquet``
+    - ``artifact_part(type, variant, version, run_id, seq)`` ->
+      ``lake/artifacts/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+    - ``eval_dataset(type, variant, version, run_id, seq)`` ->
+      ``lake/eval/datasets/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+    - ``eval_result(type, variant, version, run_id, seq)`` ->
+      ``lake/eval/results/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+    - ``manifest_dataset(dataset_id)``     -> ``lake/manifests/datasets/<dataset-id>.json``
+    - ``manifest_run(run_id)``             -> ``lake/manifests/runs/run_id=<run-id>/run.json``
+    - ``manifest_run_checkpoint(run_id, seq)`` ->
+      ``lake/manifests/runs/run_id=<run-id>/flush=<seq>.json``
     - ``raw_posting(id)``        -> ``live/raw/<id>/source.md``
     - ``raw_metadata(id)``       -> ``live/raw/<id>/metadata.json``
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
@@ -77,6 +86,17 @@ _DERIVED_VARIANTS: frozenset[str] = frozenset(
     {"sections", "clean-text", "llm-clean-text", "llm-role-context", "labels"}
 )
 
+# Artifact types admitted into ``lake/artifacts/type=<type>/``. Same reasoning
+# as RAW_SOURCES: ``type`` is a partition column and an unbounded set is the
+# partition-explosion / ungoverned-accumulation anti-pattern. Additive.
+ARTIFACT_TYPES: frozenset[str] = frozenset({"cleaned_text"})
+
+# Eval dataset types admitted into ``lake/eval/datasets|results/type=<type>/``.
+# The ``eval`` branch keeps authored ground truth (``datasets``) separate from
+# machine-written evaluation output (``results``) — the former eval/ vs live/
+# split — but both share one governed type partition. Additive.
+EVAL_TYPES: frozenset[str] = frozenset({"cleaning_golden", "cleaning_quality"})
+
 # Regex for a well-formed non-id path segment: lowercase, digits, hyphens, `_`
 # (for `config-hash`), and `=` for `key=value` partition pairs
 # (e.g. `day=2026-09-23`, Report 005 §3.2). No leading/trailing hyphen.
@@ -86,6 +106,11 @@ _SEGMENT_RE = re.compile(r"^[a-z0-9]+(?:[-_=][a-z0-9]+)*$")
 # `name.ext`, where the name follows the segment rules and the extension is
 # lowercase alphanumeric. Dots are only allowed here, at the leaf.
 _FILENAME_RE = re.compile(r"^[a-z0-9]+(?:[-_=][a-z0-9]+)*(?:\.[a-z0-9]+)?$")
+
+# Regex for a plain name segment: segment rules minus `=` — no Hive partition
+# pair. Used where a k=v value would nest a second `=` into an object key
+# (e.g. a dataset id that is itself the addressed leaf).
+_PLAIN_SEGMENT_RE = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 
 # Version token: `v` followed by a positive integer.
 _VERSION_RE = re.compile(r"^v[1-9][0-9]*$")
@@ -132,6 +157,47 @@ def _check_hash(hash_: str, *, name: str = "config hash") -> str:
     if not is_sha256_hex(hash_):
         raise ValueError(f"{name} must be a 64-char hex string, got {hash_!r}")
     return hash_
+
+
+def _check_plain(segment: str, *, name: str) -> str:
+    """Return ``segment`` if it is a well-formed plain (non-partition) segment.
+
+    A plain segment is a :func:`_check` segment without ``=``: it must never
+    read as a Hive ``k=v`` pair when placed at a key position that is not a
+    partition.
+    """
+    if not segment:
+        raise ValueError(f"{name} must be non-empty")
+    if _PLAIN_SEGMENT_RE.fullmatch(segment) is None:
+        raise ValueError(
+            f"{name} {segment!r} is not a valid plain key segment "
+            f"(lowercase letters, digits, hyphens, underscores only)"
+        )
+    return segment
+
+
+def _check_seq(seq: int, *, name: str = "sequence") -> int:
+    """Return ``seq`` if a positive 1-based sequence number, else raise."""
+    if seq < 1:
+        raise ValueError(f"{name} must be a 1-based sequence number, got {seq!r}")
+    return seq
+
+
+def _part_leaf(run_id: str, seq: int) -> str:
+    """Render the run-minted Parquet part leaf: ``part-<run-id>-<seq>.parquet``.
+
+    Every Parquet part in a dataset version names its producing run (its
+    ``run_id``) and a 1-based flush sequence, zero-padded to 5 digits so
+    lexicographic and numeric order agree within a run (sibling of the
+    ``part-00000`` example in data.md §1). The flushing single writer commits
+    one part per flush, so parts belong to a run, not to nothing.
+    """
+    return f"part-{run_id}-{seq:05d}.parquet"
+
+
+def _flush_leaf(seq: int) -> str:
+    """Render the flush-checkpoint leaf: ``flush=<seq>.json`` (5-wide-padded)."""
+    return f"flush={seq:05d}.json"
 
 
 def _check_date(value: str, *, name: str) -> str:
@@ -223,6 +289,193 @@ def manifest_ingestion(ingested_on: str, ingestion_id: str) -> str:
     )
 
 
+def artifact_part(
+    artifact_type: str, variant: str, version: str, run_id: str, seq: int
+) -> str:
+    """Key for one Parquet part of a derived artifact dataset version.
+
+    ``lake/artifacts/type=<artifact-type>/variant=<variant>/version=<version>/part-<run-id>-<seq>.parquet``
+
+    A dataset version is the set of Parquet parts under its ``type`` /
+    ``variant`` / ``version`` partitions (layout §1). ``type`` is a governed,
+    additive partition column (:data:`ARTIFACT_TYPES`); ``variant`` names the
+    producing method and stays open — method/prompt iterations add variants,
+    while semantic revisions add a new ``version`` (§2.4).
+
+    Args:
+        artifact_type: Artifact family; must be in :data:`ARTIFACT_TYPES`
+            (e.g. ``cleaned_text``).
+        variant: Producing method (e.g. ``llm``).
+        version: Version token ``vN``.
+        run_id: Canonical UUIDv7 of the pipeline run that wrote this part.
+        seq: 1-based flush sequence within the run.
+
+    Returns:
+        The well-formed artifact part key.
+
+    Raises:
+        ValueError: if any segment is malformed or ``artifact_type`` is not
+            allowlisted.
+    """
+    if artifact_type not in ARTIFACT_TYPES:
+        raise ValueError(
+            f"unknown artifact type {artifact_type!r}; "
+            f"expected one of {sorted(ARTIFACT_TYPES)}"
+        )
+    artifact_type = _check(artifact_type, name="artifact type")
+    return (
+        f"lake/artifacts/type={artifact_type}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='artifact version')}/"
+        f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
+def eval_dataset(
+    eval_type: str, variant: str, version: str, run_id: str, seq: int
+) -> str:
+    """Key for one Parquet part of an authored eval ground-truth dataset.
+
+    ``lake/eval/datasets/type=<type>/variant=<variant>/version=<version>/part-<run-id>-<seq>.parquet``
+
+    Eval datasets are authored (annotated) datasets; eval *results* live under
+    :func:`eval_result` — authored ground truth never shares a prefix with
+    generated data (layout §1). ``eval_type`` is governed
+    (:data:`EVAL_TYPES`); ``variant`` names the authoring method and stays open.
+
+    Args:
+        eval_type: Eval subject type; must be in :data:`EVAL_TYPES`
+            (e.g. ``cleaning_golden``).
+        variant: Authoring method (e.g. ``author``).
+        version: Version token ``vN``.
+        run_id: Canonical UUIDv7 of the run that wrote this part.
+        seq: 1-based flush sequence within the run.
+
+    Returns:
+        The well-formed eval dataset part key.
+
+    Raises:
+        ValueError: if any segment is malformed or ``eval_type`` is not
+            allowlisted.
+    """
+    if eval_type not in EVAL_TYPES:
+        raise ValueError(
+            f"unknown eval type {eval_type!r}; expected one of {sorted(EVAL_TYPES)}"
+        )
+    return (
+        f"lake/eval/datasets/type={_check(eval_type, name='eval type')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='eval version')}/"
+        f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
+def eval_result(
+    eval_type: str, variant: str, version: str, run_id: str, seq: int
+) -> str:
+    """Key for one Parquet part of an eval-results dataset over a dataset.
+
+    ``lake/eval/results/type=<type>/variant=<variant>/version=<version>/part-<run-id>-<seq>.parquet``
+
+    Machine output over an eval dataset, regenerated per evaluation
+    configuration; versions add, they never overwrite (layout §1, §8).
+
+    Args:
+        eval_type: Eval subject type; must be in :data:`EVAL_TYPES`
+            (e.g. ``cleaning_quality``).
+        variant: Evaluation variant (e.g. the metric rubric name).
+        version: Version token ``vN``.
+        run_id: Canonical UUIDv7 of the evaluation run that wrote this part.
+        seq: 1-based flush sequence within the run.
+
+    Returns:
+        The well-formed eval-result part key.
+
+    Raises:
+        ValueError: if any segment is malformed or ``eval_type`` is not
+            allowlisted.
+    """
+    if eval_type not in EVAL_TYPES:
+        raise ValueError(
+            f"unknown eval type {eval_type!r}; expected one of {sorted(EVAL_TYPES)}"
+        )
+    return (
+        f"lake/eval/results/type={_check(eval_type, name='eval type')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='eval version')}/"
+        f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
+def manifest_dataset(dataset_id: str) -> str:
+    """Key for a dataset manifest (one JSON object per dataset generation).
+
+    ``lake/manifests/datasets/<dataset-id>.json``
+
+    The ``dataset_id`` is the leaf address itself          — high-cardinality, and data.md §2.3 bans partitioning on identifiers because an address identifies an
+    object while a partition prunes a scan. Plain-name (no ``k=v``) dataset ids
+    keep the leaf from reading as a Hive partition.
+
+    Args:
+        dataset_id: Plain dataset id without extension (e.g.
+            ``cleaned_text-v1``).
+
+    Returns:
+        The well-formed dataset-manifest object key.
+
+    Raises:
+        ValueError: if ``dataset_id`` is empty or not a plain name.
+    """
+    return f"lake/manifests/datasets/{_check_plain(dataset_id, name='dataset id')}.json"
+
+
+def manifest_run(run_id: str) -> str:
+    """Key for an aggregated pipeline-run record.
+
+    ``lake/manifests/runs/run_id=<run-id>/run.json``
+
+    The run lives under its ``run_id`` grouping segment alongside the flush
+    checkpoints it aggregates (:func:`manifest_run_checkpoint`), per the
+    grouping layout of layout §1 ``manifests/runs/``.
+
+    Args:
+        run_id: Canonical UUIDv7 minted once for the run.
+
+    Returns:
+        The well-formed run-record object key.
+
+    Raises:
+        ValueError: if ``run_id`` is not a canonical UUIDv7.
+    """
+    return f"lake/manifests/runs/run_id={_check_id(run_id, name='run id')}/run.json"
+
+
+def manifest_run_checkpoint(run_id: str, seq: int) -> str:
+    """Key for a single flush checkpoint of a pipeline run.
+
+    ``lake/manifests/runs/run_id=<run-id>/flush=<seq>.json``
+
+    One checkpoint per committed Parquet part, written *after* its part
+    (part → checkpoint commit order). ``seq`` is 1-based and 5-wide-padded so
+    checkpoints enumerate in flush order by prefix listing.
+
+    Args:
+        run_id: Canonical UUIDv7 minted once for the run.
+        seq: 1-based flush sequence within the run.
+
+    Returns:
+        The well-formed flush-checkpoint object key.
+
+    Raises:
+        ValueError: if ``run_id`` is not a canonical UUIDv7 or ``seq`` is
+            not positive.
+    """
+    return (
+        f"lake/manifests/runs/run_id={_check_id(run_id, name='run id')}/"
+        f"{_flush_leaf(_check_seq(seq))}"
+    )
+
+
 def raw_posting(id: str) -> str:
     """Key for the verbatim source markdown of a posting.
 
@@ -297,6 +550,9 @@ def _id_index(bucket: str, rest: list[str]) -> int | None:
     - ``live/derived/<id>/<variant>/<version-file>`` -> index 1
     - ``live/embeddings/<model>/<variant>/<vN>/<id>.<ext>`` -> leaf (index ``-1``)
     - ``lake/raw/...`` (content-addressed)     -> no id segment
+    - ``lake/artifacts``/``lake/eval``/``lake/manifests`` -> no id segment
+      (run ids ride inside part/checkpoint leaves and the ``run_id=<id>/``
+      grouping segment, validated by each branch's shape pinner)
     - ``meta/...`` and ``configs/...``         -> no id segment
     """
     if not rest:
@@ -315,9 +571,9 @@ def _validate_lake_manifest(key: str, rest: list[str]) -> None:
 
     Pins the branch, the single ``ingested_on`` day partition, and the
     ``ingestion_id=<uuid7>.parquet`` leaf for the same reason
-    :func:`_validate_lake_raw` pins the raw shape. Other ``manifests``
-    sub-branches (``datasets``, ``runs``) stay reserved and unpinned until
-    their builders land.
+    :func:`_validate_lake_raw` pins the raw shape. The other ``manifests``
+    sub-branches (``datasets``, ``runs``) are pinned in
+    :func:`_validate_dataset_manifest` / :func:`_validate_runs_manifest`.
     """
     if len(rest) != 4 or rest[1] != "ingestion":
         raise ValueError(
@@ -336,6 +592,157 @@ def _validate_lake_manifest(key: str, rest: list[str]) -> None:
             f"key {key!r} must end in 'ingestion_id=<id>.parquet', got {rest[-1]!r}"
         )
     _check_id(leaf_value.removesuffix(".parquet"), name="ingestion id")
+
+
+def _check_part_leaf(key: str, leaf: str) -> None:
+    """Pin a run-minted Parquet part leaf: ``part-<run-id>-<seq>.parquet``.
+
+    The complement of :func:`_part_leaf`: parses the leaf back, validating the
+    run id and the 1-based sequence, so ``validate_key`` gates externally
+    supplied part keys that a builder did not mint.
+    """
+    if not leaf.endswith(".parquet"):
+        raise ValueError(
+            f"key {key!r} must end in 'part-<run-id>-<seq>.parquet', got {leaf!r}"
+        )
+    base = leaf.removesuffix(".parquet")
+    if not base.startswith("part-"):
+        raise ValueError(
+            f"key {key!r} part leaf must be named 'part-<run-id>-<seq>.parquet', "
+            f"got {leaf!r}"
+        )
+    run_id, sep, seq_digits = base.removeprefix("part-").rpartition("-")
+    if not sep:
+        raise ValueError(
+            f"key {key!r} must end in 'part-<run-id>-<seq>.parquet', got {leaf!r}"
+        )
+    _check_id(run_id, name="run id")
+    if not seq_digits.isdigit() or int(seq_digits) < 1:
+        raise ValueError(
+            f"key {key!r} part leaf sequence must be a positive integer, got {leaf!r}"
+        )
+
+
+def _validated_partitions(
+    key: str, segments: list[str], expected_names: list[str]
+) -> list[str]:
+    """Return partition values if ``segments`` are Hive ``k=v`` pairs in order.
+
+    The partition names must match ``expected_names`` exactly — order and
+    count included — so a dataset version's directory levels cannot flip or
+    grow silently.
+    """
+    partitions = [segment.partition("=") for segment in segments]
+    names = [name for name, _, _ in partitions]
+    if names != expected_names:
+        raise ValueError(
+            f"key {key!r} must partition exactly on "
+            f"{'/'.join(expected_names)}, got {names}"
+        )
+    return [value for _, _, value in partitions]
+
+
+def _validate_lake_artifact(key: str, rest: list[str]) -> None:
+    """Semantic checks for the ``lake/artifacts`` key shape.
+
+    ``lake/artifacts/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+
+    Pins the branch, the three Hive partitions in order, the allowlisted
+    ``type``, the ``vN`` version, and the run-minted part leaf.
+    """
+    if len(rest) != 5 or rest[0] != "artifacts":
+        raise ValueError(
+            f"key {key!r} must be lake/artifacts/type=<type>/variant=<variant>"
+            f"/version=<vN>/part-<run-id>-<seq>.parquet"
+        )
+    values = _validated_partitions(key, rest[1:4], ["type", "variant", "version"])
+    if values[0] not in ARTIFACT_TYPES:
+        raise ValueError(
+            f"key {key!r} has unknown artifact type {values[0]!r}; "
+            f"expected one of {sorted(ARTIFACT_TYPES)}"
+        )
+    _check_version(values[2], name="artifact version")
+    _check_part_leaf(key, rest[-1])
+
+
+def _validate_lake_eval(key: str, rest: list[str]) -> None:
+    """Semantic checks for the ``lake/eval`` key shape.
+
+    ``lake/eval/<datasets|results>/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+
+    Pins the branch, the ``datasets``/``results`` sub-branch (authored ground
+    truth vs machine output), the three Hive partitions in order, the
+    allowlisted ``type``, the ``vN`` version, and the part leaf.
+    """
+    if len(rest) != 6 or rest[0] != "eval" or rest[1] not in {"datasets", "results"}:
+        raise ValueError(
+            f"key {key!r} must be lake/eval/<datasets|results>/type=<type>"
+            f"/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet"
+        )
+    values = _validated_partitions(key, rest[2:5], ["type", "variant", "version"])
+    if values[0] not in EVAL_TYPES:
+        raise ValueError(
+            f"key {key!r} has unknown eval type {values[0]!r}; "
+            f"expected one of {sorted(EVAL_TYPES)}"
+        )
+    _check_version(values[2], name="eval version")
+    _check_part_leaf(key, rest[-1])
+
+
+def _validate_dataset_manifest(key: str, rest: list[str]) -> None:
+    """Semantic checks for the ``lake/manifests/datasets`` key shape.
+
+    ``lake/manifests/datasets/<dataset-id>.json``
+
+    One addressed JSON object per dataset generation; no Hive partitions (the
+    dataset id is an address, not a scan-pruning dimension).
+    """
+    if len(rest) != 3 or rest[1] != "datasets":
+        raise ValueError(
+            f"key {key!r} must be lake/manifests/datasets/<dataset-id>.json"
+        )
+    leaf = rest[-1]
+    if not leaf.endswith(".json"):
+        raise ValueError(f"key {key!r} must end in '<dataset-id>.json', got {leaf!r}")
+    _check_plain(
+        leaf.removesuffix(".json"),
+        name="dataset id",
+    )
+
+
+def _validate_runs_manifest(key: str, rest: list[str]) -> None:
+    """Semantic checks for the ``lake/manifests/runs`` key shape.
+
+    ``lake/manifests/runs/run_id=<run-id>/run.json`` and
+    ``lake/manifests/runs/run_id=<run-id>/flush=<seq>.json``
+
+    Runs are grouped under their ``run_id`` segment: the aggregated run record
+    (``run.json``) and its per-flush checkpoints (``flush=<seq>.json``) are
+    siblings under the run they document. ``seq`` must parse as a positive
+    integer.
+    """
+    if len(rest) != 4 or rest[1] != "runs":
+        raise ValueError(
+            f"key {key!r} must be lake/manifests/runs/run_id=<run-id>/"
+            f"[run.json | flush=<seq>.json]"
+        )
+    run_partition = rest[2].partition("=")
+    if run_partition[0] != "run_id":
+        raise ValueError(f"key {key!r} must group exactly on run_id, got {rest[2]!r}")
+    _check_id(run_partition[2], name="run id")
+    leaf = rest[-1]
+    if leaf == "run.json":
+        return
+    if leaf.startswith("flush=") and leaf.endswith(".json"):
+        seq_value = leaf.removeprefix("flush=").removesuffix(".json")
+        if seq_value.isdigit() and int(seq_value) >= 1:
+            return
+        raise ValueError(
+            f"key {key!r} flush sequence must be a positive integer, got {leaf!r}"
+        )
+    raise ValueError(
+        f"key {key!r} must end in 'run.json' or 'flush=<seq>.json', got {leaf!r}"
+    )
 
 
 def _validate_lake_raw(key: str, rest: list[str]) -> None:
@@ -384,15 +791,19 @@ def validate_key(key: str) -> str:
         UUIDv7 (36-char lowercase hyphenated), while every other segment stays
         lowercase;
       - ``lake/raw`` keys additionally pin the whole content-addressed shape
-        (allowlisted ``source`` partition, ``sha256=<hash>.json`` leaf), and
-        ``lake/manifests/ingestion`` pins the batch-manifest shape (single
-        ``ingested_on`` day partition, ``ingestion_id=<uuid7>.parquet`` leaf);
+        (allowlisted ``source`` partition, ``sha256=<hash>.json`` leaf);
+      - ``lake/artifacts`` and ``lake/eval/<datasets|results>`` pin their
+        ``type``/``variant``/``version`` partition stack and the run-minted
+        ``part-<run-id>-<seq>.parquet`` leaf;
+      - ``lake/manifests`` pins each sub-branch's shape: batch ingestion
+        manifests (``ingested_on`` partition, ``ingestion_id`` leaf), dataset
+        manifests (addressed ``<dataset-id>.json`` leaf), and runs (grouped
+        ``run_id`` segment with ``run.json`` / ``flush=<seq>.json`` leaves);
       - no trailing slash; no leading slash.
 
-    Reserved ``lake`` branches (``artifacts``/``embeddings``/``eval``, and the
-    ``manifests`` sub-branches other than ``ingestion``) are not yet pinned to
-    a shape: they pass the general rules above but their positional layouts are
-    only enforced once their builders land.
+    Reserved ``lake`` branches (``embeddings``) are not yet pinned to a shape:
+    they pass the general rules above but their positional layouts are only
+    enforced once their builders land.
     """
     if not key or key.startswith("/"):
         raise ValueError(f"key must not be empty or start with '/': {key!r}")
@@ -442,7 +853,19 @@ def validate_key(key: str) -> str:
     if bucket == "lake" and rest[:1] == ["raw"]:
         _validate_lake_raw(key, rest)
 
+    if bucket == "lake" and rest[:1] == ["artifacts"]:
+        _validate_lake_artifact(key, rest)
+
+    if bucket == "lake" and rest[:1] == ["eval"]:
+        _validate_lake_eval(key, rest)
+
     if bucket == "lake" and rest[:2] == ["manifests", "ingestion"]:
         _validate_lake_manifest(key, rest)
+
+    if bucket == "lake" and rest[:2] == ["manifests", "datasets"]:
+        _validate_dataset_manifest(key, rest)
+
+    if bucket == "lake" and rest[:2] == ["manifests", "runs"]:
+        _validate_runs_manifest(key, rest)
 
     return key
