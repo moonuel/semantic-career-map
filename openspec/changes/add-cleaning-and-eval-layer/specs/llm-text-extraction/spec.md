@@ -33,3 +33,14 @@ The system SHALL cache LLM cleaning results in the lake: the existence of a clea
 #### Scenario: Legacy flat-file cache not written
 - **WHEN** a cleaning run persists cleaned results
 - **THEN** the system SHALL write artifact rows and manifests to the lake and SHALL NOT write `data/.llm_clean_cache.json`
+
+### Requirement: Bounded concurrent execution with measured latency
+The system SHALL execute posting cleanings through a bounded, same-process worker pool with per-worker jittered pacing and 429-aware backoff, preserving single-writer cache discipline, and SHALL record the duration of every LLM call it makes.
+
+#### Scenario: Bounded parallel run
+- **WHEN** a cleaning run is configured with a worker count N (default 8)
+- **THEN** at most N LLM requests are in flight, cache and artifact writes are serialized through the single writer, and any flock single-runner exclusion still holds
+
+#### Scenario: Per-call latency accounting
+- **WHEN** a cleaning run makes LLM calls for postings (cache misses)
+- **THEN** each call's `duration_s` SHALL be measured and the run record SHALL contain call aggregates (n_calls, median, p90, max) over those calls; cache-hit postings contribute no call duration

@@ -12,13 +12,13 @@
 
 ## 3. Cleaning stage
 
-- [ ] 3.1 Extract LLM-calling logic from `scripts/003_llm_extraction/extract_clean_text.py` into `backend/pipeline/cleaning/` (verbatim prompt/template, Kilo Gateway client, empty-response RuntimeError) — experiment scripts untouched; verify: `ruff check backend/ scripts/003_llm_extraction/` clean and prompt text matches original
+- [ ] 3.1 Extract LLM-calling logic into `backend/pipeline/cleaning/` from `scripts/008_boilerplate_only_cleaning/llm_client.py` (Kilo Gateway client, 429/5xx retry, empty-response RuntimeError, atomic-write convention) and the boilerplate-only system prompt from `scripts/008_boilerplate_only_cleaning/prompts.py` — experiment scripts untouched; verify: `ruff check backend/ scripts/008_boilerplate_only_cleaning/` clean and prompt text matches original
 - [ ] 3.2 Add html→plain-text normalization inside the cleaning module; verify: unit tests over synthetic fixture HTML (headers, lists, entities) assert no tags survive and boilerplate sections are still intact for the LLM stage
 - [ ] 3.3 Compute `configuration_hash` (SHA-256 over model + system prompt + user template) and thread it through rows and manifests; verify: unit test — changed template yields different hash, identical config yields identical hash
 - [ ] 3.4 Implement artifact row writer: one row per posting into `artifacts/type=cleaned_text/variant=llm/version=v1/` Parquet (part files per run) with the §5–6 schema; verify: round-trip read via pyarrow asserts schema, row-per-posting, source_hash join back to raw
 - [ ] 3.5 Implement cache resolution: before an LLM call, look up existing artifact rows by (raw-text hash, configuration_hash); on hit, reuse without API call; never write `data/.llm_clean_cache.json`; verify: unit test with a stubbed LLM client — second run performs zero client calls
-- [ ] 3.6 Write dataset manifest (`manifests/datasets/`: dataset_id, input_dataset, model, configuration_hash, pipeline_version git sha, record_count, created_at) and run record (`manifests/runs/`: run_id, timestamps, input manifest reference, output dataset id, counters, status) including partial-failure accounting; verify: integration test with stubbed client counts cleaned/cache-hit/failed correctly on a run that fails one posting
-- [ ] 3.7 Wire a cleaning CLI (`python -m backend.pipeline.cleaning --sample-manifest <path>`): fail-fast per posting, counters persisted; verify: run over a 5–10 posting pinned manifest against the real lake, `aws s3 ls` shows artifact parts + manifests, rerun shows all cache hits
+- [ ] 3.6 Write dataset manifest (`manifests/datasets/`: dataset_id, input_dataset, model, configuration_hash, pipeline_version git sha, record_count, created_at) and run record (`manifests/runs/`: run_id, timestamps, input manifest reference, output dataset id, counters, worker count, call-latency aggregates (n_calls, median/p90/max `duration_s`), status) including partial-failure accounting; verify: integration test with stubbed client counts cleaned/cache-hit/failed correctly on a run that fails one posting and records stubbed-call durations
+- [ ] 3.7 Wire a cleaning CLI (`python -m backend.pipeline.cleaning --sample-manifest <path> --workers N`): same-process bounded thread pool (default 8, per-worker jittered pacing, 429 backoff, single-writer discipline preserved), fail-fast per posting, counters persisted; verify: run over a 5–10 posting pinned manifest against the real lake, `aws s3 ls` shows artifact parts + manifests, rerun shows all cache hits and zero n_calls, run record carries latency aggregates
 
 ## 4. Evaluation layer
 
@@ -32,4 +32,4 @@
 - [ ] 5.1 Full run over the pinned sample manifest end-to-end (cleaning → eval); verify: `pytest tests/ -v`, `ruff format .`, `ruff check .` pass; dataset → run → eval-result lineage reconstructs via manifests alone
 - [ ] 5.2 Finalize `docs/experiments/007-*.md` with cleaning + eval results over the sample, over-deletion findings, and next-variant candidates (org-context field); verify: follows the exp-003 report pattern
 - [ ] 5.3 Update README "Current Status" and `docs/architecture/data.md` migration-table rows for `artifacts/`, `eval/`, `manifests/`; run docs-sync skill for cross-references; verify: no doc page contradicts the landed branches
-- [ ] 5.4 Append dev-log entry (decisions D1–D7, open question resolved in 1.2); verify: open threads moved to `docs/TODO.md`
+- [ ] 5.4 Append dev-log entry (decisions D1–D9, open question resolved in 1.2); verify: open threads moved to `docs/TODO.md`

@@ -34,8 +34,12 @@ The system SHALL make repeated cleaning runs idempotent: a posting is sent to th
 - **THEN** the run SHALL resolve to a different `configuration_hash`, no cached row matches, and every posting is re-cleaned — previously generated versions remain preserved under their own version prefix
 
 ### Requirement: Record run-level accounting for pipeline runs
-The system SHALL record each cleaning run in `manifests/runs/` with `run_id`, `pipeline_version`, `started_at`, `completed_at`, the input sample reference, the output dataset id, `configuration_hash`, per-run counters (cleaned, cache-hit, failed), and final status.
+The system SHALL record each cleaning run in `manifests/runs/` with `run_id`, `pipeline_version`, `started_at`, `completed_at`, the input sample reference, the output dataset id, `configuration_hash`, per-run counters (cleaned, cache-hit, failed), LLM-call latency aggregates (n_calls, median, p90, max `duration_s`), and final status.
 
 #### Scenario: Partial failure accounting
 - **WHEN** a posting fails mid-run
 - **THEN** the run record SHALL retain the counters of cleaned and cache-hit postings before the failure and the run status SHALL reflect the failure with the failing posting identified
+
+#### Scenario: Concurrency and latency recorded
+- **WHEN** a run completes with more than one LLM call
+- **THEN** the run record SHALL include its configured worker count and the call-latency aggregates, so model/prompt configurations are comparable on workload-real latency, not fidelity alone
