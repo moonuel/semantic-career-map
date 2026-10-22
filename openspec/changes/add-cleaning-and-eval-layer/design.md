@@ -17,13 +17,14 @@ Consequence for the input contract: the `llm-text-extraction` requirement's "nor
 **Goals:**
 - First regenerable derived layer: cleaned-text Parquet dataset with manifests, per §5–6 and §11 of data.md
 - Reusable backend cleaning module (`backend/pipeline/cleaning/`) extracted from `scripts/003_llm_extraction/` — experiment scripts untouched
-- Evidence-driven cleaning spec: profiling report over the 6 sources (exp 007 evidence) before prompt/normalization tuning
+- Evidence-driven cleaning spec: profiling queries over the 6 sources through the cataloged layer (exp 009 evidence — first produced by a Python tool, re-derived and cross-checked via the D12 gate) before prompt/normalization tuning
 - Deterministic subset selection for iterating on cleaning prompts without full-corpus cost
 - Evaluation layer on the lake: golden references as authored datasets, quality metrics as result datasets, run lineage end to end (sample manifest → run → dataset → eval results)
 
 **Non-Goals:**
 - No embeddings, clustering, or visualizations in this change (they consume the cleaned layer; self-retrieval/separation-gap machinery stays in the existing evaluation-framework capability)
-- No Glue/Athena/SQL engine — Parquet rows are the interface; queries are ad hoc until an engine is warranted
+- No SQL engine executes transformation — the SQL layer (Glue Catalog + Athena, pulled forward from roadmap Phase 5 by D12) selects batches and serves interactive analysis; transformation stays code over the object store (D1 dependency direction unchanged)
+- ~~No Glue/Athena/SQL engine~~ — replaced 2026-10-22: a Python profiling tool over the raw lake was implemented for exp 009, reviewed as a hand-rolled duplicate of the query layer, and rejected; the catalog with per-shape tables, the uncleaned anti-join, and the gate queries replace it (D12). Original stance part of the record: "Parquet rows are the interface; queries are ad hoc until an engine is warranted" — an engine is now warranted: the second aggregation tool (eval results, §4) is where ad hoc analysis accretes
 - No semantic deduplication (data.md §4.1 stays deferred)
 - No organizational-context field extraction yet (exp 003 finding) — record it as variant candidate in the report, not a new artifact type
 - No scheduled/automated runs; the stage is a CLI-invoked batch transform
@@ -34,7 +35,7 @@ Consequence for the input contract: the `llm-text-extraction` requirement's "nor
 The cleaning stage iterates raw objects through `backend/storage/` (`ObjectStore`, `keys.py`) given a pinned sample manifest or a raw prefix. SQL/DuckDB was evaluated as the selection mechanism (see conversation history); it reduces to a sampler convenience — the transform itself is row-at-a-time with an LLM call, and its dependency direction must stay *raw → cleaning → artifacts*, with queries on top afterward. A DuckDB read view is out of scope; the sampler (D2) covers selection.
 
 ### D2 — Sampler: pandas/pass-through over the store, not an SQL dependency
-Sampling reads payload metadata via the store, stratifies by source (quotas) and `description_html` length bands, seeded, and persists the chosen identity list. Rationale: deterministic and replayable without adding a query-engine dependency; recomputation via the same params reproduces the manifest, and the manifest itself is the pin. Alternative considered: DuckDB `read_json_auto` over the store's S3 API (httpfs) — cleaner interactive exploration but adds an uninstalled dep; revisit as a scratch tool, never a pipeline input.
+Sampling reads payload metadata via the store, stratifies by source (quotas) and `description_html` length bands, seeded, and persists the chosen identity list. Rationale: deterministic and replayable without adding a query-engine dependency; recomputation via the same params reproduces the manifest, and the manifest itself is the pin. Alternative considered: DuckDB `read_json_auto` over the store's S3 API (httpfs) — cleaner interactive exploration but adds an uninstalled dep; revisit as a scratch tool, never a pipeline input. **Amended by D12 (2026-10-22)**: the sampler is no longer production selection — the `select_uncleaned` anti-join is; the sampler remains as the tuning-time pin (never a full-corpus substitute), and no query-engine dependency is added for it.
 
 ### D3 — Normalization is part of the cleaning stage, not a separate artifact layer
 data.md's lineage sketches `raw → normalized → cleaned`. A standalone `normalized_posting` Parquet layer is deferred (YAGNI at this scale; it would double file count for a transform that is currently deterministic html→text). The stage normalizes `description_html` to plain text in-process, character by character, and the no-HTML invariant is tested. Revisit when a stage wants normalized-with-boilerplate text as a numbered input.
@@ -74,9 +75,18 @@ Task 1.2 resolved that no `posting_id` exists in any raw payload. A mint-once UU
 
 Net: `source_hash` joins raw → artifacts → eval rows; no posting-id minting, registry branch, or backfill exists, and ingestion manifests stay schema v1.
 
+### D12 — Query layer owns selection and profiling; code owns transformation
+
+The original §2 (Python profiling tool; sampler as production selection) was implemented and then rejected as a **duplicated query mechanism**: per-source counts, length quantiles, and tag/boilerplate aggregations are one `GROUP BY` in any SQL engine, and a second ad hoc aggregating tool was exactly the accretion pattern to avoid (eval results, §4, would have become the next one). The Glue Data Catalog + Athena pull (roadmap Phase 5, per-shape tables — no crawler over the three-shape mush) now owns:
+
+- **Profiling** (exp 009 evidence, re-derived through a second engine as the §2.3 gate — the gate *is* the independent cross-check of the store-count baseline).
+- **Selection** for production cleaning runs: the `select_uncleaned` anti-join — raw keys with no artifact row for `(source_hash, configuration_hash)`, minus the failure ledger (D6 failures recorded in run manifests; a content-dependent `empty response` fault must not abort every future run). The anti-join and the D4 cache are the same mechanism: artifacts double as the done-index, and "cleaned postings fall out of selection" replaces bookkeeping entirely.
+
+Unchanged: the transform stays a Python runner over the object store (D1 — LLM call loops are not SQL); the reader (`backend/storage/raw.py`) is its I/O path and survives; selected batches render to the *same* canonical manifest format the CLI consumes, so the runner never learns where its input came from. **Sampler demoted to tuning-time utility**: D2's cost-control argument applies per prompt iteration (a small pinned sample in minutes vs a full-corpus sweep per configuration at D5's append semantics); production selection is the anti-join. Warnings noted: configuration changes re-select the whole lake (accepted, priced in D4/D5); scheduling stays out of scope (runs are CLI-invoked; EventBridge is a later phase).
+
 ## Risks / Trade-offs
 
-- [HTML normalization loss — tags may carry meaning (list bullets, headings)] → no-HTML invariant test plus exp 007 report inventories tag families per source before prompt tuning; transformations remain recoverable because raw is immutable
+- [HTML normalization loss — tags may carry meaning (list bullets, headings)] → no-HTML invariant test plus exp 009 inventory (tag families per source, SQL-reproducible) precedes prompt tuning; transformations remain recoverable because raw is immutable
 - [Over-deletion modulates quality; prompt tuning loops spend LLM calls] → seeded sample manifests keep tuning runs small and pinned; cache makes reruns of unchanged configs free
 - [`configuration_hash` churn — trivial prompt edits split the cache] → accepted; versions preserve lineage and hash churn is observable in manifests rather than silent (revisit with a smarter canonicalization if churn bites)
 - [Dataroles dominates the corpus 80%] → sampler quotas enforce per-source floors so tuning never fits to one source's formatting; profiling report makes the imbalance explicit
@@ -88,7 +98,7 @@ Net: `source_hash` joins raw → artifacts → eval rows; no posting-id minting,
 ## Migration Plan
 
 1. Key builders for `artifacts/`, `eval/`, `manifests/` branches land first (pattern of the raw-branch migration: builders + tests, §2 of data.md).
-2. Sampler + profiling script produce the exp 007 report and the first pinned manifest (evidence before prompt work).
+2. Query layer lands (D12); gate queries re-derive exp 009's evidence; the uncleaned anti-join becomes selection; sampled manifests stay tuning-only.
 3. Backend cleaning module formalized; run over pinned manifest → `v1` dataset manifests.
 4. Golden set authored into `eval/datasets/`; eval module compares and writes results.
 5. Rollback: every output lives only in new lake branches; deleting the new prefixes and manifests removes all effect. No legacy object is rewritten; the immutable scripts remain the fallback record (scientific integrity rule).
@@ -103,4 +113,4 @@ Net: `source_hash` joins raw → artifacts → eval rows; no posting-id minting,
   - hiringcafe: `lake/raw/source=hiringcafe/sha256=0076c833…39a663ade.json` — fields `['date_posted', 'description', 'employer', 'employment_types', 'extra', 'extracted', 'location', 'salary', 'source_id', 'title', 'url', 'workplace_type']`; `source_id: 'hiringcafe:xl47beuoe8znuc9x'`; `posting_id` ABSENT; no `description_html` (plain-text `description`).
   - linkedin: `lake/raw/source=linkedin/sha256=056c4595…33efb78f9.json` — fields `['content', 'format']` only; `posting_id` ABSENT; no `source_id`/`employer`/`title`/`date_posted`/`description_html`.
   Consequence: the posting's identity in rows and manifests is its `source_hash` alone — nothing is minted, and raw payload objects stay byte-immutable (a posting-id scheme was considered for this gap and rejected; see D11-rejected for the reasoning and the §4.1 re-entry point).
-- Should the profiling report live in `docs/experiments/` (exp 007) or as a rerunnable report tool in `backend/`? Both: tool in backend (rerunnable), findings distilled into the exp report (public docs), per the experimentation pattern.
+- Should the profiling report live in `docs/experiments/` (exp 007 numbering since taken; landed as 009) or as a rerunnable tool in `backend/`? Superseded by D12 (2026-10-22): findings live in the exp report; the mechanism is the SQL layer. A Python profiling tool was built first, reviewed as a hand-rolled duplicate of the query layer, and removed.
