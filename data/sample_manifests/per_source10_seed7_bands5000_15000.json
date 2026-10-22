@@ -1,0 +1,552 @@
+{
+  "params": {
+    "bands": [
+      5000,
+      15000
+    ],
+    "per_source": 10,
+    "seed": 7
+  },
+  "postings": [
+    {
+      "band": 1,
+      "employer": "supabase",
+      "key": "lake/raw/source=ashby/sha256=0987fc9ebe65a0f0ae7c9d309b978395489ee0996b5b4c4b63a343f76b0597cb.json",
+      "length_chars": 7192,
+      "source": "ashby",
+      "source_hash": "0987fc9ebe65a0f0ae7c9d309b978395489ee0996b5b4c4b63a343f76b0597cb",
+      "source_id": "ashby:supabase:b75ba81e-54cc-4393-a575-bc41776b0113"
+    },
+    {
+      "band": 1,
+      "employer": "supabase",
+      "key": "lake/raw/source=ashby/sha256=3b731dd323412f095d5db9300da0e1956a9e2ced4416ad8bb7eaed1ec2a54d43.json",
+      "length_chars": 8502,
+      "source": "ashby",
+      "source_hash": "3b731dd323412f095d5db9300da0e1956a9e2ced4416ad8bb7eaed1ec2a54d43",
+      "source_id": "ashby:supabase:68a397e7-8a1a-4566-ae41-e8c61dd6ed93"
+    },
+    {
+      "band": 1,
+      "employer": "supabase",
+      "key": "lake/raw/source=ashby/sha256=4d836e86706279b4d9043e8cde8b2e4ba94d4945d128e7b5cd116b6248c1e4df.json",
+      "length_chars": 8042,
+      "source": "ashby",
+      "source_hash": "4d836e86706279b4d9043e8cde8b2e4ba94d4945d128e7b5cd116b6248c1e4df",
+      "source_id": "ashby:supabase:73ddf93b-fe0c-455d-ba27-cdde0d3fb94f"
+    },
+    {
+      "band": 0,
+      "employer": "elevenlabs",
+      "key": "lake/raw/source=ashby/sha256=631f22c1723f4160d76cfbfadf0e8633fa88381ce0a3bd4eec4cebf6ed0b2733.json",
+      "length_chars": 4882,
+      "source": "ashby",
+      "source_hash": "631f22c1723f4160d76cfbfadf0e8633fa88381ce0a3bd4eec4cebf6ed0b2733",
+      "source_id": "ashby:elevenlabs:1713bfd7-a63b-4dd4-b6e7-b0b8b8560a4a"
+    },
+    {
+      "band": 1,
+      "employer": "elevenlabs",
+      "key": "lake/raw/source=ashby/sha256=6c21bf82d9f400df25a02cc72b6a105492bace62d7e6d428779032bbfd6345ad.json",
+      "length_chars": 8045,
+      "source": "ashby",
+      "source_hash": "6c21bf82d9f400df25a02cc72b6a105492bace62d7e6d428779032bbfd6345ad",
+      "source_id": "ashby:elevenlabs:2cc33afb-4c90-4590-8f5b-8f9fd7769800"
+    },
+    {
+      "band": 1,
+      "employer": "elevenlabs",
+      "key": "lake/raw/source=ashby/sha256=90d788cbbb080b32e7c9262f9971bd2420f7a58f451c0e6e3c5bf5596bf277dd.json",
+      "length_chars": 7141,
+      "source": "ashby",
+      "source_hash": "90d788cbbb080b32e7c9262f9971bd2420f7a58f451c0e6e3c5bf5596bf277dd",
+      "source_id": "ashby:elevenlabs:4738893a-de4f-4a06-b104-315c6a4d366c"
+    },
+    {
+      "band": 2,
+      "employer": "supabase",
+      "key": "lake/raw/source=ashby/sha256=b57bd0bdca65fc7f6d98a959b61ca2cf5150bfced9d1feb06e1195a52f6e18b5.json",
+      "length_chars": 16365,
+      "source": "ashby",
+      "source_hash": "b57bd0bdca65fc7f6d98a959b61ca2cf5150bfced9d1feb06e1195a52f6e18b5",
+      "source_id": "ashby:supabase:f52fd120-5fbe-4e0d-949d-01e217ec77d6"
+    },
+    {
+      "band": 0,
+      "employer": "supabase",
+      "key": "lake/raw/source=ashby/sha256=bbbd1680ef7fc4c7791aaa69279769eedcad944cef5480121257ba55a6938a3d.json",
+      "length_chars": 4713,
+      "source": "ashby",
+      "source_hash": "bbbd1680ef7fc4c7791aaa69279769eedcad944cef5480121257ba55a6938a3d",
+      "source_id": "ashby:supabase:a069c886-1107-408e-88b4-e1aa8d33d4bc"
+    },
+    {
+      "band": 0,
+      "employer": "elevenlabs",
+      "key": "lake/raw/source=ashby/sha256=d73bbaa1d842abe950bce46e392da5c4970f4fc423b46698590d337a59c0c1c1.json",
+      "length_chars": 4948,
+      "source": "ashby",
+      "source_hash": "d73bbaa1d842abe950bce46e392da5c4970f4fc423b46698590d337a59c0c1c1",
+      "source_id": "ashby:elevenlabs:ef0a1e14-40ee-43d2-aab9-59fc9f6a4b8c"
+    },
+    {
+      "band": 0,
+      "employer": "elevenlabs",
+      "key": "lake/raw/source=ashby/sha256=f3cf266907be8a5a3904d71f4fed9bd6ee498609f232d258aefb35e710ceafd2.json",
+      "length_chars": 2937,
+      "source": "ashby",
+      "source_hash": "f3cf266907be8a5a3904d71f4fed9bd6ee498609f232d258aefb35e710ceafd2",
+      "source_id": "ashby:elevenlabs:4389da7f-b5c9-4660-aaf2-d097f4caba07"
+    },
+    {
+      "band": 1,
+      "employer": "Accesa",
+      "key": "lake/raw/source=dataroles/sha256=16083dfa557e6020f3a4ab6ba0f16102948f4ad986a5c30e09a237b2244d4f62.json",
+      "length_chars": 7026,
+      "source": "dataroles",
+      "source_hash": "16083dfa557e6020f3a4ab6ba0f16102948f4ad986a5c30e09a237b2244d4f62",
+      "source_id": "smartrecruiters:ACCESA:744000137636269"
+    },
+    {
+      "band": 1,
+      "employer": "Bah",
+      "key": "lake/raw/source=dataroles/sha256=2a657c7520ef5106c85ecdf86a5721092582a895e496d51412f4f06124f074b6.json",
+      "length_chars": 6643,
+      "source": "dataroles",
+      "source_hash": "2a657c7520ef5106c85ecdf86a5721092582a895e496d51412f4f06124f074b6",
+      "source_id": "workday:bah/wd1/bah_jobs:R0247576"
+    },
+    {
+      "band": 1,
+      "employer": "Bloom Energy",
+      "key": "lake/raw/source=dataroles/sha256=75f74973bbd7c53ce3021f09f312e0200ed97c4a125bd8e477bd6c817281f9e8.json",
+      "length_chars": 5437,
+      "source": "dataroles",
+      "source_hash": "75f74973bbd7c53ce3021f09f312e0200ed97c4a125bd8e477bd6c817281f9e8",
+      "source_id": "workday:bloomenergy/wd1/bloomenergycareers:JR-21561"
+    },
+    {
+      "band": 1,
+      "employer": "University of Wisconsin-Madison",
+      "key": "lake/raw/source=dataroles/sha256=760c3722803a8a44bf012d349ec8509aae9db8d09eebd3b639783086951c42d4.json",
+      "length_chars": 10155,
+      "source": "dataroles",
+      "source_hash": "760c3722803a8a44bf012d349ec8509aae9db8d09eebd3b639783086951c42d4",
+      "source_id": "workday:wisconsin/wd1/uw_madison:JR10015591"
+    },
+    {
+      "band": 0,
+      "employer": "Software Technology Inc",
+      "key": "lake/raw/source=dataroles/sha256=9c8d6a2b2a06374e4b503f1473b4289d34c096e352ce2f82c48c3a8050902655.json",
+      "length_chars": 1677,
+      "source": "dataroles",
+      "source_hash": "9c8d6a2b2a06374e4b503f1473b4289d34c096e352ce2f82c48c3a8050902655",
+      "source_id": "smartrecruiters:softwaretechnologyinc2:743999731400723"
+    },
+    {
+      "band": 2,
+      "employer": "Blackrock",
+      "key": "lake/raw/source=dataroles/sha256=cc251d1a38d6b28189c263777700f30b15ab1013494270ceafc3fe77a053c16a.json",
+      "length_chars": 18001,
+      "source": "dataroles",
+      "source_hash": "cc251d1a38d6b28189c263777700f30b15ab1013494270ceafc3fe77a053c16a",
+      "source_id": "workday:blackrock/wd1/blackrock_professional:R265691"
+    },
+    {
+      "band": 2,
+      "employer": "Hewlett Packard Enterprise",
+      "key": "lake/raw/source=dataroles/sha256=d49ef4ffe95fcf47f2fb97a982760f1fe104fe4bc6c24c26d5045951ad845315.json",
+      "length_chars": 17605,
+      "source": "dataroles",
+      "source_hash": "d49ef4ffe95fcf47f2fb97a982760f1fe104fe4bc6c24c26d5045951ad845315",
+      "source_id": "workday:hpe/wd5/wfmathpe:1209861"
+    },
+    {
+      "band": 2,
+      "employer": "ProSidian Consulting, LLC",
+      "key": "lake/raw/source=dataroles/sha256=e9c1e2e09520981c6ce6c940eacff8da81e4e480df251bff0ea3537a90b115ea.json",
+      "length_chars": 16728,
+      "source": "dataroles",
+      "source_hash": "e9c1e2e09520981c6ce6c940eacff8da81e4e480df251bff0ea3537a90b115ea",
+      "source_id": "smartrecruiters:prosidianconsulting:744000119285067"
+    },
+    {
+      "band": 0,
+      "employer": "BTG Pactual",
+      "key": "lake/raw/source=dataroles/sha256=f696c86f840b4aa616273470850053d36b1900f0ad057cc1f72c898b7bc0c555.json",
+      "length_chars": 3637,
+      "source": "dataroles",
+      "source_hash": "f696c86f840b4aa616273470850053d36b1900f0ad057cc1f72c898b7bc0c555",
+      "source_id": "greenhouse:btgpactual:6174686004"
+    },
+    {
+      "band": 0,
+      "employer": "Bostondynamics",
+      "key": "lake/raw/source=dataroles/sha256=fabeef113e59184361dc5c1a813034b96788ac86af20dcca4e1e2afb11edf3cc.json",
+      "length_chars": 4868,
+      "source": "dataroles",
+      "source_hash": "fabeef113e59184361dc5c1a813034b96788ac86af20dcca4e1e2afb11edf3cc",
+      "source_id": "workday:bostondynamics/wd1/boston_dynamics:R3180"
+    },
+    {
+      "band": 1,
+      "employer": "Vercel",
+      "key": "lake/raw/source=greenhouse/sha256=1414e9289f47eeb6191f8663df4170dbd3f0f3aa1796f224031ea1aaafade76b.json",
+      "length_chars": 7040,
+      "source": "greenhouse",
+      "source_hash": "1414e9289f47eeb6191f8663df4170dbd3f0f3aa1796f224031ea1aaafade76b",
+      "source_id": "greenhouse:vercel:6196563004"
+    },
+    {
+      "band": 2,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=1f9181c93fb489d9153212326d18777ee8f51ea2cd8e6185ad1a05a963afc543.json",
+      "length_chars": 15427,
+      "source": "greenhouse",
+      "source_hash": "1f9181c93fb489d9153212326d18777ee8f51ea2cd8e6185ad1a05a963afc543",
+      "source_id": "greenhouse:anthropic:5398438008"
+    },
+    {
+      "band": 0,
+      "employer": "Vercel",
+      "key": "lake/raw/source=greenhouse/sha256=30397f2e4c4506c97cefe459aa58f10ee8e2ee4828706f89ccd333432838cb06.json",
+      "length_chars": 4807,
+      "source": "greenhouse",
+      "source_hash": "30397f2e4c4506c97cefe459aa58f10ee8e2ee4828706f89ccd333432838cb06",
+      "source_id": "greenhouse:vercel:5557835004"
+    },
+    {
+      "band": 1,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=5a66d529b3c6261c3ebbd9a8c105a9586300a4f17b353c180fef60bb5917fa2a.json",
+      "length_chars": 11739,
+      "source": "greenhouse",
+      "source_hash": "5a66d529b3c6261c3ebbd9a8c105a9586300a4f17b353c180fef60bb5917fa2a",
+      "source_id": "greenhouse:anthropic:5264820008"
+    },
+    {
+      "band": 0,
+      "employer": "Vercel",
+      "key": "lake/raw/source=greenhouse/sha256=5f9536154907ffdb862c83346edcf9a0463917fe94c5e1e7d00d47240049830d.json",
+      "length_chars": 3258,
+      "source": "greenhouse",
+      "source_hash": "5f9536154907ffdb862c83346edcf9a0463917fe94c5e1e7d00d47240049830d",
+      "source_id": "greenhouse:vercel:6181755004"
+    },
+    {
+      "band": 2,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=61588955c751b69ca83a74db65062e2ea73c72b1add9a21b645046d2ab93e572.json",
+      "length_chars": 15425,
+      "source": "greenhouse",
+      "source_hash": "61588955c751b69ca83a74db65062e2ea73c72b1add9a21b645046d2ab93e572",
+      "source_id": "greenhouse:anthropic:5444583008"
+    },
+    {
+      "band": 1,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=63204b30637db24bf0a66afcac61056dbcebd0a1d32fa2ff3feae288377733c5.json",
+      "length_chars": 11669,
+      "source": "greenhouse",
+      "source_hash": "63204b30637db24bf0a66afcac61056dbcebd0a1d32fa2ff3feae288377733c5",
+      "source_id": "greenhouse:anthropic:5391499008"
+    },
+    {
+      "band": 1,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=8171aa3acf1338eb5c35d4f02b0316f0959f4ad626ff5dc8233b7ad31d6d440f.json",
+      "length_chars": 13078,
+      "source": "greenhouse",
+      "source_hash": "8171aa3acf1338eb5c35d4f02b0316f0959f4ad626ff5dc8233b7ad31d6d440f",
+      "source_id": "greenhouse:anthropic:5391782008"
+    },
+    {
+      "band": 2,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=bebadeac2f4a815808ea9ac668e34efcf6f0e1c34dfd22adb6ef6ae76603e07b.json",
+      "length_chars": 16080,
+      "source": "greenhouse",
+      "source_hash": "bebadeac2f4a815808ea9ac668e34efcf6f0e1c34dfd22adb6ef6ae76603e07b",
+      "source_id": "greenhouse:anthropic:5456453008"
+    },
+    {
+      "band": 0,
+      "employer": "Vercel",
+      "key": "lake/raw/source=greenhouse/sha256=ebbfb3c5d4a433bf45185e3510f844a1845f7437da901b50df0055ea09a0a3e8.json",
+      "length_chars": 4993,
+      "source": "greenhouse",
+      "source_hash": "ebbfb3c5d4a433bf45185e3510f844a1845f7437da901b50df0055ea09a0a3e8",
+      "source_id": "greenhouse:vercel:5752684004"
+    },
+    {
+      "band": 1,
+      "employer": "Milken Institute School of Public Health",
+      "key": "lake/raw/source=hiringcafe/sha256=336fca822849a7ecd0ccdcfc11e9829e0960426953728e27ac5ae89350152a6f.json",
+      "length_chars": 7229,
+      "source": "hiringcafe",
+      "source_hash": "336fca822849a7ecd0ccdcfc11e9829e0960426953728e27ac5ae89350152a6f",
+      "source_id": "hiringcafe:iwcejy4xyg39q5pj"
+    },
+    {
+      "band": 0,
+      "employer": "Vultr",
+      "key": "lake/raw/source=hiringcafe/sha256=347ff7471130517814f53aab8ef3668290496d373b9becef346bd471f41f941e.json",
+      "length_chars": 4827,
+      "source": "hiringcafe",
+      "source_hash": "347ff7471130517814f53aab8ef3668290496d373b9becef346bd471f41f941e",
+      "source_id": "hiringcafe:qxq843s9i9aniiw9"
+    },
+    {
+      "band": 1,
+      "employer": "Double E Group",
+      "key": "lake/raw/source=hiringcafe/sha256=44ea88452d064c89953cbcc1dad6e6b8bebe85ade643c102d453d2f544306c68.json",
+      "length_chars": 5022,
+      "source": "hiringcafe",
+      "source_hash": "44ea88452d064c89953cbcc1dad6e6b8bebe85ade643c102d453d2f544306c68",
+      "source_id": "hiringcafe:vwvujofluqg3pcvm"
+    },
+    {
+      "band": 0,
+      "employer": "Philip Morris International",
+      "key": "lake/raw/source=hiringcafe/sha256=619b7b805b2791e9c306110acfc3f01f75908c40bc6c13369f0bd69de23483d3.json",
+      "length_chars": 2532,
+      "source": "hiringcafe",
+      "source_hash": "619b7b805b2791e9c306110acfc3f01f75908c40bc6c13369f0bd69de23483d3",
+      "source_id": "hiringcafe:25bbkzibtw8e86lh"
+    },
+    {
+      "band": 0,
+      "employer": "Thinking Machines Lab",
+      "key": "lake/raw/source=hiringcafe/sha256=6424ef1dfb5c0c4156c44dc49a60a4ad94873536bd39e278352144073b21c6f9.json",
+      "length_chars": 3221,
+      "source": "hiringcafe",
+      "source_hash": "6424ef1dfb5c0c4156c44dc49a60a4ad94873536bd39e278352144073b21c6f9",
+      "source_id": "hiringcafe:0va6ultioq1ylhqa"
+    },
+    {
+      "band": 0,
+      "employer": "TwinStream",
+      "key": "lake/raw/source=hiringcafe/sha256=8afd5861d8ac3756a35c727c396ea48b5eeba6a0f807d093db081c8d31665f9f.json",
+      "length_chars": 3382,
+      "source": "hiringcafe",
+      "source_hash": "8afd5861d8ac3756a35c727c396ea48b5eeba6a0f807d093db081c8d31665f9f",
+      "source_id": "hiringcafe:z7ojhalga3rlklk7"
+    },
+    {
+      "band": 1,
+      "employer": "Molina Healthcare",
+      "key": "lake/raw/source=hiringcafe/sha256=9b01a916fa4ba349896b8cbb7d2fa61ad076fb0356b03a32b3aa2efdcb124884.json",
+      "length_chars": 6310,
+      "source": "hiringcafe",
+      "source_hash": "9b01a916fa4ba349896b8cbb7d2fa61ad076fb0356b03a32b3aa2efdcb124884",
+      "source_id": "hiringcafe:pr2fvyd74qh2hcbc"
+    },
+    {
+      "band": 0,
+      "employer": "Akamai Technologies",
+      "key": "lake/raw/source=hiringcafe/sha256=a915c653bf9b2f3db7c408869caa48aa80f3e23e480fcc589e23bc5684c78069.json",
+      "length_chars": 4964,
+      "source": "hiringcafe",
+      "source_hash": "a915c653bf9b2f3db7c408869caa48aa80f3e23e480fcc589e23bc5684c78069",
+      "source_id": "hiringcafe:3pqo6mdwn8s0adtv"
+    },
+    {
+      "band": 1,
+      "employer": "Octave",
+      "key": "lake/raw/source=hiringcafe/sha256=aa03eadf450a87b39969a695193d64935a485135383e9ff23349392d8384fc5c.json",
+      "length_chars": 12000,
+      "source": "hiringcafe",
+      "source_hash": "aa03eadf450a87b39969a695193d64935a485135383e9ff23349392d8384fc5c",
+      "source_id": "hiringcafe:8sxvcp0o08bu59fa"
+    },
+    {
+      "band": 1,
+      "employer": "Nebius Group",
+      "key": "lake/raw/source=hiringcafe/sha256=cec380411a230761f6bc593db732336767da9e42406b8ca8e819a3cdc6311fc9.json",
+      "length_chars": 6046,
+      "source": "hiringcafe",
+      "source_hash": "cec380411a230761f6bc593db732336767da9e42406b8ca8e819a3cdc6311fc9",
+      "source_id": "hiringcafe:msay6etugjb09jz4"
+    },
+    {
+      "band": 2,
+      "employer": "moonpay",
+      "key": "lake/raw/source=lever/sha256=39e1385b90e995e9ade9223e90c9fdfece18c8c4d1be3ce45e5c7ea440cb1f04.json",
+      "length_chars": 15295,
+      "source": "lever",
+      "source_hash": "39e1385b90e995e9ade9223e90c9fdfece18c8c4d1be3ce45e5c7ea440cb1f04",
+      "source_id": "lever:moonpay:202dec29-039f-4211-8d8e-4ce8e36511ab"
+    },
+    {
+      "band": 1,
+      "employer": "palantir",
+      "key": "lake/raw/source=lever/sha256=452d93363f1fd6a29593936d20d160a8db4167b4f3ec35a43168b4a954b381e3.json",
+      "length_chars": 6796,
+      "source": "lever",
+      "source_hash": "452d93363f1fd6a29593936d20d160a8db4167b4f3ec35a43168b4a954b381e3",
+      "source_id": "lever:palantir:53fb4c05-f949-4146-a046-5c063c36a628"
+    },
+    {
+      "band": 2,
+      "employer": "moonpay",
+      "key": "lake/raw/source=lever/sha256=4e89476144d6ea5053d1151e36413ee6a07cc1099106947ee4e8851fb277093b.json",
+      "length_chars": 16317,
+      "source": "lever",
+      "source_hash": "4e89476144d6ea5053d1151e36413ee6a07cc1099106947ee4e8851fb277093b",
+      "source_id": "lever:moonpay:2ea0b7ba-75a0-43e1-a80a-c561d8c74c5e"
+    },
+    {
+      "band": 1,
+      "employer": "palantir",
+      "key": "lake/raw/source=lever/sha256=51f8d3d846c1364a6f20ca4a2fb8c5754d3b5df3b0c79ab040844194f1e47b69.json",
+      "length_chars": 8983,
+      "source": "lever",
+      "source_hash": "51f8d3d846c1364a6f20ca4a2fb8c5754d3b5df3b0c79ab040844194f1e47b69",
+      "source_id": "lever:palantir:3ab9e715-1ea9-4c6c-ad50-7340eac14e86"
+    },
+    {
+      "band": 0,
+      "employer": "moonpay",
+      "key": "lake/raw/source=lever/sha256=55633b936a84557a09461369069a66f81b129e8dd9f8d4695c3ce04fd0e3128c.json",
+      "length_chars": 857,
+      "source": "lever",
+      "source_hash": "55633b936a84557a09461369069a66f81b129e8dd9f8d4695c3ce04fd0e3128c",
+      "source_id": "lever:moonpay:74d3186f-687a-4777-b77a-e006ff8217e1"
+    },
+    {
+      "band": 1,
+      "employer": "palantir",
+      "key": "lake/raw/source=lever/sha256=6b807e287f534a446060cd4a0bbfbe91b54a23aa3e6b0a6c46db27d2c2793b1b.json",
+      "length_chars": 7834,
+      "source": "lever",
+      "source_hash": "6b807e287f534a446060cd4a0bbfbe91b54a23aa3e6b0a6c46db27d2c2793b1b",
+      "source_id": "lever:palantir:fef637bd-60f6-4603-b749-14e609c473a5"
+    },
+    {
+      "band": 2,
+      "employer": "moonpay",
+      "key": "lake/raw/source=lever/sha256=9f1b0a4701da2e9eb4ad14cc04cda0b38864071161375225a9fd7693cb737ba9.json",
+      "length_chars": 16199,
+      "source": "lever",
+      "source_hash": "9f1b0a4701da2e9eb4ad14cc04cda0b38864071161375225a9fd7693cb737ba9",
+      "source_id": "lever:moonpay:91e69ea7-bfc1-4b8a-bbc5-8439bacfcb57"
+    },
+    {
+      "band": 0,
+      "employer": "palantir",
+      "key": "lake/raw/source=lever/sha256=aeaf157f142b440a074e9537d8336d2d17a63dc9bff6ab67612bb3a5dcc24bad.json",
+      "length_chars": 4928,
+      "source": "lever",
+      "source_hash": "aeaf157f142b440a074e9537d8336d2d17a63dc9bff6ab67612bb3a5dcc24bad",
+      "source_id": "lever:palantir:2bc07b65-3f3a-4565-8d7c-d015bed92166"
+    },
+    {
+      "band": 1,
+      "employer": "moonpay",
+      "key": "lake/raw/source=lever/sha256=d3cd881d3f1bd857a05500ccdd045348d280c9af8b5bf79b4a2a5bc5be8b8bb2.json",
+      "length_chars": 9801,
+      "source": "lever",
+      "source_hash": "d3cd881d3f1bd857a05500ccdd045348d280c9af8b5bf79b4a2a5bc5be8b8bb2",
+      "source_id": "lever:moonpay:e5901d4d-6588-4877-8c2e-9fabd56d2775"
+    },
+    {
+      "band": 0,
+      "employer": "palantir",
+      "key": "lake/raw/source=lever/sha256=e8ac1340c06a2579fa3188d2e699848a8e7b6381e0af8ff2f4d64e3f2bafe7af.json",
+      "length_chars": 4872,
+      "source": "lever",
+      "source_hash": "e8ac1340c06a2579fa3188d2e699848a8e7b6381e0af8ff2f4d64e3f2bafe7af",
+      "source_id": "lever:palantir:a114f925-b5cb-4076-bf68-c77310754aec"
+    },
+    {
+      "band": 1,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=056c45951217b64eece073105596e6fcc6e02522186c83e2da02b7d33efb78f9.json",
+      "length_chars": 6740,
+      "source": "linkedin",
+      "source_hash": "056c45951217b64eece073105596e6fcc6e02522186c83e2da02b7d33efb78f9",
+      "source_id": ""
+    },
+    {
+      "band": 1,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=1f3a0caeae994c2d6910ececc2e6d1620bcbc6842cd8013ff2ab47ba2c0e1187.json",
+      "length_chars": 6896,
+      "source": "linkedin",
+      "source_hash": "1f3a0caeae994c2d6910ececc2e6d1620bcbc6842cd8013ff2ab47ba2c0e1187",
+      "source_id": ""
+    },
+    {
+      "band": 1,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=407524ce69b60100eaa1dad5d60a80758a7131b8bbc3d1afbb3b75ca253658e5.json",
+      "length_chars": 7473,
+      "source": "linkedin",
+      "source_hash": "407524ce69b60100eaa1dad5d60a80758a7131b8bbc3d1afbb3b75ca253658e5",
+      "source_id": ""
+    },
+    {
+      "band": 1,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=4baaf0a44f876693e31ffe90828bc05175d3f372fafd3fd88a961871f433d9fb.json",
+      "length_chars": 6134,
+      "source": "linkedin",
+      "source_hash": "4baaf0a44f876693e31ffe90828bc05175d3f372fafd3fd88a961871f433d9fb",
+      "source_id": ""
+    },
+    {
+      "band": 0,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=544f7050c7c9cc2ad7f7a23d8836b84e66738de63e91333d794370290055101c.json",
+      "length_chars": 1818,
+      "source": "linkedin",
+      "source_hash": "544f7050c7c9cc2ad7f7a23d8836b84e66738de63e91333d794370290055101c",
+      "source_id": ""
+    },
+    {
+      "band": 1,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=611fbca947ae7bda006503ac44513aac601561b54986465b82a1db8098b58766.json",
+      "length_chars": 6998,
+      "source": "linkedin",
+      "source_hash": "611fbca947ae7bda006503ac44513aac601561b54986465b82a1db8098b58766",
+      "source_id": ""
+    },
+    {
+      "band": 0,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=6bec791bc5f9bc2f1c66b4adc28ace4c1a2f2eb188e5d2fe8b1db29b2aa63b09.json",
+      "length_chars": 3781,
+      "source": "linkedin",
+      "source_hash": "6bec791bc5f9bc2f1c66b4adc28ace4c1a2f2eb188e5d2fe8b1db29b2aa63b09",
+      "source_id": ""
+    },
+    {
+      "band": 0,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=7bd67d6a715841d0005ce4ef0dde180bfd61ce41e34dc3672f16866adee2e45f.json",
+      "length_chars": 3435,
+      "source": "linkedin",
+      "source_hash": "7bd67d6a715841d0005ce4ef0dde180bfd61ce41e34dc3672f16866adee2e45f",
+      "source_id": ""
+    },
+    {
+      "band": 0,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=ac173f31df2e04bc6fe3e4c76fd46b557730d26d4f1c1830c5aa18d9bdf8f204.json",
+      "length_chars": 3617,
+      "source": "linkedin",
+      "source_hash": "ac173f31df2e04bc6fe3e4c76fd46b557730d26d4f1c1830c5aa18d9bdf8f204",
+      "source_id": ""
+    },
+    {
+      "band": 0,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=ee3b525d88024fb3cf228badf20c609f3b3234211b151915de8d080a7c79ba00.json",
+      "length_chars": 1962,
+      "source": "linkedin",
+      "source_hash": "ee3b525d88024fb3cf228badf20c609f3b3234211b151915de8d080a7c79ba00",
+      "source_id": ""
+    }
+  ]
+}
