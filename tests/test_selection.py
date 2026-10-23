@@ -24,9 +24,11 @@ def _csv(*rows: tuple[str, str, str]) -> str:
 
 
 def test_configuration_hash_matches_task_33_definition() -> None:
-    h = selection.configuration_hash_for("m", "sys", "user")
+    from backend.pipeline.cleaning.configuration import configuration_hash
+
+    h = configuration_hash("m", "sys", "user")
     assert h == hashlib.sha256(b"m\nsys\nuser").hexdigest()
-    assert h != selection.configuration_hash_for("m2", "sys", "user")
+    assert h != configuration_hash("m2", "sys", "user")
 
 
 def test_parse_query_results_validates_rows() -> None:

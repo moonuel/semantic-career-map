@@ -40,9 +40,10 @@ def _original_literal(name: str) -> Any:
     """
     tree = ast.parse(ORIGINAL_PATH.read_text(encoding="utf-8"))
     for node in tree.body:
-        if isinstance(node, ast.Assign):
-            if any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
-                return ast.literal_eval(node.value)
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == name for t in node.targets
+        ):
+            return ast.literal_eval(node.value)
     raise AssertionError(f"assignment {name!r} not found in {ORIGINAL_PATH}")
 
 
