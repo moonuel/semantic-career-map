@@ -106,4 +106,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-16**
 
     Tools and measures for detecting significant posting duplication in two shapes — containment/trim (one text a near-superset of another: RapidFuzz partial_ratio, suffix-array substring dedup, MinHash LSH Ensemble) and near-exact reposts differing by a date or a few words (RapidFuzz ratios, SimHash, char n-gram TF-IDF cosine) — plus volatile-field masking, scale math (pairwise vs LSH), and a zero-new-dependency layered pipeline for this project.
+
+-   [**018 — spaCy & spaCy-LLM**](018-spacy-and-spacy-llm.md){ .md-button }
+
+    **2026-10-22**
+
+    Survey of spaCy 3.8.16 (already a dependency: PhraseMatcher/EntityRuler skill extraction, tokenizer-only CPU posture, Pydantic v2 + Python 3.14 story) and spacy-llm 0.7.4 (task/model architecture, CoT SpanCat, ESCO-ready EntityLinker KB) — with an honest maintenance verdict, a keep-our-Layer-LLM recommendation for the productionized cleaning stage, and an experiment sketch for span extraction.
 </div>
