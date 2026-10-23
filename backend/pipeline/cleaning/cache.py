@@ -151,12 +151,16 @@ def load_cache_index(
     for part_key in list_dataset_parts(
         store, artifact_type=artifact_type, variant=variant, version=version
     ):
-        table = pq.read_table(io.BytesIO(store.get(part_key)))
+        buf = io.BytesIO(store.get(part_key))
+        schema = pq.read_schema(buf)
         for column in ("source_hash", "configuration_hash"):
-            if column not in table.column_names:
+            if column not in schema.names:
                 raise ValueError(
                     f"part {part_key!r} lacks the {column!r} identity column"
                 )
+        # Only the identity columns are decoded; LLM-text payloads stay out
+        # of memory (the index is the cache, not the dataset).
+        table = pq.read_table(buf, columns=["source_hash", "configuration_hash"])
         for pair in zip(
             table.column("source_hash").to_pylist(),
             table.column("configuration_hash").to_pylist(),

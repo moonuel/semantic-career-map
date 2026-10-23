@@ -35,19 +35,21 @@ from backend.pipeline.cleaning.cache import (  # type: ignore — same package
     list_dataset_parts,
     parse_part_key,
 )
+from backend.pipeline.cleaning.writer import (  # type: ignore — same package
+    build_flush_checkpoint,
+    latency_aggregates,
+)
 from backend.storage import keys
 
 
 class RunStore(Protocol):
-    """The put/get/list/exists surface run management needs."""
+    """The put/get/list surface run management needs."""
 
     def put(self, key: str, data: bytes) -> None: ...
 
     def get(self, key: str) -> bytes: ...
 
     def list_keys(self, prefix: str) -> list[str]: ...
-
-    def exists(self, key: str) -> bool: ...
 
 
 def _utc_now() -> str:
@@ -99,6 +101,29 @@ def list_flush_checkpoints(
     return sorted(checkpoints, key=lambda c: c["seq"])
 
 
+def _existing_checkpoints(store: RunStore) -> set[tuple[str, int]]:
+    """Collect the ``(run_id, seq)`` pairs of all recorded checkpoints.
+
+    One listing of the run-manifest root instead of one probe per part —
+    the set covers every historical run, and malformed leaves contribute
+    nothing rather than failing a healing pass.
+    """
+    existing: set[tuple[str, int]] = set()
+    for key in store.list_keys("lake/manifests/runs/"):
+        parent, leaf = key.rstrip("/").rsplit("/", 1)
+        if not leaf.startswith("flush=") or not leaf.endswith(".json"):
+            continue
+        run_segment = parent.rsplit("/", 1)[-1]
+        if not run_segment.startswith("run_id="):
+            continue
+        try:
+            seq = int(leaf.removeprefix("flush=").removesuffix(".json"))
+        except ValueError:
+            continue
+        existing.add((run_segment.removeprefix("run_id="), seq))
+    return existing
+
+
 def heal_orphan_checkpoints(
     store: RunStore,
     *,
@@ -118,62 +143,31 @@ def heal_orphan_checkpoints(
         The recovery checkpoints written this call (empty when nothing
         was orphaned).
     """
+    existing = _existing_checkpoints(store)
     recovered: list[dict[str, Any]] = []
     for part_key in list_dataset_parts(
         store, artifact_type=artifact_type, variant=variant, version=version
     ):
         run_id, seq = parse_part_key(part_key)
-        checkpoint_key = keys.manifest_run_checkpoint(run_id, seq)
-        if store.exists(checkpoint_key):
+        if (run_id, seq) in existing:
             continue
-        rows = pq.read_table(io.BytesIO(store.get(part_key))).to_pylist()
-        checkpoint = {
-            "run_id": run_id,
-            "seq": seq,
-            "trigger": "recovered",
-            "recovered": True,
-            "part_key": part_key,
-            "row_count": len(rows),
-            "batch_range": None,
-            "source_hashes": sorted(r["source_hash"] for r in rows),
-            "counters": {"cleaned": len(rows)},
-            "latency": {
-                "n_calls": 0,
-                "median_s": None,
-                "p90_s": None,
-                "max_s": None,
-                "durations": [],
-            },
-            "usage": {"prompt_tokens": 0, "completion_tokens": 0},
-            "cost_usd": 0.0,
-            "written_at": _utc_now(),
-        }
+        rows = pq.read_table(io.BytesIO(store.get(part_key)), columns=["source_hash"])
+        checkpoint = build_flush_checkpoint(
+            run_id=run_id,
+            seq=seq,
+            trigger="recovered",
+            part_key=part_key,
+            source_hashes=rows.column("source_hash").to_pylist(),
+            batch_range=None,
+            durations=[],
+            usage={"prompt_tokens": 0, "completion_tokens": 0},
+            cost_usd=0.0,
+        )
+        checkpoint["recovered"] = True
         payload = json.dumps(checkpoint, indent=2, ensure_ascii=False).encode("utf-8")
-        store.put(checkpoint_key, payload)
+        store.put(keys.manifest_run_checkpoint(run_id, seq), payload)
         recovered.append(checkpoint)
     return recovered
-
-
-def _latency(durations: list[float]) -> dict[str, Any]:
-    """Run-level aggregates from the merged per-call duration samples."""
-    if not durations:
-        return {
-            "n_calls": 0,
-            "median_s": None,
-            "p90_s": None,
-            "max_s": None,
-            "durations": [],
-        }
-    ordered = sorted(durations)
-    n = len(ordered)
-    median = ordered[n // 2] if n % 2 else (ordered[n // 2 - 1] + ordered[n // 2]) / 2
-    return {
-        "n_calls": n,
-        "median_s": median,
-        "p90_s": ordered[min(n - 1, round(0.9 * n) - 1)],
-        "max_s": ordered[-1],
-        "durations": ordered,
-    }
 
 
 def merge_run_record(
@@ -232,6 +226,7 @@ def merge_run_record(
         cost += c.get("cost_usd") or 0.0
     run_record = {
         "run_id": run_id,
+        "kind": "cleaning_run",
         "pipeline_version": pipeline_version,
         "started_at": started_at,
         "completed_at": completed_at,
@@ -245,7 +240,7 @@ def merge_run_record(
             "failed": failed,
         },
         "worker_count": worker_count,
-        "latency": _latency(durations),
+        "latency": latency_aggregates(durations),
         "usage": {
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,

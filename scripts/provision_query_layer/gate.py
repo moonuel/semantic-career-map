@@ -36,7 +36,11 @@ import time
 import boto3
 from dotenv import load_dotenv
 
-from backend.pipeline.selection import build_selection_manifest
+from backend.pipeline.selection import (
+    build_selection_manifest,
+    parse_query_results,
+    select_uncleaned_sql,
+)
 from scripts.provision_query_layer import DATABASE_DEFAULT, aws_region
 
 # The re-baseline (design.md Context, re-baselined 2026-10-21).
@@ -153,29 +157,25 @@ def quantiles_query() -> str:
 
 
 def uncleaned_dry_query() -> str:
-    """The raw-only variant of select_uncleaned over a no-artifact config."""
+    """The raw-only variant of select_uncleaned over a no-artifact config.
+
+    Drift guard: this copy's hash extraction must stay verbatim-identical
+    to the shipped selection SQL — a raw-leaf format change applied only to
+    ``select_uncleaned.sql`` must fail this gate loudly, not silently
+    verify parity against a stale expression.
+    """
     hash_expr = "regexp_extract(\"$path\", 'sha256=([0-9a-f]{64})\\.json', 1)"
+    if hash_expr not in select_uncleaned_sql():
+        raise ValueError(
+            "uncleaned_dry_query hash extraction drifted from "
+            "backend/pipeline/sql/select_uncleaned.sql; update both together"
+        )
     parts = [
         f"SELECT '{source}' AS source, {hash_expr} AS source_hash, "
         f"r.source_id FROM raw_{source} r"
         for source in sorted(EXPECTED_COUNTS)
     ]
     return "\nUNION ALL\n".join(parts) + "\nORDER BY source, source_hash"
-
-
-def _selection_rows(rows: list[str]) -> list[dict[str, str]]:
-    """Parse gate-3 result rows into adapter rows (source, hash, id)."""
-    parsed = []
-    for line in rows:
-        parts = line.split(",")
-        parsed.append(
-            {
-                "source": parts[0],
-                "source_hash": parts[1],
-                "source_id": parts[2] if len(parts) > 2 else "",
-            }
-        )
-    return parsed
 
 
 def main() -> None:
@@ -234,10 +234,12 @@ def main() -> None:
         print("== gate 3 skipped (--skip-dry-run)")
     else:
         print("== gate 3: uncleaned dry run over a no-artifact configuration")
-        rows = run_query(athena, DATABASE_DEFAULT, uncleaned_dry_query())[1:]
-        manifest = build_selection_manifest(
-            _selection_rows(rows), configuration_hash="0" * 64
-        )
+        # Route the query output through the production adapter's CSV
+        # parser (validation is the point of the gate) — same feed shape
+        # the selection flow uses: Athena CSV text, header included.
+        csv_text = "\n".join(run_query(athena, DATABASE_DEFAULT, uncleaned_dry_query()))
+        rows = parse_query_results(csv_text)
+        manifest = build_selection_manifest(rows, configuration_hash="0" * 64)
         n_postings = manifest.count(b'"key"')
         match = n_postings == TOTAL
         ok &= match

@@ -30,6 +30,7 @@ from typing import Any
 
 import pyarrow.parquet as pq
 
+from backend.pipeline.cleaning.cache import dataset_prefix
 from backend.pipeline.cleaning.normalization import SHAPE_TEXT_FIELD, normalize_html
 from backend.pipeline.eval.results import (
     evaluate_posting,
@@ -170,6 +171,7 @@ def load_cleaned(
     variant: str = "llm",
     version: str = "v1",
     configuration_hash: str | None = None,
+    text_hashes: set[str] | None = None,
 ) -> list[CleanedRow]:
     """Load one cleaned-dataset version's rows, pinned to one configuration.
 
@@ -180,6 +182,10 @@ def load_cleaned(
         version: Version token ``vN``.
         configuration_hash: Pin the cleaning configuration when the version
             carries several.
+        text_hashes: Load ``cleaned_text`` only for these ``source_hash``
+            values (``None`` loads every row's text). The evaluation passes
+            the golden hashes — postings missing from one side need only
+            their identity, not their text payload.
 
     Returns:
         Cleaned rows keyed ``source_hash``/``cleaned_text``
@@ -189,22 +195,48 @@ def load_cleaned(
         ValueError: if the version carries rows under more than one
             ``configuration_hash`` without an explicit pin.
     """
-    part_prefix = (
-        f"lake/artifacts/type={artifact_type}/variant={variant}/version={version}/"
-    )
-    keys.artifact_part(artifact_type, variant, version, _PROBE_RUN_ID, 1)
+    part_prefix = dataset_prefix(artifact_type, variant, version)
     rows: list[CleanedRow] = []
     seen_configs: set[str] = set()
-    for row in _read_rows(store, _list_parts(store, part_prefix)):
-        config = row.get("configuration_hash", "")
-        if config:
-            seen_configs.add(config)
-        rows.append(
-            CleanedRow(
-                source_hash=row["source_hash"],
-                cleaned_text=row.get("cleaned_text", ""),
-                configuration_hash=config,
+    want_all = text_hashes is None
+    for part_key in _list_parts(store, part_prefix):
+        buf = io.BytesIO(store.get(part_key))
+        schema = pq.read_schema(buf)
+        if "source_hash" not in schema.names:
+            raise KeyError("source_hash")
+        id_columns = ["source_hash"]
+        if "configuration_hash" in schema.names:
+            id_columns.append("configuration_hash")
+        table = pq.read_table(buf, columns=id_columns)
+        hashes = table.column("source_hash").to_pylist()
+        configs = (
+            table.column("configuration_hash").to_pylist()
+            if "configuration_hash" in id_columns
+            else [""] * len(hashes)
+        )
+        seen_configs.update(config for config in configs if config)
+        wanted = (
+            list(range(len(hashes)))
+            if want_all
+            else [
+                i for i, source_hash in enumerate(hashes) if source_hash in text_hashes
+            ]
+        )
+        texts = [""] * len(hashes)
+        if wanted:
+            buf.seek(0)
+            texts = (
+                pq.read_table(buf, columns=["cleaned_text"])
+                .column("cleaned_text")
+                .to_pylist()
             )
+        rows.extend(
+            CleanedRow(
+                source_hash=hashes[i],
+                cleaned_text=texts[i],
+                configuration_hash=configs[i],
+            )
+            for i in wanted
         )
     if len(seen_configs) > 1 and configuration_hash is None:
         raise ValueError(
@@ -258,7 +290,10 @@ def run_evaluation(
         created_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     run_id = run_id or ids.new_id()
     golden_by_hash = {g.source_hash: g for g in (golden or load_golden(store))}
-    cleaned_by_hash = {c.source_hash: c for c in (cleaned or load_cleaned(store))}
+    cleaned_by_hash = {
+        c.source_hash: c
+        for c in (cleaned or load_cleaned(store, text_hashes=set(golden_by_hash)))
+    }
 
     missing_golden = sorted(h for h in cleaned_by_hash if h not in golden_by_hash)
     missing_cleaned = sorted(h for h in golden_by_hash if h not in cleaned_by_hash)

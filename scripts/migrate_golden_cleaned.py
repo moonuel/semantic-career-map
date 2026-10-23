@@ -46,6 +46,7 @@ from backend.pipeline.cleaning.normalization import (
     normalize_html,
 )
 from backend.pipeline.eval import metrics as m
+from backend.pipeline.eval import run as eval_run
 from backend.storage import ids, keys
 from backend.storage.raw import RawPayload, fetch_all
 from backend.storage.store import ObjectStore
@@ -109,22 +110,6 @@ def payload_text(payload: RawPayload) -> str:
     """
     field = SHAPE_TEXT_FIELD[payload.source]
     return normalize_html(payload.data.get(field, ""))
-
-
-def coverage_of(golden_words: set[str], payload: RawPayload) -> float:
-    """Golden-word coverage of one candidate payload.
-
-    Args:
-        golden_words: The golden reference's word set (already lowered).
-        payload: The candidate raw payload.
-
-    Returns:
-        ``|golden ∩ payload| / |golden|`` (0.0 for an empty golden set).
-    """
-    text = payload_text(payload)
-    if not golden_words:
-        return 0.0
-    return len(golden_words & m.word_set(text)) / len(golden_words)
 
 
 def match_golden(
@@ -198,8 +183,9 @@ def main(argv: list[str] | None = None) -> int:
         argv: CLI arguments (default ``sys.argv[1:]``).
 
     Returns:
-        0 on success (dry or write); 2 when any reference failed to match —
-        no part is written in that case.
+        0 on success (dry or write); 2 when any reference failed to match,
+        the verify failed, or --write targets a version already carrying
+        parts — no part is written in that case.
     """
     load_dotenv()  # STORE_S3_* live in .env (003 convention)
     parser = argparse.ArgumentParser(
@@ -347,8 +333,23 @@ def migrate(
         print("dry run: no dataset part written (--write mints one)")
         return 0
 
+    dataset_prefix = eval_run.golden_prefix(variant, version)
     run_id = ids.new_id()
     if part:
+        # Idempotency guard: the dataset version is append-only and
+        # downstream loaders list every part under the prefix, so a second
+        # --write would silently double the ground truth.
+        existing = [
+            k for k in store.list_keys(dataset_prefix) if k.endswith(".parquet")
+        ]
+        if existing:
+            print(
+                "ABORT: the dataset version already carries "
+                f"{len(existing)} part(s) under {dataset_prefix}; rerun with "
+                "--manifest-only to reuse the existing part, or bump "
+                "--golden-version to target a new version."
+            )
+            return 2
         part_key = keys.eval_dataset("cleaning_golden", variant, version, run_id, 1)
         table = pa.Table.from_pylist(rows, schema=GOLDEN_SCHEMA)
         sink = io.BytesIO()
@@ -358,10 +359,6 @@ def migrate(
     else:
         # --manifest-only: the part already landed in a previous --write
         # run; re-putting it would duplicate rows. Reuse the latest part.
-        dataset_prefix = (
-            f"lake/eval/datasets/type=cleaning_golden/variant={variant}/"
-            f"version={version}/"
-        )
         existing = sorted(
             k for k in store.list_keys(dataset_prefix) if k.endswith(".parquet")
         )

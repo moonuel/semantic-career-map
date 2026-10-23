@@ -81,7 +81,7 @@ class PutSink(Protocol):
     def put(self, key: str, data: bytes) -> None: ...
 
 
-def _latency_aggregates(durations: list[float]) -> dict[str, Any]:
+def latency_aggregates(durations: list[float]) -> dict[str, Any]:
     """Compute call-latency aggregates over LLM-cleaned rows only.
 
     Args:
@@ -110,6 +110,60 @@ def _latency_aggregates(durations: list[float]) -> dict[str, Any]:
         "p90_s": p90,
         "max_s": ordered[-1],
         "durations": ordered,
+    }
+
+
+def build_flush_checkpoint(
+    *,
+    run_id: str,
+    seq: int,
+    trigger: str,
+    part_key: str,
+    source_hashes: list[str],
+    batch_range: list[str] | None,
+    durations: list[float],
+    usage: dict[str, int],
+    cost_usd: float,
+) -> dict[str, Any]:
+    """Build the flush-checkpoint document (the sole definition of its schema).
+
+    Args:
+        run_id: The producing run's UUIDv7.
+        seq: 1-based flush sequence within the run.
+        trigger: The trigger label recorded in the checkpoint.
+        part_key: The committed part key (this checkpoint's subject).
+        source_hashes: The rows' ``source_hash`` values (sorted here).
+        batch_range: The flush's first/last batch ids (``None`` for a
+            recovered checkpoint).
+        durations: Per-row LLM call durations (recovered checkpoints pass
+            ``[]`` — rows carry no call telemetry).
+        usage: Token usage sums (``prompt_tokens`` / ``completion_tokens``;
+            zeros for recovered checkpoints).
+        cost_usd: The flush's total LLM cost (rounded internally).
+
+    Returns:
+        The checkpoint dict, also serialized by callers under
+        :func:`keys.manifest_run_checkpoint`. The orphan-heal path
+        (:mod:`runs`) reuses this builder so healed and live-flush
+        checkpoints share one schema.
+    """
+    cleaned = len(source_hashes)
+    return {
+        "run_id": run_id,
+        "seq": seq,
+        "trigger": trigger,
+        "part_key": part_key,
+        "row_count": cleaned,
+        "batch_range": batch_range,
+        "source_hashes": sorted(source_hashes),
+        "counters": {"cleaned": cleaned},
+        "latency": latency_aggregates(durations),
+        "usage": {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+        },
+        "cost_usd": round(cost_usd, 8),
+        "written_at": datetime.datetime.now(datetime.UTC).isoformat(),
     }
 
 
@@ -309,19 +363,15 @@ class FlushWriter:
         sink = io.BytesIO()
         pq.write_table(table, sink)
         self._store.put(part_key, sink.getvalue())  # part first…
-        checkpoint = {
-            "run_id": self._run_id,
-            "seq": seq,
-            "trigger": trigger,
-            "part_key": part_key,
-            "row_count": len(rows),
-            "batch_range": [pending[0].batch_id, pending[-1].batch_id],
-            "source_hashes": sorted(r["source_hash"] for r in rows),
-            "counters": {"cleaned": len(rows)},
-            "latency": _latency_aggregates(
-                [p.duration_s for p in pending if p.duration_s is not None]
-            ),
-            "usage": {
+        checkpoint = build_flush_checkpoint(
+            run_id=self._run_id,
+            seq=seq,
+            trigger=trigger,
+            part_key=part_key,
+            source_hashes=[r["source_hash"] for r in rows],
+            batch_range=[pending[0].batch_id, pending[-1].batch_id],
+            durations=[p.duration_s for p in pending if p.duration_s is not None],
+            usage={
                 "prompt_tokens": sum(
                     (p.usage or {}).get("prompt_tokens", 0) for p in pending
                 ),
@@ -329,11 +379,8 @@ class FlushWriter:
                     (p.usage or {}).get("completion_tokens", 0) for p in pending
                 ),
             },
-            "cost_usd": round(
-                sum(p.cost_usd for p in pending if p.cost_usd is not None), 8
-            ),
-            "written_at": datetime.datetime.now(datetime.UTC).isoformat(),
-        }
+            cost_usd=sum(p.cost_usd for p in pending if p.cost_usd is not None),
+        )
         payload = json.dumps(checkpoint, indent=2, ensure_ascii=False).encode("utf-8")
         checkpoint_key = keys.manifest_run_checkpoint(self._run_id, seq)
         self._store.put(checkpoint_key, payload)  # …checkpoint after

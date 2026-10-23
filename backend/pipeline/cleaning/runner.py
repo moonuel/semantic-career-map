@@ -116,7 +116,7 @@ def run_cleaning(
     model: str,
     system_prompt: str,
     user_template: str,
-    client: Any,
+    client: CleaningClient,
     pipeline_version: str = "dev",
     workers: int = 8,
     artifact_type: str = "cleaned_text",

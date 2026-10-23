@@ -42,13 +42,10 @@ def _parse_bytes(text: str) -> int:
         "kib": 1024,
         "mib": 1024 * 1024,
         "b": 1,
-        "": 1,
     }
     for suffix, factor in units.items():
-        if text.endswith(suffix) and suffix:
+        if text.endswith(suffix):
             return int(text[: -len(suffix)].strip()) * factor
-    if text.endswith("b"):
-        return int(text[:-1].strip())
     return int(text)
 
 
