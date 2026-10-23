@@ -39,3 +39,13 @@ addopts = "-m 'not network'"
 markers = [
     "network: hits live endpoints; excluded by default, run with pytest -m network",
 ]
+
+[tool.ruff]
+# Immutable experiment artifacts. Per AGENTS.md: numbered experiment dirs are
+# static records of what was run, paired with docs/experiments reports,
+# Utility scripts and backend/ stay managed.
+extend-exclude = [
+    "scripts/[0-9][0-9][0-9]_*",
+    "docs",
+    "docs_bak",
+]
