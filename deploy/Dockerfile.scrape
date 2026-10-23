@@ -1,0 +1,14 @@
+FROM python:3.13-slim
+
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
+
+RUN pip install boto3==1.43.* botocore==1.43.* python-dotenv==1.2.* pyarrow==25.* requests==2.34.*
+
+RUN mkdir -p scripts
+COPY scripts/__init__.py scripts/__init__.py
+COPY scripts/scrape.py scripts/scrape.py
+COPY backend/ backend/
+
+ENV STORE_S3_ENDPOINT=
+
+CMD ["python", "scripts/scrape.py", "--source", "ashby", "--source", "greenhouse", "--source", "lever"]
