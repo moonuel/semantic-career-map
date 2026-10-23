@@ -26,7 +26,6 @@ import csv
 import io
 import json
 import re
-from hashlib import sha256
 from typing import Any
 
 from backend.pipeline import sampling
@@ -52,25 +51,6 @@ def select_uncleaned_sql() -> str:
     from pathlib import Path
 
     return (Path(__file__).parent / "sql" / SELECT_SQL_PATH).read_text(encoding="utf-8")
-
-
-def configuration_hash_for(model: str, system_prompt: str, user_template: str) -> str:
-    """SHA-256 over the cleaning configuration (the ``:config`` parameter).
-
-    Mirrors task 3.3's definition — the selection query is keyed on the same
-    configuration digest the artifact rows carry — as a local helper so the
-    selection flow can be exercised before 3.3 lands. 3.3's implementation is
-    authoritative; this helper exists for the selection contract only.
-
-    Args:
-        model: Model identifier.
-        system_prompt: System prompt text.
-        user_template: User message template.
-
-    Returns:
-        64-char lowercase hex SHA-256 over ``model\\nsystem_prompt\\nuser_template``.
-    """
-    return sha256(f"{model}\n{system_prompt}\n{user_template}".encode()).hexdigest()
 
 
 def parse_query_results(csv_text: str) -> list[dict[str, str]]:
