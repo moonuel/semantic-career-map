@@ -28,7 +28,7 @@ def test_headers_lists_entities_fixture() -> None:
     fixture = (
         "<h2>Role</h2>"
         "<ul><li>Build pipelines</li><li>Ship models</li></ul>"
-        '<h2>About the Company</h2><p>We&#39;re funded &amp; growing &mdash; '
+        "<h2>About the Company</h2><p>We&#39;re funded &amp; growing &mdash; "
         "salary $120k, full benefits &amp; equity.</p>"
         "<script>track(1);</script>"
     )

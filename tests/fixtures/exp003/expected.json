@@ -1,0 +1,8 @@
+{
+  "_provenance": "Expected values of docs/experiments/003-llm-extraction.md, Per-Model Text Cleaning Performance table (gpt-5.4-nano over the 5 legacy golden postings). Fixture texts verbatim from the golden at commit c5f4f5b (exp-003-era golden) and data/jobs.json llm_clean_text. Metric semantics pinned by scripts/003_llm_extraction/eval_cleaning.py. Boilerplate and hallucinations were CLEAN on all five postings in exp 003; hallucination checks exercise only the synthetic fixtures in the tests themselves.",
+  "bmo-associate-data-scientist": {"jaccard": 0.801, "over_deletion_pct": 19.9, "golden_words": 333, "llm_words": 248},
+  "affirm-ml-engineer-2": {"jaccard": 0.872, "over_deletion_pct": 12.8, "golden_words": 386, "llm_words": 311},
+  "hellofresh-ml-engineer-operations-technology": {"jaccard": 0.775, "over_deletion_pct": 22.5, "golden_words": 338, "llm_words": 245},
+  "mastercard-data-scientist-2": {"jaccard": 0.592, "over_deletion_pct": 30.7, "golden_words": 534, "llm_words": 400},
+  "scribd-data-scientist-2": {"jaccard": 0.606, "over_deletion_pct": 39.4, "golden_words": 403, "llm_words": 205}
+}
