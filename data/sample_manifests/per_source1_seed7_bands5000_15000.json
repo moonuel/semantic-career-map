@@ -1,0 +1,66 @@
+{
+  "params": {
+    "bands": [
+      5000,
+      15000
+    ],
+    "per_source": 1,
+    "seed": 7
+  },
+  "postings": [
+    {
+      "band": 1,
+      "employer": "elevenlabs",
+      "key": "lake/raw/source=ashby/sha256=90d788cbbb080b32e7c9262f9971bd2420f7a58f451c0e6e3c5bf5596bf277dd.json",
+      "length_chars": 7141,
+      "source": "ashby",
+      "source_hash": "90d788cbbb080b32e7c9262f9971bd2420f7a58f451c0e6e3c5bf5596bf277dd",
+      "source_id": "ashby:elevenlabs:4738893a-de4f-4a06-b104-315c6a4d366c"
+    },
+    {
+      "band": 1,
+      "employer": "Wealthsimple Technologies",
+      "key": "lake/raw/source=dataroles/sha256=1ffd67bfc7e04393e5c423c1d6570e66a6737d7ab259a10e0db3f2cb0a43b215.json",
+      "length_chars": 7237,
+      "source": "dataroles",
+      "source_hash": "1ffd67bfc7e04393e5c423c1d6570e66a6737d7ab259a10e0db3f2cb0a43b215",
+      "source_id": "ashby:wealthsimple:6f8ab2cd-3426-4e9e-bc53-2b5534a29601"
+    },
+    {
+      "band": 1,
+      "employer": "Anthropic",
+      "key": "lake/raw/source=greenhouse/sha256=a6e46998b6faa91637cd8f0099001285e6db06781f1516ec9ff91cb75e6e6632.json",
+      "length_chars": 9594,
+      "source": "greenhouse",
+      "source_hash": "a6e46998b6faa91637cd8f0099001285e6db06781f1516ec9ff91cb75e6e6632",
+      "source_id": "greenhouse:anthropic:5424404008"
+    },
+    {
+      "band": 1,
+      "employer": "Astroscale",
+      "key": "lake/raw/source=hiringcafe/sha256=39d4be9ced7096072e9a03722da4befb8105c5ab9ab132ad9f745120b992561e.json",
+      "length_chars": 6317,
+      "source": "hiringcafe",
+      "source_hash": "39d4be9ced7096072e9a03722da4befb8105c5ab9ab132ad9f745120b992561e",
+      "source_id": "hiringcafe:hiwn6rwdlkw817eq"
+    },
+    {
+      "band": 1,
+      "employer": "palantir",
+      "key": "lake/raw/source=lever/sha256=cf62e97634bde6cefe63fa61c21808b37b3b9ab6ef8eb8e4538e509359796b3a.json",
+      "length_chars": 9081,
+      "source": "lever",
+      "source_hash": "cf62e97634bde6cefe63fa61c21808b37b3b9ab6ef8eb8e4538e509359796b3a",
+      "source_id": "lever:palantir:8c95f750-9d42-456e-91fd-464ad87e4b83"
+    },
+    {
+      "band": 0,
+      "employer": "",
+      "key": "lake/raw/source=linkedin/sha256=a5b1d2ce7d14f19a23527c63e93e969954ea0be1810c03f707e76c9742cc0350.json",
+      "length_chars": 4598,
+      "source": "linkedin",
+      "source_hash": "a5b1d2ce7d14f19a23527c63e93e969954ea0be1810c03f707e76c9742cc0350",
+      "source_id": ""
+    }
+  ]
+}

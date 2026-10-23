@@ -42,6 +42,57 @@ REQUEST_TIMEOUT_S = 120.0
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 RETRY_BACKOFF_S = 2.0
 
+# Per-token prices ($/token), verbatim from Exp 007's frozen gateway probe
+# (scripts/007_llm_latency_benchmark/data/007_config.json, probe dated
+# 2026-10-17) + openai/gpt-5.4-nano from Exp 003's MODEL_PRICING. Cost
+# accounting rides run manifests (task 3.6) — callers price a call with
+# :func:`price_call`; an unknown model fails loudly rather than pricing to 0.
+PRICING_PER_TOKEN: dict[str, tuple[float, float]] = {
+    "amazon/nova-micro-v1": (3.5e-08, 1.4e-07),
+    "cohere/command-r7b-12-2024": (3.75e-08, 1.5e-07),
+    "deepseek/deepseek-v4-flash": (9.1e-08, 1.82e-07),
+    "google/gemini-2.5-flash-lite": (1e-07, 4e-07),
+    "google/gemma-3-12b-it": (4e-08, 1.2e-07),
+    "google/gemma-3-27b-it": (8e-08, 1.6e-07),
+    "google/gemma-3-4b-it": (4e-08, 5e-08),
+    "ibm-granite/granite-4.0-h-micro": (1.7e-08, 1.12e-07),
+    "inclusionai/ling-3.0-flash": (6e-08, 1.8e-07),
+    "meta-llama/llama-3.1-8b-instruct": (2e-08, 4e-08),
+    "microsoft/phi-4": (5.6e-08, 1.12e-07),
+    "mistralai/ministral-3b-2512": (1e-07, 1e-07),
+    "mistralai/ministral-8b-2512": (1.5e-07, 1.5e-07),
+    "mistralai/mistral-nemo": (1.5e-07, 1.5e-07),
+    "mistralai/mistral-small-24b-instruct-2501": (5e-08, 8e-08),
+    "nex-agi/nex-n2.5-mini": (2.5e-08, 1e-07),
+    "nvidia/nemotron-3-nano-30b-a3b": (5e-08, 2e-07),
+    "openai/gpt-5-nano": (5e-08, 4e-07),
+    "openai/gpt-5.4-nano": (1.5e-07, 6.0e-07),
+    "qwen/qwen3.7-flash": (3e-08, 1.3e-07),
+    "tencent/hy-mt2-7b": (7.4e-08, 2.95e-07),
+}
+
+
+def price_call(model: str, usage: dict[str, int]) -> float:
+    """Price one completed call from its usage counts.
+
+    Args:
+        model: Gateway model identifier (must be in
+            :data:`PRICING_PER_TOKEN`).
+        usage: The call's ``prompt_tokens`` / ``completion_tokens``.
+
+    Returns:
+        The call's cost in USD.
+
+    Raises:
+        KeyError: if the model has no frozen price (add it to
+            :data:`PRICING_PER_TOKEN` — never silently price to 0).
+    """
+    prompt_price, completion_price = PRICING_PER_TOKEN[model]
+    return (
+        usage.get("prompt_tokens", 0) * prompt_price
+        + usage.get("completion_tokens", 0) * completion_price
+    )
+
 
 def _is_retriable(exc: Exception) -> bool:
     """Return whether one failed attempt is worth retrying.

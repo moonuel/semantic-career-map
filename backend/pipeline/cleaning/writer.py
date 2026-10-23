@@ -89,10 +89,19 @@ def _latency_aggregates(durations: list[float]) -> dict[str, Any]:
             none; every row here is LLM-cleaned).
 
     Returns:
-        ``n_calls`` with median/p90/max ``duration_s`` in seconds.
+        ``n_calls`` with median/p90/max ``duration_s`` in seconds, plus
+        the sorted ``durations`` samples — per-flush aggregates alone
+        cannot be merged into exact run-level aggregates (task 3.6), so
+        the raw samples ride the checkpoint (n ≤ flush_rows, trivial).
     """
     if not durations:
-        return {"n_calls": 0, "median_s": None, "p90_s": None, "max_s": None}
+        return {
+            "n_calls": 0,
+            "median_s": None,
+            "p90_s": None,
+            "max_s": None,
+            "durations": [],
+        }
     ordered = sorted(durations)
     p90 = ordered[min(len(ordered) - 1, round(0.9 * len(ordered)) - 1)]
     return {
@@ -100,6 +109,7 @@ def _latency_aggregates(durations: list[float]) -> dict[str, Any]:
         "median_s": statistics.median(ordered),
         "p90_s": p90,
         "max_s": ordered[-1],
+        "durations": ordered,
     }
 
 
