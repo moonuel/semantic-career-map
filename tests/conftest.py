@@ -46,3 +46,15 @@ class MemorySink:
 def memory_sink() -> MemorySink:
     """A fresh empty ``MemorySink`` per test."""
     return MemorySink()
+
+
+class JournalSink(MemorySink):
+    """``MemorySink`` recording put order for write-protocol assertions."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.journal: list[str] = []
+
+    def put(self, key: str, data: bytes) -> None:
+        super().put(key, data)
+        self.journal.append(key)

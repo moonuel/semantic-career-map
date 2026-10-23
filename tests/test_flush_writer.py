@@ -18,19 +18,7 @@ import pytest
 
 from backend.pipeline.cleaning.writer import ROW_COLUMNS, FlushWriter
 from backend.storage import ids, keys
-from tests.conftest import MemorySink
-
-
-class JournalSink(MemorySink):
-    """MemorySink recording put order for part→checkpoint assertions."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.journal: list[str] = []
-
-    def put(self, key: str, data: bytes) -> None:
-        super().put(key, data)
-        self.journal.append(key)
+from tests.conftest import JournalSink
 
 
 def _hash(tag: str) -> str:
@@ -191,6 +179,7 @@ def test_checkpoint_accounting_fields() -> None:
         "median_s": 2.0,
         "p90_s": 3.0,
         "max_s": 3.0,
+        "durations": [1.0, 3.0],
     }
     assert cp["usage"] == {"prompt_tokens": 15, "completion_tokens": 3}
     assert cp["cost_usd"] == 0.0003
