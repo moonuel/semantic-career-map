@@ -186,7 +186,9 @@ def test_select_query_results_comma_safe_and_paginated(
             [["ashby", a2, "acme 6"]],
         ]
     )
-    csv_text = daily.select_query_results(athena, daily.bind_config_sql(daily.select_uncleaned_sql(), CONFIG), _settings())
+    csv_text = daily.select_query_results(
+        athena, daily.bind_config_sql(daily.select_uncleaned_sql(), CONFIG), _settings()
+    )
     assert athena.executed and athena.results_locations == ["s3://lake/athena-results/"]
     # binding: the run's database context + workgroup ride the submission
     submission = athena.submissions[0]
@@ -222,6 +224,58 @@ def test_run_daily_end_to_end(bucket_env: None) -> None:
     assert len(client.calls) == 2
     artifact_keys = [k for k in store.journal if k.startswith("lake/artifacts/")]
     assert artifact_keys and any(k.endswith(".parquet") for k in artifact_keys)
+
+
+def test_run_daily_resolves_version_from_env_when_unspecified(
+    bucket_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The scheduled path passes no version (the finding-6 shadowing bug)."""
+    monkeypatch.setenv("PIPELINE_VERSION", "clean-abc1234")
+    store = JournalSink()
+    a = _post(store, "greenhouse", "description_html", "html p1 <p>boiler</p>")
+    athena = FakeAthena(
+        [
+            [
+                ["source", "source_hash", "source_id"],
+                [a["source"], a["source_hash"], a["source_id"]],
+            ]
+        ]
+    )
+    record = daily.run_daily(athena, store, StubClient(), _settings())
+    assert record["pipeline_version"] == "clean-abc1234"
+
+
+def test_selection_query_binds_database_and_workgroup(
+    bucket_env: None,
+) -> None:
+    """The submission carries the settings' database/workgroup (finding 2)."""
+
+    class RecordingAthena(FakeAthena):
+        def start_query_execution(
+            self,
+            *,
+            QueryString,
+            QueryExecutionContext,
+            WorkGroup,
+            ResultConfiguration,
+            **kw,
+        ):
+            self.database = QueryExecutionContext["Database"]
+            self.workgroup = WorkGroup
+            return super().start_query_execution(
+                QueryString=QueryString,
+                ResultConfiguration=ResultConfiguration,
+                **kw,
+            )
+
+    athena = RecordingAthena([[["source", "source_hash", "source_id"]]])
+    daily.select_query_results(
+        athena,
+        daily.bind_config_sql(daily.select_uncleaned_sql(), CONFIG),
+        _settings(),  # database=semantic_career_map, workgroup=semantic_career_map
+    )
+    assert athena.database == "semantic_career_map"
+    assert athena.workgroup == "semantic_career_map"
 
 
 def test_run_daily_applies_failure_ledger(bucket_env: None) -> None:

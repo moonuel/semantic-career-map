@@ -11,6 +11,7 @@
       "name": "pipeline-scrape",
       "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/pipeline-images:scrape",
       "essential": true,
+      "entryPoint": ["python", "scripts/scrape.py"],
       "command": ["--source", "dataroles"],
       "environment": [
         {"name": "STORE_S3_BUCKET", "value": "<STORE_S3_BUCKET>"},

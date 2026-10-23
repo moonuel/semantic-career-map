@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Any
 
 import boto3
@@ -199,7 +200,13 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
 
 
 def scheduler_policy(acct: str, region: str) -> dict[str, Any]:
-    """What EventBridge Scheduler's execution role may do per timer fire."""
+    """What EventBridge Scheduler's execution role may do per timer fire.
+
+    The DLQ statement is required: every target names the queue as its
+    ``DeadLetterConfig`` and Scheduler delivers through this role —
+    without it failed invocations are dropped silently and the
+    ``pipeline-dlq-not-empty`` alarm can never fire for schedule targets.
+    """
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -224,8 +231,19 @@ def scheduler_policy(acct: str, region: str) -> dict[str, Any]:
                     role_arn(acct, ROLE_FARGATE_EXECUTION),
                 ],
             },
+            {
+                "Sid": "PushScheduleFailuresToDLQ",
+                "Effect": "Allow",
+                "Action": ["sqs:SendMessage"],
+                "Resource": [f"arn:aws:sqs:{region}:{acct}:{QUEUE_DLQ}"],
+            },
         ],
     }
+
+
+def image_arn(acct: str, region: str, tag: str) -> str:
+    """The ECR image URI for one tag (the single tag source of truth)."""
+    return f"{acct}.dkr.ecr.{region}.amazonaws.com/{ECR_REPO}:{tag}"
 
 
 def sns_rule_policy(acct: str, region: str) -> dict[str, Any]:
@@ -324,19 +342,33 @@ def stage_plan(acct: str, region: str) -> dict[str, Any]:
     }
 
 
-def render_task_definitions(acct: str, region: str) -> dict[str, dict[str, Any]]:
+def render_task_definitions(
+    acct: str,
+    region: str,
+    image_tags: dict[str, str] | None = None,
+) -> dict[str, dict[str, Any]]:
     """The task-definition JSONs with the placeholders substituted.
 
     The rendered payloads are exactly ``register_task_definition`` bodies
-    (``family`` included; the API takes it as the named argument).
+    (``family`` included). Image tags are the variables — the JSON's
+    static ``:scrape``/``:clean`` values and ``PIPELINE_VERSION`` env are
+    overwritten from the ``image_tags`` mapping (defaults: the
+    ``IMAGE_TAG_*`` constants; promotion reads pinned
+    ``scrape:<sha>``-style tags from the ``--image-tags`` CLI flag).
 
     Args:
         acct: The AWS account id (fills the ARNs).
         region: The bucket region (fills the ECR image Uris and logs).
+        image_tags: Per-tier tag override (tier name → tag).
 
     Returns:
         A mapping of tier name → the register payload.
     """
+    tags = {
+        "curator": IMAGE_TAG_SCRAPE,
+        "clean": IMAGE_TAG_CLEAN,
+        **(image_tags or {}),
+    }
     rendered: dict[str, dict[str, Any]] = {}
     for tier, path in TASK_DEF_FILES.items():
         with open(path, encoding="utf-8") as f:
@@ -348,14 +380,17 @@ def render_task_definitions(acct: str, region: str) -> dict[str, dict[str, Any]]
             ("<PIPELINE_ROLE_NAME>", ROLE_PIPELINE),
         ):
             spec = spec.replace(old, new)
+        if "<" in spec:
+            raise ValueError(
+                f"unresolved placeholders in {path}: "
+                + str([token for token in spec.split('"') if token.startswith("<")])
+            )
         payload: dict[str, Any] = json.loads(spec)
-        if "<" in json.dumps(payload):
-            outstanding = [
-                token
-                for token in json.dumps(payload).split('"')
-                if token.startswith("<")
-            ]
-            raise ValueError(f"unresolved placeholders in {path}: {outstanding}")
+        container = payload["containerDefinitions"][0]
+        container["image"] = image_arn(acct, region, tags[tier])
+        for env in container.get("environment", []):
+            if env["name"] == "PIPELINE_VERSION":
+                env["value"] = tags[tier]
         rendered[tier] = payload
     return rendered
 
@@ -364,7 +399,12 @@ def render_task_definitions(acct: str, region: str) -> dict[str, dict[str, Any]]
 
 
 def ensure_role(iam, name: str, services: list[str], policy: dict[str, Any]) -> str:
-    """Create-or-ignore the IAM role, then upsert its inline policy.
+    """Create-or-ignore the IAM role, then reconcile its inline policy.
+
+    On an existing role the current document is fetched and compared: an
+    identical policy skips the put (no churn), a differing one warns
+    before the managed version replaces any manual drift — post-provision
+    tuning (the T1 policy-simulator outcome) must not quietly revert.
 
     Args:
         iam: The boto3 IAM client.
@@ -378,19 +418,42 @@ def ensure_role(iam, name: str, services: list[str], policy: dict[str, Any]) -> 
     try:
         arn = role_arn(account_id(), name)
         iam.get_role(RoleName=name)
-        print(f"role exists: {name}")
+        managed = _current_policy(iam, name)
+        if managed is None or managed != policy:
+            print(
+                f"WARNING: managed policy for {name} differs from"
+                " the on-role version — overwriting"
+            )
+            iam.put_role_policy(
+                RoleName=name,
+                PolicyName=f"{name}-policy",
+                PolicyDocument=json.dumps(policy),
+            )
+        else:
+            print(f"role exists, policy unchanged: {name}")
     except iam.exceptions.NoSuchEntityException:
         iam.create_role(
             RoleName=name,
             AssumeRolePolicyDocument=json.dumps(assume_role_document(services)),
         )
         print(f"created role: {name}")
-    iam.put_role_policy(
-        RoleName=name,
-        PolicyName=f"{name}-policy",
-        PolicyDocument=json.dumps(policy),
-    )
+        iam.put_role_policy(
+            RoleName=name,
+            PolicyName=f"{name}-policy",
+            PolicyDocument=json.dumps(policy),
+        )
     return arn
+
+
+def _current_policy(iam, name: str) -> dict[str, Any] | None:
+    """The role's current inline policy document (``None`` when absent)."""
+    from urllib.parse import unquote_plus
+
+    try:
+        response = iam.get_role_policy(RoleName=name, PolicyName=f"{name}-policy")
+    except iam.exceptions.NoSuchEntityException:
+        return None
+    return json.loads(unquote_plus(response["PolicyDocument"]))
 
 
 def ensure_dlq(session: boto3.Session) -> str:
@@ -410,12 +473,37 @@ def ensure_dlq(session: boto3.Session) -> str:
     ]["QueueArn"]
 
 
+def _subscribed_endpoints(sns, topic_arn: str) -> set[str]:
+    """Every (protocol, endpoint) already on the topic (any state)."""
+    subscribed: set[str] = set()
+    next_token = None
+    while True:
+        kwargs: dict[str, Any] = {"TopicArn": topic_arn}
+        if next_token:
+            kwargs["NextToken"] = next_token
+        page = sns.list_subscriptions_by_topic(**kwargs)
+        for sub in page.get("Subscriptions", []):
+            subscribed.add(f"{sub['Protocol']}:{sub['Endpoint']}")
+        next_token = page.get("NextToken")
+        if not next_token:
+            return subscribed
+
+
 def ensure_topic(session: boto3.Session, email: str | None = None) -> str:
-    """Create-or-ignore the alert topic; optionally subscribe an email."""
+    """Create-or-ignore the alert topic; optionally subscribe an email (deduped).
+
+    Re-subscribing a confirmed endpoint would duplicate every failure
+    alert and mint a fresh pending-confirmation email on each apply — the
+    (protocol, endpoint) pair gates the call.
+    """
     sns = session.client("sns")
     topic = sns.create_topic(Name=TOPIC_ALERTS)["TopicArn"]
     print(f"topic ready: {TOPIC_ALERTS}")
     if email:
+        key = f"email:{email}"
+        if key in _subscribed_endpoints(sns, topic):
+            print(f"email already subscribed: {email}")
+            return topic
         confirmation = sns.subscribe(TopicArn=topic, Protocol="email", Endpoint=email)
         print(
             "subscription sent — confirm the email in the inbox"
@@ -456,16 +544,25 @@ def ensure_log_groups(session: boto3.Session) -> None:
         )
 
 
-def ensure_lambda(session: boto3.Session, acct: str) -> str:
+def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> str:
     """Create-or-ignore the ATS Lambda function; return its ARN.
 
+    The image URI is tag-pinned (see :func:`image_arn`) — on an existing
+    function the code is re-pointed and polled so a re-apply after a
+    promotion push cannot silently keep serving the stale digest.
+
+    Args:
+        session: The boto3 session.
+        acct: The account id.
+        tag: The ``scrape`` image tag override; defaults to
+            :data:`IMAGE_TAG_SCRAPE`.
+
     Raises:
-        RuntimeError: if the ``scrape`` image has not been pushed yet —
-            the T5 gate order is build/push (deploy/README.md) before
-            register.
+        RuntimeError: if the image has not been pushed yet — the T5 gate
+            order is build/push (deploy/README.md) before register.
     """
     region = aws_region()
-    image_uri = f"{acct}.dkr.ecr.{region}.amazonaws.com/{ECR_REPO}:{IMAGE_TAG_SCRAPE}"
+    image_uri = image_arn(acct, region, tag or IMAGE_TAG_SCRAPE)
     lam = session.client("lambda")
     params: dict[str, Any] = {
         "FunctionName": LAMBDA_ATS,
@@ -480,7 +577,7 @@ def ensure_lambda(session: boto3.Session, acct: str) -> str:
             "Variables": {
                 "STORE_S3_BUCKET": bucket_name(),
                 "STORE_S3_REGION": region,
-                "PIPELINE_VERSION": IMAGE_TAG_SCRAPE,
+                "PIPELINE_VERSION": image_uri.rsplit(":", 1)[1],
             }
         },
         "DeadLetterConfig": {"TargetArn": f"arn:aws:sqs:{region}:{acct}:{QUEUE_DLQ}"},
@@ -490,6 +587,28 @@ def ensure_lambda(session: boto3.Session, acct: str) -> str:
     try:
         lam.get_function(FunctionName=LAMBDA_ATS)
         print(f"lambda exists: {LAMBDA_ATS}")
+        # the tag is MUTABLE (README promotion flow): re-point the function
+        # at the freshly pushed digest so `--create` after a push is not a
+        # silent no-op running the stale image
+        lam.update_function_code(FunctionName=LAMBDA_ATS, ImageUri=image_uri)
+        for _ in range(30):
+            state = lam.get_function_configuration(FunctionName=LAMBDA_ATS)[
+                "LastUpdateStatus"
+            ]
+            if state == "Successful":
+                print(f"lambda image updated: {image_uri}")
+                break
+            if state == "Failed":
+                raise RuntimeError(
+                    f"lambda {LAMBDA_ATS} rejected the image update "
+                    f"(LastUpdateStatus=Failed) — check the pushed :{image_uri.rsplit(':', 1)[1]} tag"
+                )
+            time.sleep(2)
+        else:
+            raise RuntimeError(
+                f"lambda update did not settle after {30 * 2}s — inspect "
+                f"the console (LastUpdateStatus={state})"
+            )
     except lam.exceptions.ResourceNotFoundException:
         try:
             lam.create_function(**params)
@@ -528,13 +647,21 @@ def _register_or_skip(session, family: str, payload: dict[str, Any]) -> str:
     return response["taskDefinition"]["taskDefinitionArn"]
 
 
-def register_task_definitions(session) -> dict[str, str]:
+def register_task_definitions(
+    session, image_tags: dict[str, str] | None = None
+) -> dict[str, str]:
     """Register both Fargate task definitions from the ``deploy/`` JSONs.
+
+    Args:
+        session: The boto3 session.
+        image_tags: Override image tag per tier (``scrape``/``clean``) —
+            the promotion path for pinned per-iteration tags; defaults to
+            the moving constants.
 
     Returns:
         Mapping tier name → task-definition ARN.
     """
-    rendered = render_task_definitions(account_id(), aws_region())
+    rendered = render_task_definitions(account_id(), aws_region(), image_tags)
     return {
         tier: _register_or_skip(session, TASK_DEF_FAMILIES[tier], payload)
         for tier, payload in rendered.items()
@@ -552,9 +679,15 @@ def ensure_schedule_group(scheduler) -> None:
 
 
 def _schedule_target(
-    tier: str, acct: str, region: str, arns: dict[str, str]
+    tier: str, acct: str, region: str, arns: dict[str, Any]
 ) -> dict[str, Any]:
-    """One EventBridge Scheduler target body (Lambda or Fargate flavor)."""
+    """One EventBridge Scheduler target body (Lambda or Fargate flavor).
+
+    The `ats` tier runs the Lambda; every other tier indexes
+    ``arns["task_defs"][tier]`` — a missing per-tier key raises (loud)
+    rather than scheduling the wrong task definition (the finding-3 bug
+    took the daily-clean target from the curator's ARN this way).
+    """
     target: dict[str, Any] = {
         "RoleArn": role_arn(acct, ROLE_SCHEDULER),
         "RetryPolicy": {
@@ -567,9 +700,10 @@ def _schedule_target(
         target["Arn"] = arns["lambda"]
         return target
     network = default_network(boto3.Session(region_name=aws_region()))
-    target["Arn"] = arns["task_definition"]
+    task_arn = arns["task_defs"][tier]  # missing tier = loud failure
+    target["Arn"] = task_arn
     target["EcsParameters"] = {
-        "TaskDefinitionArn": arns["task_definition"],
+        "TaskDefinitionArn": task_arn,
         "LaunchType": "FARGATE",
         "NetworkConfiguration": {
             "awsvpcConfiguration": {
@@ -583,7 +717,7 @@ def _schedule_target(
 
 
 def create_schedules(
-    session, acct: str, region: str, arns: dict[str, str], *, state: str
+    session, acct: str, region: str, arns: dict[str, Any], *, state: str
 ) -> None:
     """Create-or-ignore the three daily schedules (each created DISABLED).
 
@@ -591,7 +725,9 @@ def create_schedules(
         session: The boto3 session.
         acct: The account id.
         region: The bucket region.
-        arns: The ``lambda`` and ``task_definition`` target ARNs.
+        arns: The ``lambda`` ARN plus the per-tier ``task_defs`` mapping
+            (tagged via :func:`register_task_definitions`); the clean and
+            curator schedules index their own tier's task-definition ARN.
         state: ``DISABLED`` (smoke-first contract) or ``ENABLED``.
     """
     scheduler = session.client("scheduler")
@@ -714,8 +850,97 @@ def put_secret(session, value: str, *, overwrite: bool = False) -> None:
     print(f"secret written: {SSM_SECRET_PATH} (value not printed)")
 
 
-def stage_create(session, acct: str, region: str, email: str | None = None) -> None:
-    """Apply the whole creation set except scheduling (which arms it)."""
+def ensure_fargate_execution_role(iam) -> str:
+    """Create-or-ignore the Fargate execution role (task defs Require it).
+
+    ``ecsTaskExecutionRole`` is the conventional name but it is account-
+    local, not an AWS-managed guarantee — a tooling-first account has no
+    ECS console history to have minted it, and the first task-def
+    registration would abort mid-apply. The managed policy is exactly the
+    two things the runtime needs: ECR reads + CloudWatch Logs writes.
+
+    Returns:
+        The role ARN.
+    """
+    name = ROLE_FARGATE_EXECUTION
+    policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    arn = ensure_role(
+        iam,
+        name,
+        ["ecs-tasks.amazonaws.com"],
+        {"Version": "2012-10-17", "Statement": []},
+    )
+    attached = iam.list_attached_role_policies(RoleName=name)["AttachedPolicies"]
+    if not any(p["PolicyArn"] == policy_arn for p in attached):
+        iam.attach_role_policy(RoleName=name, PolicyArn=policy_arn)
+        print(f"attached execution policy: {name}")
+    return arn
+
+
+def test_failure_rule_pattern(events) -> tuple[bool, bool]:
+    """Prove the task-failure rule's event pattern against both shapes.
+
+    The ECS STOPPED matcher's array-of-object semantics are exactly the
+    subtle part of the alert path: a captured failure event must MATCH
+    and a clean exit must NOT (otherwise failures publish nothing and the
+    alarm promise is hollow).
+
+    Args:
+        events: The boto3 events client.
+
+    Returns:
+        ``(failure_matches, clean_ignored)``.
+    """
+
+    def sample(exit_code: int) -> dict[str, Any]:
+        return {
+            "source": "aws.ecs",
+            "detail-type": "ECS Task State Change",
+            "detail": {
+                "lastStatus": "STOPPED",
+                "containers": [{"name": "pipeline-clean", "exitCode": exit_code}],
+            },
+        }
+
+    rule = events.describe_rule(Name=RULE_TASK_FAILED)
+    failure = events.test_event_pattern(
+        EventPattern=rule["EventPattern"], Event=json.dumps(sample(exit_code=1))
+    )["MatchesEventPatterns"]
+    clean = events.test_event_pattern(
+        EventPattern=rule["EventPattern"], Event=json.dumps(sample(exit_code=0))
+    )["MatchesEventPatterns"]
+    if not failure or clean:
+        print(
+            f"WARNING: rule {RULE_TASK_FAILED} pattern "
+            f"(failure matched={failure}, clean matched={clean}) — "
+            "the alert path fires hollow; fix the pattern's arrays"
+        )
+    return failure, not clean
+
+
+def stage_create(
+    session,
+    acct: str,
+    region: str,
+    email: str | None = None,
+    image_tags: dict[str, str] | None = None,
+) -> None:
+    """Apply the whole creation set except scheduling (which arms it).
+
+    Order: roles first (pipeline, scheduler, sns-rule, and the Fargate
+    execution role the registrations Require), then the lake plumbing
+    (DLQ, topic, ECR, log groups), then the registering consumers
+    (Lambda, task definitions), then the alerting + schedules
+    (disabled). ``image_tags`` rides the promotion path
+    (``--image-tags``; the Lambda tag key is ``scrape``).
+
+    Args:
+        session: The boto3 session.
+        acct: The account id.
+        region: The bucket region.
+        email: Optional alert email to subscribe (deduped).
+        image_tags: Optional per-tier image tag overrides.
+    """
     iam = session.client("iam")
     ensure_role(
         iam,
@@ -735,15 +960,16 @@ def stage_create(session, acct: str, region: str, email: str | None = None) -> N
         ["events.amazonaws.com"],
         sns_rule_policy(acct, region),
     )
+    ensure_fargate_execution_role(iam)
     dlq_arn = ensure_dlq(session)
     topic_arn = ensure_topic(session, email)
     ensure_ecr(session)
     ensure_log_groups(session)
-    lambda_arn = ensure_lambda(session, acct)
-    task_arns = register_task_definitions(session)
+    lambda_arn = ensure_lambda(session, acct, (image_tags or {}).get("scrape"))
+    task_arns = register_task_definitions(session, image_tags)
     put_alarm(session, topic_arn)
     put_failure_rule(session, acct, region, topic_arn)
-    arns = {"lambda": lambda_arn, "task_definition": task_arns["curator"]}
+    arns = {"lambda": lambda_arn, "task_defs": task_arns}
     create_schedules(session, acct, region, arns, state="DISABLED")
     print(f"dlq arn: {dlq_arn}")
 
@@ -765,7 +991,12 @@ def verify(
     try:
         session = _session()
         iam = session.client("iam")
-        for role_name in (ROLE_PIPELINE, ROLE_SCHEDULER, ROLE_SNS_RULE):
+        for role_name in (
+            ROLE_PIPELINE,
+            ROLE_SCHEDULER,
+            ROLE_SNS_RULE,
+            ROLE_FARGATE_EXECUTION,
+        ):
             try:
                 found = iam.get_role(RoleName=role_name)["Role"]
                 checks.append((f"role {role_name}", bool(found)))
@@ -782,8 +1013,12 @@ def verify(
             checks.append(("dlq exists", bool(url)))
         except session.client("sqs").exceptions.QueueDoesNotExistError:
             checks.append(("dlq missing", False))
-        ensure_ecr(session)
-        checks.append(("ecr repo", True))
+        ecr = session.client("ecr")
+        try:
+            ecr.describe_repositories(repositoryNames=[ECR_REPO])
+            checks.append(("ecr repo exists", True))
+        except ecr.exceptions.RepositoryNotFoundException:
+            checks.append(("ecr repo missing (push step)", False))
         try:
             lam_state = session.client("lambda").get_function(FunctionName=LAMBDA_ATS)[
                 "Configuration"
@@ -813,6 +1048,18 @@ def verify(
                 checks.append((f"schedule {name} missing", False))
         alarms = session.client("cloudwatch").describe_alarms(AlarmNames=[ALARM_DLQ])
         checks.append((f"alarm {ALARM_DLQ}", bool(alarms["MetricAlarms"])))
+        try:
+            failure_matched, clean_ignored = test_failure_rule_pattern(
+                session.client("events")
+            )
+            checks.append(
+                (
+                    f"failure rule pattern {RULE_TASK_FAILED}",
+                    failure_matched and clean_ignored,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 — a broken rule is a FAIL row
+            checks.append((f"failure rule: {repr(exc)[:50]}", False))
     except Exception as exc:  # noqa: BLE001 — any hard failure is a FAIL row
         checks.append((f"session/region: {repr(exc)[:60]}", False))
     for label, good in extra_checks or []:

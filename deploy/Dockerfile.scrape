@@ -2,13 +2,15 @@ FROM python:3.14-slim
 
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
 
-RUN pip install boto3==1.43.* botocore==1.43.* python-dotenv==1.2.* pyarrow==25.* requests==2.34.*
+RUN pip install boto3==1.43.* botocore==1.43.* python-dotenv==1.2.* pyarrow==25.* requests==2.34.* awslambdaric
 
-RUN mkdir -p scripts
+RUN mkdir -p scripts deploy
 COPY scripts/__init__.py scripts/__init__.py
 COPY scripts/scrape.py scripts/scrape.py
 COPY backend/ backend/
+COPY deploy/lambda_ats.py deploy/lambda_ats.py
 
 ENV STORE_S3_ENDPOINT=
 
-CMD ["python", "scripts/scrape.py", "--source", "ashby", "--source", "greenhouse", "--source", "lever"]
+ENTRYPOINT ["python", "-m", "awslambdaric"]
+CMD ["deploy.lambda_ats.handler"]

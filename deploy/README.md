@@ -37,13 +37,16 @@ promoting a new pipeline version; the moving tags stay for schedule targets.
 
 ```bash
 docker build -f deploy/Dockerfile.scrape --platform linux/arm64 -t pipeline-scrape .
-docker run --platform linux/arm64 --rm pipeline-scrape python scripts/scrape.py --help
+# the image's ENTRYPOINT is the Lambda runtime client — mirror the curator
+# task def's entryPoint/command override for the argparse surface:
+docker run --platform linux/arm64 --rm --entrypoint python pipeline-scrape scripts/scrape.py --help
 docker build -f deploy/Dockerfile.clean --platform linux/arm64 -t pipeline-clean .
 docker run --platform linux/arm64 --rm pipeline-clean python -m backend.pipeline.cleaning.daily --help
 ```
 
 Both `--help` flags must exit 0 without any `KILO_API_KEY` or `STORE_S3_*`
-set (`daily.py` constructs the gateway client lazily inside `main()`).
+set (`daily.py` fetches the secret and constructs the gateway client
+inside `main()`; the scrape handler imports the batch CLI lazily).
 
 ## Runtime environment contract
 
@@ -59,18 +62,32 @@ process env — never baked into images or task definitions, never logged.
 | `STORE_S3_ENDPOINT` | baked empty | baked empty | empty = real S3, default credential chain = the pipeline role |
 | `SOURCE_*` CLI flags | `CMD`/command override | n/a | ATS: `--source ashby --source greenhouse --source lever`; curator: `--source dataroles` |
 | `STORE_S3_ACCESS_KEY_ID` / `..._SECRET...` | **must not be set** | **must not be set** | `ObjectStore.from_env` refuses static keys on real S3 |
-| `CONFIGURATION_HASH` | n/a | required (task env) | 64-hex digest binding the Athena selection to the run |
-| `CLEAN_MODEL` | n/a | required (task env) | default `google/gemini-2.5-flash-lite` (exp 008 A3) |
-| `CLEAN_WORKERS` | n/a | optional (default 8, D8) | |
-| `MAX_RUN_HOURS` | n/a | optional (default 2) | wall-clock guard; fires the runner's SIGINT/`interrupted` path |
-| `PIPELINE_VERSION` | n/a | optional | overrides the `dev` git-sha fallback inside containers (no git on the image) |
-| `DATABASE`, `WORKGROUP` | n/a | optional | Glue/Athena names, defaults match `provision_query_layer` |
+| `CONFIGURATION_HASH` | n/a | optional (default: computed from `CLEAN_MODEL` + shipped prompts) | re-run override only — never pin a stale digest after a prompts/model change |
+| `CLEAN_MODEL` | n/a | task def (default `google/gemini-2.5-flash-lite`, exp 008 A3) | |
+| `CLEAN_WORKERS` | n/a | task def default 8 (D8) | |
+| `MAX_RUN_HOURS` | n/a | task def default 2 | wall-clock guard over BOTH the selection query and the run; fires the runner's SIGINT/`interrupted` path |
+| `PIPELINE_VERSION` | n/a | set by the provisioner from the image tag (`--image-tags`) | recorded in run manifests for lineage |
+| `CLEAN_DATABASE`, `CLEAN_WORKGROUP` | n/a | optional | Glue/Athena names; defaults match `provision_query_layer` (`--database/--workgroup` flags win) |
 
 ## Dependencies
 
 Docker-image deps (`pip install` layers above) are pinned to the versions
-the operating venv resolves; `requirements.txt` is untouched on purpose —
-these are image-level deps, not repository dependencies. The scrape path
-pulls `requests` + `boto3` + `pyarrow`; the clean path pulls `httpx` +
-`boto3` + `pyarrow` (no pandas, no sentence-transformers — deliberately
-nowhere in either image).
+the operating venv resolves (`python:3.14-slim` — the repo's language);
+`requirements.txt` is untouched on purpose — these are image-level deps,
+not repository dependencies. The scrape path pulls `requests` + `boto3` +
+`pyarrow` + `awslambdaric` (the Lambda Runtime Interface Client that makes
+the image invokable); the clean path pulls `httpx` + `boto3` + `pyarrow`
+(no pandas, no sentence-transformers — deliberately nowhere in either
+image).
+
+## Security posture note (accepted residual risk)
+
+The tiers parse untrusted job-posting content while holding lake-write
+IAM credentials (and, on the clean tier, the LLM key) in-process, with
+default-VPC egress unrestricted. Egress control via NAT/vegetatable VPC
+endpoints conflicts with the roadmap's explicit no-NAT/no-VPC guardrail
+(`docs/architecture/aws-migration-roadmap.md` §2.4) and its cost budget
+— so no SG egress allowlist is attached today. If the task-driving
+compute ever widens, revisit: an S3 + gateway interface endpoint + egress
+SG is the change, and the T1 policy-simulator gate covers IAM-side
+blast radius.

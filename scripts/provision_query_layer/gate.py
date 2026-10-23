@@ -28,7 +28,9 @@ not gate-tested — no run records exist until task 3.6 lands.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import io
 import os
 import sys
 import time
@@ -83,6 +85,24 @@ def _results_location() -> str:
     return f"s3://{os.environ['STORE_S3_BUCKET']}/athena-results/"
 
 
+def _csv_line(cells) -> str:
+    """One strict-CSV row row (quotes comma-bearing cells like ``source_id``).
+
+    Gate 1/2 duplicate-splitting stays safe (their fields never contain
+    commas) and gate 3's ``parse_query_results`` reads the quoting — the
+    bare ``",".join`` this replaced silently corrupted such cells.
+
+    Args:
+        cells: The row's cell values (any order).
+
+    Returns:
+        The serialized line (no newline).
+    """
+    buffer = io.StringIO()
+    csv.writer(buffer, lineterminator="").writerow(cells)
+    return buffer.getvalue()
+
+
 def run_query(athena, database: str, sql: str) -> list[str]:
     """Submit one query, poll to completion, return CSV rows (with header).
 
@@ -129,7 +149,7 @@ def run_query(athena, database: str, sql: str) -> list[str]:
             kwargs["NextToken"] = next_token
         page = athena.get_query_results(**kwargs)
         for row in page["ResultSet"]["Rows"]:
-            rows.append(",".join(cell.get("VarCharValue", "") for cell in row["Data"]))
+            rows.append(_csv_line(cell.get("VarCharValue", "") for cell in row["Data"]))
         next_token = page.get("NextToken")
         if not next_token:
             return rows

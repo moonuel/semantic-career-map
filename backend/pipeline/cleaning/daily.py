@@ -223,11 +223,14 @@ def select_query_results(athena, sql: str, settings: Settings) -> str:
     return buffer.getvalue()
 
 
-def pipeline_version() -> str:
+def resolve_pipeline_version() -> str:
     """Short git sha, ``PIPELINE_VERSION`` override, or ``dev`` fallback.
 
     Containers carry no git binary; the ``PIPELINE_VERSION`` env (the
-    task-definition's image tag) is the override path there.
+    task-definition's image tag) is the override path there. Named
+    ``resolve_`` to stay distinct from :func:`run_daily`'s parameter of
+    the same purpose (the shadowing bug was the scheduled path's
+    ``TypeError: 'NoneType' object is not callable``).
 
     Returns:
         The pipeline version string recorded in run manifests.
@@ -289,27 +292,27 @@ def run_daily(
         client: The gateway client (real or stubbed) for the runner.
         settings: The resolved per-run configuration.
         pipeline_version: Producing-code version; ``None`` resolves via
-            :func:`pipeline_version`.
+            :func:`resolve_pipeline_version`.
 
     Returns:
         The persisted run record dict (see
         :func:`backend.pipeline.cleaning.runs.merge_run_record`).
 
     Raises:
-        KeyboardInterrupt: a deadline/c signal that caught the driver
-            outside the runner's own scope; any run record committed in the
+        KeyboardInterrupt: a deadline/c signal (armed before, covering the
+            selection phase too); any run record committed in the
             runner's tail remains durable before propagation.
         RuntimeError: upstream on a non-SUCCEEDED Athena query.
     """
-    sql = bind_config_sql(select_uncleaned_sql(), settings.configuration_hash)
-    csv_text = select_query_results(athena, sql, settings)
-    rows = parse_query_results(csv_text)
-    manifest_bytes = build_selection_manifest(
-        rows, configuration_hash=settings.configuration_hash, store=store
-    )
-    manifest_path = _write_manifest(manifest_bytes)
-    timer = arm_deadline(settings.max_run_hours)
+    timer = arm_deadline(settings.max_run_hours)  # guards selection too
     try:
+        sql = bind_config_sql(select_uncleaned_sql(), settings.configuration_hash)
+        csv_text = select_query_results(athena, sql, settings)
+        rows = parse_query_results(csv_text)
+        manifest_bytes = build_selection_manifest(
+            rows, configuration_hash=settings.configuration_hash, store=store
+        )
+        manifest_path = _write_manifest(manifest_bytes)
         return runner.run_cleaning(
             store,
             runner.load_manifest(manifest_path),
@@ -318,7 +321,7 @@ def run_daily(
             system_prompt=BOILERPLATE_ONLY_SYSTEM_PROMPT,
             user_template=USER_MESSAGE_TEMPLATE,
             client=client,
-            pipeline_version=pipeline_version or pipeline_version(),
+            pipeline_version=pipeline_version or resolve_pipeline_version(),
             workers=settings.workers,
             version=settings.version,
         )
@@ -378,13 +381,15 @@ def settings_from_env(args: argparse.Namespace) -> Settings:
     workers = args.workers
     if workers is None:
         workers = int(os.environ.get("CLEAN_WORKERS", "8"))
+    database = args.database or os.environ.get("CLEAN_DATABASE") or DATABASE_DEFAULT
+    workgroup = args.workgroup or os.environ.get("CLEAN_WORKGROUP") or WORKGROUP_DEFAULT
     version = args.version_root or os.environ.get("CLEAN_VERSION") or "v1"
     max_run_hours = args.max_run_hours
     if max_run_hours is None:
         max_run_hours = float(os.environ.get("MAX_RUN_HOURS", "2"))
     return Settings(
-        database=args.database,
-        workgroup=args.workgroup,
+        database=database,
+        workgroup=workgroup,
         model=model,
         workers=workers,
         version=version,
@@ -401,8 +406,8 @@ def main() -> None:
         description="Daily cleaning tier: Athena selection → manifest → "
         "one cleaning run over the real store and gateway.",
     )
-    parser.add_argument("--database", default=DATABASE_DEFAULT)
-    parser.add_argument("--workgroup", default=WORKGROUP_DEFAULT)
+    parser.add_argument("--database", default=None)
+    parser.add_argument("--workgroup", default=None)
     parser.add_argument("--model", default=None)
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--version-root", default=None)
@@ -424,7 +429,7 @@ def main() -> None:
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         return
 
-    fetch_secret_if_absent(boto3.Session().client("ssm"))
+    fetch_secret_if_absent(boto3_client("ssm"))
     from backend.storage.store import ObjectStore
 
     athena = boto3_client("athena")
