@@ -142,9 +142,56 @@ Preserved for the buffering-delta read. Full table printed by `analyze_results.p
 
 ## Next steps
 
-- Re-benchmark top-3 shortlist on the *actual* cleaning workload (posting texts, real prompt shape) with quality gates from Experiment 003 — latency ranking can flip when the prompt changes (~500-token output here vs ~1000+ for cleanings).
+- Re-benchmark top-3 shortlist on the *actual* cleaning workload (posting texts, real prompt shape) with quality gates from Experiment 003 — latency ranking can flip when the prompt changes (~500-token output here vs ~1000+ for cleanings). → done: [Experiment 008](./008-boilerplate-only-cleaning.md) ran the 8-arm workload benchmark.
 - Track the empty-stream fault class: if `gpt-5-nano` / `deepseek-v4-flash` become cleaning candidates on quality, prefer non-streaming calls for them explicitly.
 - Archive `007_analysis.json` values in the experiment report only at freeze points; re-runs overwrite raw data in place (append-only), so this report documents the October 17, 2026 run.
+
+## Production adoption — cleaning + eval on the lake (2026-10-23)
+
+The Next-steps shortlist resolved to **`gemini-2.5-flash-lite`** (008's quality-gated
+choice, projected ~2 s/call at $3.1e-4) and is now the production cleaning
+configuration: `configuration_hash 4486c2d5…` over the boilerplate-only prompt,
+producing `lake/artifacts/type=cleaned_text/variant=llm/version=v1/` with
+flush-watermark durability (D10), exact span partitioning (D7), the artifact-cache
+done-index (D-cache), and fail-fast per posting with zero-mean hallucination loss.
+The lake verdict confirms the lane this report's Track B table predicted: medians
+~2.4–2.6 s/posting at ~$3.9e-4/posting (6-posting live run), inside the 007
+projection envelope.
+
+End-to-end over the pinned 60-posting sample manifest
+(`per_source10_seed7_bands5000_15000.json`): a completed 60-row `v1` dataset that
+doubles as the cache, a pinned golden set
+(`eval/datasets/type=cleaning_golden/variant=author/version=v1/` — 39 references,
+annotator `manual`, migrated from `data/golden_cleaned.json` at coverage 1.0 via
+word-set matching), and eval results written per rubric under
+`eval/results/type=cleaning_quality/variant=exp003/` (part → run manifest → rubric
+hash, the same manifest lineage the cleaning runs keep). The 10 postings overlapping
+golden at evaluation time:
+
+| Posting | Jaccard vs Golden | Boilerplate | Hallucinations | Over-deletion |
+|---------|-------------------|-------------|----------------|---------------|
+| linkedin (10 postings) | mean 0.958 | 3 × `benefit` marker hit | mean 0.0 | mean 0.9%, 1 flagged (6.1%) |
+
+Per-posting shape: eight postings at Jaccard ≥ 0.885 with three exact 1.000s; the
+flags are one 6.1% over-deletion (golden words the cleaning dropped in an
+organizational-context block) and three `benefits`-marker under-deletion hits —
+under-deletion wins ties the verbatim exp-003 rubric predicts, and matches 008's
+boilerplate-only prompt behavior (keep what you did not prove fluff).
+
+**Over-deletion findings**: at the sample scale the aggregate 0.9% over-deletion is
+9× better than 008's 4.0% full-golden mean — the residual cost concentrates in one
+posting's org-context paragraph, i.e. the loss mode is structural (which text the
+model deletes), not random. The 6.1% flag is the same finding exp 003 named:
+organizational-role context ("About the Team" block) reads as deletable boilerplate
+to a boilerplate-only instruction, and removing it costs retrieval context, not
+quality points, until an org-context-aware rubric exists.
+
+**Next-variant candidates** (for a future `cleaning_text` variant, not this
+change): an **organizational-context field** — split flipped-context lines off the
+cleaned text as a second artifact column (the 008 "company voice" residue), so
+over-deletion gains a measured home instead of a 5% flag; and the 007 Track A
+streaming lane revisited against the cleaning prompt now that latency is the only
+axis left with headroom.
 
 ## Artifacts
 

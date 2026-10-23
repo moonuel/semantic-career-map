@@ -27,6 +27,10 @@ As of October 20, 2026:
 - Golden separation gap reaches +0.0657 (11× raw) on the expanded corpus; aggressive-but-faulty arms (ling, gemini-flash-lite) exceed golden separation itself, so separation gap and text fidelity must be read jointly.
 - Deploy recommendation: `gemini-2.5-flash-lite` + corrected prompt (Jaccard 0.894, $0.00036/posting); `nemotron-3-nano-30b-a3b` as the cheap lane. `ling-3.0-flash` is not deployable as-is (persistently empty responses on 3 postings, 2048-token ceiling saturation).
 
+As of October 23, 2026:
+
+- The 008 recommendation is **in production**: the lake's cleaning stage (`backend/pipeline/cleaning`) runs it with flush-watermark durability, the artifact-cache done-index, and per-posting fail-fast (65-row `cleaned_text/variant=llm/version=v1` on the dev store), and the eval loop (`backend/pipeline/eval`, exp-003 metrics verbatim) is wired on golden `variant=author/version=v1` (39 references) + `cleaning_quality` results `v1/v2`. Live eval over the golden ∩ sample intersection: mean Jaccard 0.958, mean over-deletion 0.9% (one 6.1% flag — the organizational-context residue), zero hallucinations. Dataset layout + lineage: [data.md](./architecture/data.md).
+
 <!-- 
 ## Summary Dashboard
 
