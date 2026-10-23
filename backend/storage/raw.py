@@ -185,7 +185,7 @@ def fetch_all(
     def read_or_none(key: str) -> RawPayload | None:
         try:
             return read_raw_payload(store, key)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return None
 
     with ThreadPoolExecutor(max_workers=workers) as pool:

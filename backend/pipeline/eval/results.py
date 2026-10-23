@@ -126,6 +126,55 @@ def evaluate_posting(
     }
 
 
+def write_run_manifest(
+    store: Any,
+    *,
+    run_id: str,
+    evaluation_version: str,
+    evaluation_configuration_hash: str,
+    results_variant: str,
+    part_key: str,
+    row_count: int,
+    created_at: str,
+) -> str:
+    """Write the evaluation run's own manifest (the results-run record).
+
+    Completes the manifest-only lineage chain for eval results: the part
+    key names its run (and vice versa), the record pins the rubric hash and
+    the results version — the same discipline the cleaning run manifests
+    follow.
+
+    Args:
+        store: Object store (or testing double).
+        run_id: The canonical UUIDv7 minted for this evaluation run.
+        evaluation_version: The results version token (``vN``).
+        evaluation_configuration_hash: The rubric hash
+            (:func:`evaluation_hash`).
+        results_variant: The results rubric variant.
+        part_key: The results Parquet part key written.
+        row_count: Result rows in the part.
+        created_at: UTC ISO-8601 timestamp of the evaluation run.
+
+    Returns:
+        The written manifest key.
+    """
+    manifest = {
+        "run_id": run_id,
+        "kind": "cleaning_quality_eval",
+        "evaluation_version": evaluation_version,
+        "evaluation_configuration_hash": evaluation_configuration_hash,
+        "results_variant": results_variant,
+        "results_part": part_key,
+        "record_count": row_count,
+        "created_at": created_at,
+    }
+    key = keys.manifest_run(run_id)
+    store.put(
+        key, json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    )
+    return key
+
+
 def write_results(
     store: Any,
     rows: list[dict[str, Any]],

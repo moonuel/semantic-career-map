@@ -35,7 +35,7 @@ import io
 import json
 import sys
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -230,6 +230,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--write", action="store_true", help="Write the part.")
     parser.add_argument(
+        "--manifest-only",
+        action="store_true",
+        help="Skip part writing (a previous --write landed it); write the "
+        "dataset manifest only.",
+    )
+    parser.add_argument(
         "--created-at",
         default=None,
         help="Override the ISO-8601 row timestamp (defaults to now).",
@@ -255,7 +261,8 @@ def main(argv: list[str] | None = None) -> int:
         refs,
         candidates(payloads),
         sha_before=sha_before,
-        write=args.write,
+        write=args.write or args.manifest_only,
+        part=not args.manifest_only,
         variant=args.golden_variant,
         version=args.golden_version,
         created_at=created_at,
@@ -274,6 +281,7 @@ def migrate(
     version: str,
     created_at: str,
     golden_path: Path,
+    part: bool = True,
 ) -> int:
     """Match, verify and (optionally) write the golden dataset part.
 
@@ -340,16 +348,51 @@ def migrate(
         return 0
 
     run_id = ids.new_id()
-    part_key = keys.eval_dataset("cleaning_golden", variant, version, run_id, 1)
-    table = pa.Table.from_pylist(rows, schema=GOLDEN_SCHEMA)
-    sink = io.BytesIO()
-    pq.write_table(table, sink)
-    store.put(part_key, sink.getvalue())
+    if part:
+        part_key = keys.eval_dataset("cleaning_golden", variant, version, run_id, 1)
+        table = pa.Table.from_pylist(rows, schema=GOLDEN_SCHEMA)
+        sink = io.BytesIO()
+        pq.write_table(table, sink)
+        store.put(part_key, sink.getvalue())
+        print(f"wrote {part_key} ({len(rows)} rows)")
+    else:
+        # --manifest-only: the part already landed in a previous --write
+        # run; re-putting it would duplicate rows. Reuse the latest part.
+        dataset_prefix = (
+            f"lake/eval/datasets/type=cleaning_golden/variant={variant}/"
+            f"version={version}/"
+        )
+        existing = sorted(
+            k for k in store.list_keys(dataset_prefix) if k.endswith(".parquet")
+        )
+        if not existing:
+            print("ABORT: --manifest-only with no part on the store")
+            return 2
+        part_key = existing[-1]
+        run_id = PurePosixPath(part_key).name.removeprefix("part-").rsplit("-", 1)[0]
     back = pq.read_table(io.BytesIO(store.get(part_key)))
-    print(f"wrote {part_key} ({back.num_rows} rows)")
+    print(f"round-trip {back.num_rows} rows")
     if back.num_rows != len(refs):
         print(f"ABORT: round-trip row count {back.num_rows} != {len(refs)}")
         return 2
+    dataset_id = f"cleaning_golden-{variant}-{version}"
+    manifest_key = keys.manifest_dataset(dataset_id)
+    manifest = {
+        "dataset_id": dataset_id,
+        "kind": "authored_eval_dataset",
+        "input_dataset": str(golden_path),
+        "input_sha256": sha_before,
+        "annotator": "manual",
+        "record_count": back.num_rows,
+        "pipeline_version": "n/a (one-off migration script)",
+        "created_at": created_at,
+        "run_id": run_id,
+    }
+    store.put(
+        manifest_key,
+        json.dumps(manifest, sort_keys=True, ensure_ascii=False).encode("utf-8"),
+    )
+    print(f"wrote {manifest_key}")
     print(f"legacy file untouched: {golden_sha_after[:12]}")
     return 0
 

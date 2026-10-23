@@ -123,7 +123,7 @@ def failed_source_hashes(store: RawStore) -> set[str]:
             continue
         try:
             record = json.loads(store.get(key).decode("utf-8"))
-        except (ValueError, UnicodeDecodeError):
+        except ValueError, UnicodeDecodeError:
             continue
         values = record.get("failed_source_hashes")
         if not isinstance(values, list):

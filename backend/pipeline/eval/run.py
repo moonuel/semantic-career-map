@@ -35,6 +35,7 @@ from backend.pipeline.eval.results import (
     evaluate_posting,
     evaluation_hash,
     write_results,
+    write_run_manifest,
 )
 from backend.storage import ids, keys
 
@@ -302,6 +303,16 @@ def run_evaluation(
             variant=results_variant,
             evaluation_version=evaluation_version,
             run_id=run_id,
+        )
+        write_run_manifest(
+            store,
+            run_id=run_id,
+            evaluation_version=evaluation_version,
+            evaluation_configuration_hash=eval_config_hash,
+            results_variant=results_variant,
+            part_key=part_key,
+            row_count=len(rows),
+            created_at=created_at,
         )
     return EvaluationSummary(
         part_key=part_key,

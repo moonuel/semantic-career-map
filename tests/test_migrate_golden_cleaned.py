@@ -190,6 +190,66 @@ def test_migrate_dry_then_write_round_trip(tmp_path) -> None:
 
     assert golden_path.read_bytes() == legacy_bytes  # the legacy file is untouched
 
+    manifest_key = "lake/manifests/datasets/cleaning_golden-author-v1.json"
+    manifest = json.loads(store.get(manifest_key))
+    assert manifest["kind"] == "authored_eval_dataset"
+    assert manifest["input_sha256"] == hashlib.sha256(legacy_bytes).hexdigest()
+    assert manifest["record_count"] == 2
+
+
+def test_migrate_manifest_only(tmp_path) -> None:
+    """--manifest-only skips part writing and reuses the landed part."""
+    legacy = [
+        {"posting_id": "solo", "source": "manual", "text": "alpha beta"},
+    ]
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(json.dumps(legacy, ensure_ascii=False), encoding="utf-8")
+
+    store = MemorySink()
+    source_hash, data = _seed_payload(
+        store, "ashby", "description_html", "alpha beta gamma delta", source_id="x:1"
+    )
+    payloads = [_rp("ashby", source_hash, data)]
+    sha_before = hashlib.sha256(golden_path.read_bytes()).hexdigest()
+
+    assert (
+        mig.migrate(
+            store,
+            legacy,
+            mig.candidates(payloads),
+            sha_before=sha_before,
+            write=True,
+            variant="author",
+            version="v1",
+            created_at=CREATED_AT,
+            golden_path=golden_path,
+        )
+        == 0
+    )
+    parts_before = store.list_keys(eval_run.golden_prefix())
+    manifest_before = store.get(
+        "lake/manifests/datasets/cleaning_golden-author-v1.json"
+    )
+
+    rc = mig.migrate(
+        store,
+        legacy,
+        mig.candidates(payloads),
+        sha_before=sha_before,
+        write=True,
+        variant="author",
+        version="v1",
+        created_at=CREATED_AT,
+        golden_path=golden_path,
+        part=False,
+    )
+    assert rc == 0
+    assert store.list_keys(eval_run.golden_prefix()) == parts_before  # no new part
+    assert (
+        store.get("lake/manifests/datasets/cleaning_golden-author-v1.json")
+        == manifest_before
+    )
+
 
 def test_migrate_aborts_on_ambiguity(tmp_path) -> None:
     """Two equal-coverage candidates abort the migration; nothing written."""
