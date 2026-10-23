@@ -65,6 +65,23 @@ SHAPE_TABLES: dict[str, tuple[str, list[tuple[str, str]]]] = {
 
 INGESTION_TABLE = "manifests_ingestion"
 
+ARTIFACTS_TABLE = "artifacts_cleaned"
+
+# The cleaned-artifact row schema (writer.py ROW_COLUMNS, §5–6): Parquet
+# parts under lake/artifacts/type=cleaned_text/variant=llm/version=v1/.
+# select_uncleaned.sql anti-joins this table on (source_hash,
+# configuration_hash); the location is pinned to the v1 llm generation —
+# a version bump updates this registration (additive, idempotent).
+ARTIFACTS_COLUMNS: list[tuple[str, str]] = [
+    ("source_hash", "string"),
+    ("variant", "string"),
+    ("version", "string"),
+    ("cleaned_text", "string"),
+    ("configuration_hash", "string"),
+    ("pipeline_version", "string"),
+    ("created_at", "timestamp"),
+]
+
 # Full ingestion-manifest row schema (header + observation, manifest.py).
 INGESTION_COLUMNS: list[tuple[str, str]] = [
     ("source", "string"),
@@ -172,7 +189,7 @@ def _create_ingestion_manifest_table(glue, database: str, bucket: str) -> None:
         "TableType": "EXTERNAL_TABLE",
         "StorageDescriptor": {
             "Location": f"s3://{bucket}/lake/manifests/ingestion/",
-            "InputFormat": "org.apache.hadoop.hive.ql.io.MapredParquetInputFormat",
+            "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
             "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
             "SerdeInfo": {
                 "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
@@ -192,10 +209,37 @@ def _create_ingestion_manifest_table(glue, database: str, bucket: str) -> None:
     }
     try:
         glue.get_table(DatabaseName=database, Name=INGESTION_TABLE)
-        print(f"table exists: {INGESTION_TABLE}")
+        glue.update_table(DatabaseName=database, TableInput=table_input)
+        print(f"table updated: {INGESTION_TABLE}")
     except glue.exceptions.EntityNotFoundException:
         glue.create_table(DatabaseName=database, TableInput=table_input)
         print(f"created table: {INGESTION_TABLE}")
+
+
+def _create_artifacts_table(glue, database: str, bucket: str) -> None:
+    """Register ``artifacts_cleaned`` over the v1 llm cleaned-text parts."""
+    table_input = {
+        "Name": ARTIFACTS_TABLE,
+        "TableType": "EXTERNAL_TABLE",
+        "StorageDescriptor": {
+            "Location": (
+                f"s3://{bucket}/lake/artifacts/type=cleaned_text/variant=llm/version=v1/"
+            ),
+            "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+            "SerdeInfo": {
+                "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+            },
+            "Columns": [{"Name": c, "Type": t} for c, t in ARTIFACTS_COLUMNS],
+        },
+    }
+    try:
+        glue.get_table(DatabaseName=database, Name=ARTIFACTS_TABLE)
+        glue.update_table(DatabaseName=database, TableInput=table_input)
+        print(f"table updated: {ARTIFACTS_TABLE}")
+    except glue.exceptions.EntityNotFoundException:
+        glue.create_table(DatabaseName=database, TableInput=table_input)
+        print(f"created table: {ARTIFACTS_TABLE}")
 
 
 def _create_workgroup(athena, name: str, bucket: str, max_bytes: int) -> None:
@@ -258,6 +302,13 @@ def provision(
             "location": f"s3://{bucket}/lake/manifests/ingestion/",
             "columns": [c for c, _ in INGESTION_COLUMNS],
         },
+        "artifacts_cleaned": {
+            "location": (
+                f"s3://{bucket}/lake/artifacts/type=cleaned_text/"
+                "variant=llm/version=v1/"
+            ),
+            "columns": [c for c, _ in ARTIFACTS_COLUMNS],
+        },
         "athena": {
             "workgroup": workgroup,
             "output_location": f"s3://{bucket}/athena-results/",
@@ -275,6 +326,7 @@ def provision(
     for table, (source, columns) in SHAPE_TABLES.items():
         _create_raw_table(glue, database, bucket, table, source, columns)
     _create_ingestion_manifest_table(glue, database, bucket)
+    _create_artifacts_table(glue, database, bucket)
     _create_workgroup(athena, workgroup, bucket, max_scan_bytes)
     print("provision complete")
     return plan

@@ -154,19 +154,26 @@ def fetch_secret_if_absent(ssm, name: str = SSM_SECRET_PATH_DEFAULT) -> None:
     os.environ["KILO_API_KEY"] = parameter["Parameter"]["Value"]
 
 
-def select_query_results(athena, sql: str, results_location: str) -> str:
+def select_query_results(athena, sql: str, settings: Settings) -> str:
     """Submit the selection query, poll, and re-serialize rows as strict CSV.
 
-    Cells are collected per row and written with the :mod:`csv` module, so a
-    ``source_id`` carrying a comma survives
+    The submission binds the database context (unqualified table names
+    resolve in ``settings.database``) and the provisioned workgroup
+    (its pinned in-bucket output + scan cap), validated live against AWS:
+    without either, ``start_query_execution`` rejects with
+    "No output location provided", and the artifacts anti-join table
+    resolves only under the right database context.
+
+    Cells are collected per row and written with the :mod:`csv` module, so
+    a ``source_id`` carrying a comma survives
     :func:`parse_query_results` intact (the gate's earlier
     ``",".join`` preview could and did corrupt that field).
 
     Args:
         athena: The boto3 Athena client (or a testing double).
         sql: The bound query text (see :func:`bind_config_sql`).
-        results_location: The in-bucket output prefix to pin results to
-            (``s3://<bucket>/athena-results/``, the workgroup's own).
+        settings: The run settings (database, workgroup, results prefix
+            derived from the store env).
 
     Returns:
         CSV text (header + rows), ready for ``parse_query_results``.
@@ -176,7 +183,9 @@ def select_query_results(athena, sql: str, results_location: str) -> str:
     """
     response = athena.start_query_execution(
         QueryString=sql,
-        ResultConfiguration={"OutputLocation": results_location},
+        QueryExecutionContext={"Database": settings.database},
+        WorkGroup=settings.workgroup,
+        ResultConfiguration={"OutputLocation": _results_location(settings)},
     )
     execution_id = response["QueryExecutionId"]
     while True:
@@ -293,7 +302,7 @@ def run_daily(
         RuntimeError: upstream on a non-SUCCEEDED Athena query.
     """
     sql = bind_config_sql(select_uncleaned_sql(), settings.configuration_hash)
-    csv_text = select_query_results(athena, sql, results_location())
+    csv_text = select_query_results(athena, sql, settings)
     rows = parse_query_results(csv_text)
     manifest_bytes = build_selection_manifest(
         rows, configuration_hash=settings.configuration_hash, store=store
@@ -333,7 +342,7 @@ def run_daily_dry(athena, store, settings: Settings) -> dict:
         A summary dict: status, digest, and the manifest posting count.
     """
     sql = bind_config_sql(select_uncleaned_sql(), settings.configuration_hash)
-    csv_text = select_query_results(athena, sql, results_location())
+    csv_text = select_query_results(athena, sql, settings)
     rows = parse_query_results(csv_text)
     manifest_bytes = build_selection_manifest(
         rows, configuration_hash=settings.configuration_hash, store=store
@@ -345,7 +354,7 @@ def run_daily_dry(athena, store, settings: Settings) -> dict:
     }
 
 
-def results_location() -> str:
+def _results_location(settings: Settings) -> str:
     """The in-bucket Athena results prefix (the workgroup's pinned output)."""
     return f"s3://{os.environ['STORE_S3_BUCKET']}/athena-results/"
 

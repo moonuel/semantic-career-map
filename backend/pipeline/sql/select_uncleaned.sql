@@ -19,66 +19,66 @@
 -- pruned by configuration_hash.
 
 SELECT 'ashby' AS source,
-       regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
+       regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
        r.source_id
 FROM raw_ashby r
 LEFT JOIN artifacts_cleaned a
-  ON a.source_hash = regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1)
+  ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
 
 UNION ALL
 
 SELECT 'dataroles' AS source,
-       regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
+       regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
        r.source_id
 FROM raw_dataroles r
 LEFT JOIN artifacts_cleaned a
-  ON a.source_hash = regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1)
+  ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
 
 UNION ALL
 
 SELECT 'greenhouse' AS source,
-       regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
+       regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
        r.source_id
 FROM raw_greenhouse r
 LEFT JOIN artifacts_cleaned a
-  ON a.source_hash = regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1)
+  ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
 
 UNION ALL
 
 SELECT 'lever' AS source,
-       regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
+       regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
        r.source_id
 FROM raw_lever r
 LEFT JOIN artifacts_cleaned a
-  ON a.source_hash = regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1)
+  ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
 
 UNION ALL
 
 SELECT 'hiringcafe' AS source,
-       regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
+       regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
        r.source_id
 FROM raw_hiringcafe r
 LEFT JOIN artifacts_cleaned a
-  ON a.source_hash = regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1)
+  ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
 
 UNION ALL
 
 SELECT 'linkedin' AS source,
-       regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
+       regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
        r.source_id
 FROM raw_linkedin r
 LEFT JOIN artifacts_cleaned a
-  ON a.source_hash = regexp_extract("$path", 'sha256=([0-9a-f]{64})\.json', 1)
+  ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
 

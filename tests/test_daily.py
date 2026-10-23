@@ -51,12 +51,14 @@ class FakeAthena:
         self._chunks = chunks or [[[]]]
         self.executed: list[str] = []
         self.results_locations: list[str] = []
+        self.submissions: list[dict[str, Any]] = []
 
     def start_query_execution(
         self, *, QueryString: str, ResultConfiguration: dict[str, Any], **kw: Any
     ) -> dict[str, Any]:
         self.executed.append(QueryString)
         self.results_locations.append(ResultConfiguration["OutputLocation"])
+        self.submissions.append({"QueryString": QueryString, **kw})
         return {"QueryExecutionId": "q-daily-1"}
 
     def get_query_execution(self, *, QueryExecutionId: str) -> dict[str, Any]:
@@ -184,12 +186,12 @@ def test_select_query_results_comma_safe_and_paginated(
             [["ashby", a2, "acme 6"]],
         ]
     )
-    csv_text = daily.select_query_results(
-        athena,
-        daily.bind_config_sql(daily.select_uncleaned_sql(), CONFIG),
-        "s3://lake/x/",
-    )
-    assert athena.executed and athena.results_locations == ["s3://lake/x/"]
+    csv_text = daily.select_query_results(athena, daily.bind_config_sql(daily.select_uncleaned_sql(), CONFIG), _settings())
+    assert athena.executed and athena.results_locations == ["s3://lake/athena-results/"]
+    # binding: the run's database context + workgroup ride the submission
+    submission = athena.submissions[0]
+    assert submission["QueryExecutionContext"] == {"Database": "semantic_career_map"}
+    assert submission["WorkGroup"] == "semantic_career_map"
     rows = daily.parse_query_results(csv_text)
     assert rows == [
         {"source": "greenhouse", "source_hash": a1, "source_id": "acme, inc 5"},
