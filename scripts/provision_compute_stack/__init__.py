@@ -46,6 +46,7 @@ ROLE_SNS_RULE = "pipeline-sns-rule-role"
 ROLE_FARGATE_EXECUTION = "ecsTaskExecutionRole"  # AWS-managed for Fargate
 
 QUEUE_DLQ = "pipeline-ats-dlq"
+CLUSTER_TASKS = "pipeline-tasks"
 TOPIC_ALERTS = "pipeline-alerts"
 
 LAMBDA_ATS = "pipeline-ats-scrape"
@@ -261,6 +262,32 @@ def sns_rule_policy(acct: str, region: str) -> dict[str, Any]:
     }
 
 
+def ensure_cluster(session) -> str:
+    """Create-or-ignore the Fargate cluster the schedules RunTask into.
+
+    Scheduler ECS targets demand a **cluster** ARN as the target ``Arn``
+    (the task-definition ARN rides in ``EcsParameters``) — targeting the
+    task definition ARN directly fails CreateSchedule with a misleading
+    "Provided Arn is not in correct format".
+
+    Returns:
+        The cluster ARN.
+    """
+    ecs = session.client("ecs")
+    try:
+        response = ecs.describe_clusters(clusters=[CLUSTER_TASKS])["clusters"]
+        if response:
+            arn = response[0]["clusterArn"]
+            print(f"cluster exists: {CLUSTER_TASKS}")
+            return arn
+    except ecs.exceptions.ClientError as exc:
+        if "ClusterNotFound" not in str(exc):
+            raise
+    arn = ecs.create_cluster(clusterName=CLUSTER_TASKS)["cluster"]["clusterArn"]
+    print(f"created cluster: {CLUSTER_TASKS}")
+    return arn
+
+
 def default_network(session: boto3.Session) -> dict[str, list[str]]:
     """Subnets + security groups of the default VPC (Fargate networking).
 
@@ -410,16 +437,32 @@ def ensure_role(iam, name: str, services: list[str], policy: dict[str, Any]) -> 
     identical policy skips the put (no churn), a differing one warns
     before the managed version replaces any manual drift — post-provision
     tuning (the T1 policy-simulator outcome) must not quietly revert.
+    A statement-less policy (execution roles carry only an attached managed
+    policy) skips the inline put entirely — an empty ``Statement`` list is
+    malformed to IAM.
 
     Args:
         iam: The boto3 IAM client.
         name: The role name.
         services: Trust-policy service principals.
-        policy: The inline policy document.
+        policy: The inline policy document (may be statement-less).
 
     Returns:
         The role ARN.
     """
+    if not policy.get("Statement"):
+        try:
+            iam.get_role(RoleName=name)
+            print(f"role exists: {name} (no inline policy)")
+        except iam.exceptions.NoSuchEntityException:
+            iam.create_role(
+                RoleName=name,
+                AssumeRolePolicyDocument=json.dumps(
+                    assume_role_document(services)
+                ),
+            )
+            print(f"created role: {name}")
+        return role_arn(account_id(), name)
     try:
         arn = role_arn(account_id(), name)
         iam.get_role(RoleName=name)
@@ -442,23 +485,25 @@ def ensure_role(iam, name: str, services: list[str], policy: dict[str, Any]) -> 
             AssumeRolePolicyDocument=json.dumps(assume_role_document(services)),
         )
         print(f"created role: {name}")
-        iam.put_role_policy(
-            RoleName=name,
-            PolicyName=f"{name}-policy",
-            PolicyDocument=json.dumps(policy),
-        )
     return arn
 
 
 def _current_policy(iam, name: str) -> dict[str, Any] | None:
-    """The role's current inline policy document (``None`` when absent)."""
-    from urllib.parse import unquote_plus
+    """The role's current inline policy document (``None`` when absent).
 
+    Botocore hands back ``PolicyDocument`` already URL-decoded (a dict);
+    older serialized-string forms are still parsed defensively.
+    """
     try:
         response = iam.get_role_policy(RoleName=name, PolicyName=f"{name}-policy")
     except iam.exceptions.NoSuchEntityException:
         return None
-    return json.loads(unquote_plus(response["PolicyDocument"]))
+    document = response["PolicyDocument"]
+    if isinstance(document, dict):
+        return document
+    from urllib.parse import unquote_plus
+
+    return json.loads(unquote_plus(document))
 
 
 def ensure_dlq(session: boto3.Session) -> str:
@@ -585,8 +630,6 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
             }
         },
         "DeadLetterConfig": {"TargetArn": f"arn:aws:sqs:{region}:{acct}:{QUEUE_DLQ}"},
-        "MaximumRetryAttempts": LAMBDA_RETRY_ATTEMPTS,
-        "MaximumEventAgeInSeconds": 3600,
     }
     try:
         lam.get_function(FunctionName=LAMBDA_ATS)
@@ -617,6 +660,12 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
         try:
             lam.create_function(**params)
             print(f"created lambda: {LAMBDA_ATS}")
+            lam.put_function_event_invoke_config(
+                FunctionName=LAMBDA_ATS,
+                MaximumRetryAttempts=LAMBDA_RETRY_ATTEMPTS,
+                MaximumEventAgeInSeconds=3600,
+            )
+            print(f"async retry policy set ({LAMBDA_RETRY_ATTEMPTS} retries)")
         except lam.exceptions.InvalidParameterValueException:
             raise RuntimeError(
                 f"image {image_uri} missing — push it first (deploy/README.md)"
@@ -642,9 +691,14 @@ def _register_or_skip(session, family: str, payload: dict[str, Any]) -> str:
         return existing["taskDefinitionArn"]
     except ecs.exceptions.ClientError as exc:
         message = str(exc)
-        if (
-            "Task definition not found" not in message
-            and "does not exist" not in message
+        # Amazon phrases a missing family three ways across API revisions
+        if not any(
+            marker in message
+            for marker in (
+                "Task definition not found",
+                "does not exist",
+                "Unable to describe task definition",
+            )
         ):
             raise
     response = ecs.register_task_definition(**payload)
@@ -679,7 +733,7 @@ def register_task_definitions(
 def ensure_schedule_group(scheduler) -> None:
     """Create-or-ignore the schedule group holding all three targets."""
     try:
-        scheduler.get_schedule_group(GroupName=SCHEDULE_GROUP)
+        scheduler.get_schedule_group(Name=SCHEDULE_GROUP)
         print(f"schedule group exists: {SCHEDULE_GROUP}")
     except scheduler.exceptions.ResourceNotFoundException:
         scheduler.create_schedule_group(Name=SCHEDULE_GROUP)
@@ -691,10 +745,13 @@ def _schedule_target(
 ) -> dict[str, Any]:
     """One EventBridge Scheduler target body (Lambda or Fargate flavor).
 
-    The `ats` tier runs the Lambda; every other tier indexes
-    ``arns["task_defs"][tier]`` — a missing per-tier key raises (loud)
-    rather than scheduling the wrong task definition (the finding-3 bug
-    took the daily-clean target from the curator's ARN this way).
+    The `ats` tier runs the Lambda; every other tier is an ECS RunTask
+    target: ``Arn`` is the **cluster** ARN, ``EcsParameters.TaskDefinitionArn``
+    the revisioned task definition — the task-def ARN as the target Arn
+    fails CreateSchedule with a misleading ARN-format error. A missing
+    per-tier ``task_defs`` key raises (loud) rather than scheduling the
+    wrong task definition (the finding-3 bug took the daily-clean target
+    from the curator's ARN this way).
     """
     target: dict[str, Any] = {
         "RoleArn": role_arn(acct, ROLE_SCHEDULER),
@@ -709,15 +766,15 @@ def _schedule_target(
         return target
     network = default_network(boto3.Session(region_name=aws_region()))
     task_arn = arns["task_defs"][tier]  # missing tier = loud failure
-    target["Arn"] = task_arn
+    target["Arn"] = arns["cluster"]
     target["EcsParameters"] = {
         "TaskDefinitionArn": task_arn,
         "LaunchType": "FARGATE",
         "NetworkConfiguration": {
             "awsvpcConfiguration": {
-                "subnets": network["subnets"],
-                "securityGroups": network["security_groups"],
-                "assignPublicIp": "ENABLED",
+                "Subnets": network["subnets"],
+                "SecurityGroups": network["security_groups"],
+                "AssignPublicIp": "ENABLED",
             }
         },
     }
@@ -763,9 +820,8 @@ def enable_schedules(session) -> None:
     """Flip all three schedules to ``ENABLED`` (the T5 step-6 arming)."""
     scheduler = session.client("scheduler")
     for name, _, _ in SCHEDULE_SPECS:
-        schedule = scheduler.get_schedule(GroupName=SCHEDULE_GROUP, Name=name)[
-            "Schedule"
-        ]
+        # GetSchedule returns the schedule object at top level (no wrapper)
+        schedule = scheduler.get_schedule(GroupName=SCHEDULE_GROUP, Name=name)
         if schedule.get("State") == "ENABLED":
             print(f"schedule already enabled: {name}")
             continue
@@ -806,8 +862,11 @@ def put_alarm(session, topic_arn: str) -> None:
 def put_failure_rule(session, acct: str, region: str, topic_arn: str) -> None:
     """Bridge ECS task STOPPED-with-nonzero-exit onto SNS (curator/clean).
 
-    ``anything-but:0`` matches failure exit codes without listing them; a
-    clean STOPPED (exit 0) never publishes.
+    The ``containers`` match value is the bare-object form — API-proven
+    (``test_event_pattern``): a numeric ``[">", 0]`` leaf under it matches
+    nonzero exits and ignores exit-0 and missing-exitCode containers, while
+    the array-of-object form is rejected outright (``InvalidEventPattern:
+    Unrecognized match type``). A clean STOPPED (exit 0) never publishes.
     """
     events = session.client("events")
     pattern = {
@@ -815,7 +874,7 @@ def put_failure_rule(session, acct: str, region: str, topic_arn: str) -> None:
         "detail-type": ["ECS Task State Change"],
         "detail": {
             "lastStatus": ["STOPPED"],
-            "containers": [{"exitCode": [{"anything-but": 0}]}],
+            "containers": {"exitCode": [{"numeric": [">", 0]}]},
         },
     }
     events.put_rule(
@@ -902,21 +961,27 @@ def test_failure_rule_pattern(events) -> tuple[bool, bool]:
 
     def sample(exit_code: int) -> dict[str, Any]:
         return {
+            "id": "pattern-probe",
             "source": "aws.ecs",
             "detail-type": "ECS Task State Change",
+            "account": account_id(),
+            "time": "2026-10-24T00:00:00Z",
+            "region": aws_region(),
             "detail": {
                 "lastStatus": "STOPPED",
+                "stoppedReason": "Essential container in task exited",
                 "containers": [{"name": "pipeline-clean", "exitCode": exit_code}],
             },
         }
 
     rule = events.describe_rule(Name=RULE_TASK_FAILED)
+    # test_event_pattern answers with a bare boolean under "Result"
     failure = events.test_event_pattern(
         EventPattern=rule["EventPattern"], Event=json.dumps(sample(exit_code=1))
-    )["MatchesEventPatterns"]
+    )["Result"]
     clean = events.test_event_pattern(
         EventPattern=rule["EventPattern"], Event=json.dumps(sample(exit_code=0))
-    )["MatchesEventPatterns"]
+    )["Result"]
     if not failure or clean:
         print(
             f"WARNING: rule {RULE_TASK_FAILED} pattern "
@@ -977,7 +1042,8 @@ def stage_create(
     task_arns = register_task_definitions(session, image_tags)
     put_alarm(session, topic_arn)
     put_failure_rule(session, acct, region, topic_arn)
-    arns = {"lambda": lambda_arn, "task_defs": task_arns}
+    cluster_arn = ensure_cluster(session)
+    arns = {"lambda": lambda_arn, "task_defs": task_arns, "cluster": cluster_arn}
     create_schedules(session, acct, region, arns, state="DISABLED")
     print(f"dlq arn: {dlq_arn}")
 
@@ -1048,9 +1114,7 @@ def verify(
         scheduler = session.client("scheduler")
         for name, _, _ in SCHEDULE_SPECS:
             try:
-                schedule = scheduler.get_schedule(GroupName=SCHEDULE_GROUP, Name=name)[
-                    "Schedule"
-                ]
+                schedule = scheduler.get_schedule(GroupName=SCHEDULE_GROUP, Name=name)
                 checks.append((f"schedule {name}: {schedule.get('State')}", True))
             except scheduler.exceptions.ResourceNotFoundException:
                 checks.append((f"schedule {name} missing", False))

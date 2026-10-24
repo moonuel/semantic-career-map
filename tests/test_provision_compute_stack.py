@@ -42,7 +42,7 @@ class FakeScheduler:
     def __init__(self) -> None:
         self.created: dict[str, dict] = {}
 
-    def get_schedule_group(self, *, GroupName): ...
+    def get_schedule_group(self, *, Name): ...
     def get_schedule(self, *, GroupName, Name):
         raise _RNFE(Name)
 
@@ -62,10 +62,11 @@ class FakeSession:
 def _targets(scheduler: FakeScheduler) -> dict[str, str]:
     out = {}
     for name, target in scheduler.created.items():
-        arn = target["Arn"]
-        out[name] = (
-            arn.split("task-definition/", 1)[1] if "task-definition/" in arn else arn
-        )
+        if "task-definition/" in target.get("Arn", ""):
+            out[name] = target["Arn"].split("task-definition/", 1)[1]
+        else:
+            td = target.get("EcsParameters", {}).get("TaskDefinitionArn", "")
+            out[name] = td.split("task-definition/", 1)[1] if td else target["Arn"]
     return out
 
 
@@ -76,19 +77,24 @@ def test_schedules_index_their_own_task_definition(env) -> None:
         "clean": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-clean:1",
     }
     lambda_arn = f"arn:aws:lambda:{REGION_OK}:{ACCT}:function:{pcs.LAMBDA_ATS}"
+    cluster_arn = f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{pcs.CLUSTER_TASKS}"
     pcs.create_schedules(
         session,
         ACCT,
         REGION_OK,
-        {"lambda": lambda_arn, "task_defs": task_arns},
+        {"lambda": lambda_arn, "task_defs": task_arns, "cluster": cluster_arn},
         state="DISABLED",
     )
     targets = _targets(session.scheduler)
     assert targets[pcs.SCHEDULE_ATS].endswith(f"function:{pcs.LAMBDA_ATS}")
     assert targets[pcs.SCHEDULE_CURATOR].startswith("pipeline-scrape-curator")
     assert targets[pcs.SCHEDULE_CLEAN].startswith("pipeline-clean")
-    for target in session.scheduler.created.values():
+    for name, target in session.scheduler.created.items():
         assert target["DeadLetterConfig"]["Arn"].endswith(pcs.QUEUE_DLQ)
+        if name != pcs.SCHEDULE_ATS:
+            # ECS targets: Arn = cluster, task def rides EcsParameters
+            assert target["Arn"] == cluster_arn
+            assert target["EcsParameters"]["TaskDefinitionArn"].endswith(":1")
 
 
 def test_schedules_fail_loud_on_missing_tier(env) -> None:
@@ -101,6 +107,7 @@ def test_schedules_fail_loud_on_missing_tier(env) -> None:
             {
                 "lambda": f"arn:aws:lambda:{REGION_OK}:{ACCT}:function:x",
                 "task_defs": {},
+                "cluster": f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{pcs.CLUSTER_TASKS}",
             },
             state="DISABLED",
         )
@@ -290,10 +297,7 @@ def test_failure_rule_pattern_helper_contract(env) -> None:
         def test_event_pattern(self, *, EventPattern, Event):
             event = json.loads(Event)
             code = event["detail"]["containers"][0]["exitCode"]
-            return {
-                "MatchesEventPatterns": self._matches[code],
-                "ErrorEntries": [],
-            }
+            return {"Result": self._matches[code], "ErrorEntries": []}
 
     events = FakeEventsMatcher(
         '{"source":["aws.ecs"],"detail-type":["ECS Task State Change"],'
