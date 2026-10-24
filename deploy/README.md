@@ -51,6 +51,63 @@ Both `--help` flags must exit 0 without any `KILO_API_KEY` or `STORE_S3_*`
 set (`daily.py` fetches the secret and constructs the gateway client
 inside `main()`; the scrape handler imports the batch CLI lazily).
 
+## Redeploy after changes (the routine)
+
+This stack is live: account `760852635093`, region `us-east-2`, repo
+`pipeline-images`, schedules `daily-ats-scrape` / `daily-curator-scrape` /
+`daily-clean` (04:00 / 05:00 / 06:00 UTC). After any code change:
+
+```bash
+# 0. never push red code
+source .venv/bin/activate
+ruff format --check . && ruff check . && pytest tests/ -q
+git add -A && git commit -m "<change>"
+
+# 1. rebuild + push both images (docker layer cache keeps unchanged tiers ~free)
+REPO=760852635093.dkr.ecr.us-east-2.amazonaws.com/pipeline-images
+aws ecr get-login-password --region us-east-2 \
+  | docker login --username AWS --password-stdin $REPO
+docker buildx build --platform linux/arm64 --load -f deploy/Dockerfile.scrape -t pipeline-scrape:test .
+docker buildx build --platform linux/arm64 --load -f deploy/Dockerfile.clean  -t pipeline-clean:test .
+# offline smokes from the previous section must pass before pushing:
+docker tag pipeline-scrape:test $REPO:scrape && docker push $REPO:scrape
+docker tag pipeline-clean:test  $REPO:clean  && docker push $REPO:clean
+
+# 2. redeploy — one command does everything live:
+python -m scripts.provision_compute_stack --create --reregister
+
+# 3. verify + prove the new code actually runs
+python -m scripts.provision_compute_stack --verify
+python -m scripts.trigger_manual clean    # optional one-shot fire via the real scheduler
+```
+
+How `--create --reregister` lands the change: the Lambda's code is
+re-pointed at the freshly pushed digest (`update_function_code`, waits for
+`Successful`) so future invoke runs new code immediately; the task
+definitions are registered as **new revisions**, and the schedules target
+the **family** ARN — the next fire picks the new revision automatically.
+In-flight tasks keep running the old revision: a redeploy never interrupts
+a running tier.
+
+## Per-change fast paths
+
+| Change | What's enough |
+|---|---|
+| Only scraper code (`backend/ingestion/`, `scripts/scrape.py`) | rebuild+push `:scrape`; then `--create` (Lambda re-point) + `--reregister` (curator revision refresh) |
+| Only cleaning code (`backend/pipeline/`, `backend/storage/`) | rebuild+push `:clean`; then `--create --reregister` |
+| Prompts / model / `configuration.py` | **beware**: `configuration_hash` changes → the Athena anti-join re-selects the FULL raw lake → the next clean run is a full backfill (~9.3k rows, ~50 min, ~$3.40 LLM). Bump the run's evaluation version and read the eval gate before promoting |
+| Dependencies changed in venv | update the pinned `pip install` versions inside the two Dockerfiles to `pip list` reality first, then the scrape-row flow above |
+
+## Rollback
+
+```bash
+python -m scripts.provision_compute_stack --create --reregister \
+  --image-tags scrape:<old-tag>,clean:<old-tag>
+```
+
+The schedules keep firing through all of it; failures page the confirmed
+SNS email via the DLQ depth alarm and the ECS `STOPPED` exit-code rule.
+
 ## Runtime environment contract
 
 Non-secret configuration is task-definition environment. The one secret,
