@@ -467,7 +467,7 @@ def ensure_dlq(session: boto3.Session) -> str:
     try:
         url = sqs.get_queue_url(QueueName=QUEUE_DLQ)["QueueUrl"]
         print(f"queue exists: {QUEUE_DLQ}")
-    except sqs.exceptions.QueueDoesNotExistError:
+    except sqs.exceptions.QueueDoesNotExist:
         url = sqs.create_queue(
             QueueName=QUEUE_DLQ,
             Attributes={"MessageRetentionPeriod": "1209600"},
@@ -1019,7 +1019,7 @@ def verify(
         try:
             url = session.client("sqs").get_queue_url(QueueName=QUEUE_DLQ)["QueueUrl"]
             checks.append(("dlq exists", bool(url)))
-        except session.client("sqs").exceptions.QueueDoesNotExistError:
+        except session.client("sqs").exceptions.QueueDoesNotExist:
             checks.append(("dlq missing", False))
         ecr = session.client("ecr")
         try:
