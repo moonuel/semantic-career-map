@@ -80,6 +80,13 @@ def main() -> None:
         default=None,
         help="per-tier image tag overrides, e.g. scrape:<sha>,clean:<sha>",
     )
+    parser.add_argument(
+        "--reregister",
+        action="store_true",
+        help="with --create: register task defs as NEW revisions (applies"
+        " JSON changes like runtimePlatform; schedules follow the family"
+        " to the latest revision automatically)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="print the plan only")
     parser.add_argument(
         "--verify", action="store_true", help="probe the provisioned resources"
@@ -123,7 +130,14 @@ def main() -> None:
         return
 
     if args.create:
-        stage_create(session, acct, region, email=args.email, image_tags=image_tags)
+        stage_create(
+            session,
+            acct,
+            region,
+            email=args.email,
+            image_tags=image_tags,
+            reregister=args.reregister,
+        )
     if args.schedule:
         from scripts.provision_compute_stack import register_task_definitions
 

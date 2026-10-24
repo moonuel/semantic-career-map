@@ -457,9 +457,7 @@ def ensure_role(iam, name: str, services: list[str], policy: dict[str, Any]) -> 
         except iam.exceptions.NoSuchEntityException:
             iam.create_role(
                 RoleName=name,
-                AssumeRolePolicyDocument=json.dumps(
-                    assume_role_document(services)
-                ),
+                AssumeRolePolicyDocument=json.dumps(assume_role_document(services)),
             )
             print(f"created role: {name}")
         return role_arn(account_id(), name)
@@ -673,34 +671,38 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
     return f"arn:aws:lambda:{region}:{acct}:function:{LAMBDA_ATS}"
 
 
-def _register_or_skip(session, family: str, payload: dict[str, Any]) -> str:
+def _register_or_skip(
+    session, family: str, payload: dict[str, Any], *, force: bool = False
+) -> str:
     """Register the task definition (idempotent by family revision).
 
     An existing revision is left alone; updating a task-definition
-    revision is a T5-gate action, not a provisioner default.
+    revision is a T5-gate action (--reregister / ``force``), not a
+    provisioner default.
 
     Returns:
         The task-definition ARN in ``family:revision`` form.
     """
     ecs = session.client("ecs")
-    try:
-        existing = ecs.describe_task_definition(taskDefinition=family, include=[])[
-            "taskDefinition"
-        ]
-        print(f"task definition exists: {family} (rev {existing['revision']})")
-        return existing["taskDefinitionArn"]
-    except ecs.exceptions.ClientError as exc:
-        message = str(exc)
-        # Amazon phrases a missing family three ways across API revisions
-        if not any(
-            marker in message
-            for marker in (
-                "Task definition not found",
-                "does not exist",
-                "Unable to describe task definition",
-            )
-        ):
-            raise
+    if not force:
+        try:
+            existing = ecs.describe_task_definition(taskDefinition=family, include=[])[
+                "taskDefinition"
+            ]
+            print(f"task definition exists: {family} (rev {existing['revision']})")
+            return existing["taskDefinitionArn"]
+        except ecs.exceptions.ClientError as exc:
+            message = str(exc)
+            # Amazon phrases a missing family three ways across API revisions
+            if not any(
+                marker in message
+                for marker in (
+                    "Task definition not found",
+                    "does not exist",
+                    "Unable to describe task definition",
+                )
+            ):
+                raise
     response = ecs.register_task_definition(**payload)
     print(
         f"registered task definition: {family} "
@@ -710,7 +712,7 @@ def _register_or_skip(session, family: str, payload: dict[str, Any]) -> str:
 
 
 def register_task_definitions(
-    session, image_tags: dict[str, str] | None = None
+    session, image_tags: dict[str, str] | None = None, *, force: bool = False
 ) -> dict[str, str]:
     """Register both Fargate task definitions from the ``deploy/`` JSONs.
 
@@ -719,13 +721,15 @@ def register_task_definitions(
         image_tags: Override image tag per tier (``scrape``/``clean``) —
             the promotion path for pinned per-iteration tags; defaults to
             the moving constants.
+        force: Re-register as a new revision even when a current one exists
+            (``--reregister``; picks up JSON changes like runtimePlatform).
 
     Returns:
         Mapping tier name → task-definition ARN.
     """
     rendered = render_task_definitions(account_id(), aws_region(), image_tags)
     return {
-        tier: _register_or_skip(session, TASK_DEF_FAMILIES[tier], payload)
+        tier: _register_or_skip(session, TASK_DEF_FAMILIES[tier], payload, force=force)
         for tier, payload in rendered.items()
     }
 
@@ -997,6 +1001,8 @@ def stage_create(
     region: str,
     email: str | None = None,
     image_tags: dict[str, str] | None = None,
+    *,
+    reregister: bool = False,
 ) -> None:
     """Apply the whole creation set except scheduling (which arms it).
 
@@ -1039,7 +1045,7 @@ def stage_create(
     ensure_ecr(session)
     ensure_log_groups(session)
     lambda_arn = ensure_lambda(session, acct, (image_tags or {}).get("scrape"))
-    task_arns = register_task_definitions(session, image_tags)
+    task_arns = register_task_definitions(session, image_tags, force=reregister)
     put_alarm(session, topic_arn)
     put_failure_rule(session, acct, region, topic_arn)
     cluster_arn = ensure_cluster(session)

@@ -2,6 +2,10 @@
   "family": "pipeline-scrape-curator",
   "requiresCompatibilities": ["FARGATE"],
   "networkMode": "awsvpc",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
   "cpu": "256",
   "memory": "512",
   "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
