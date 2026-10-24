@@ -4,6 +4,7 @@ ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1 PYTHON
 
 RUN pip install boto3==1.43.* botocore==1.43.* python-dotenv==1.2.* pyarrow==25.* requests==2.34.* awslambdaric
 
+WORKDIR /app
 RUN mkdir -p scripts deploy
 COPY scripts/__init__.py scripts/__init__.py
 COPY scripts/scrape.py scripts/scrape.py
