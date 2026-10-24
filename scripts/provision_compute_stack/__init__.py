@@ -560,6 +560,19 @@ def ensure_topic(session: boto3.Session, email: str | None = None) -> str:
     return topic
 
 
+def stage_email(session, email: str) -> str:
+    """Standalone alert-subscription stage (``--email`` without ``--create``).
+
+    Args:
+        session: The boto3 session.
+        email: The alert recipient.
+
+    Returns:
+        The topic ARN the subscription landed on.
+    """
+    return ensure_topic(session, email=email)
+
+
 def ensure_ecr(session: boto3.Session) -> str:
     """Create-or-ignore the image repo; return its registry URI."""
     ecr = session.client("ecr")
@@ -652,9 +665,7 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
             except lam.exceptions.ResourceConflictException:
                 time.sleep(2)  # the code update above holds the function lock
         else:
-            raise RuntimeError(
-                "function lock contended for 30s — inspect the console"
-            )
+            raise RuntimeError("function lock contended for 30s — inspect the console")
         for _ in range(30):
             state = lam.get_function_configuration(FunctionName=LAMBDA_ATS)[
                 "LastUpdateStatus"
@@ -1112,6 +1123,33 @@ def verify(
             checks.append(("dlq exists", bool(url)))
         except session.client("sqs").exceptions.QueueDoesNotExist:
             checks.append(("dlq missing", False))
+        topic_arn = f"arn:aws:sns:{aws_region()}:{account_id(session)}:{TOPIC_ALERTS}"
+        try:
+            subs = session.client("sns").list_subscriptions_by_topic(
+                TopicArn=topic_arn
+            )["Subscriptions"]
+            confirmed = [
+                s
+                for s in subs
+                if s.get("SubscriptionArn", "PendingConfirmation")
+                not in ("PendingConfirmation", "")
+            ]
+            if confirmed:
+                checks.append(
+                    (
+                        f"alert subscription confirmed: {confirmed[0].get('Endpoint')}",
+                        True,
+                    )
+                )
+            else:
+                checks.append(
+                    (
+                        f"alert subscription missing/unconfirmed ({len(subs)} pending)",
+                        False,
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001 — missing topic is a FAIL row
+            checks.append((f"alert topic missing: {repr(exc)[:40]}", False))
         ecr = session.client("ecr")
         try:
             ecr.describe_repositories(repositoryNames=[ECR_REPO])

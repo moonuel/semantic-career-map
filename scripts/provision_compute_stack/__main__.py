@@ -138,6 +138,11 @@ def main() -> None:
             image_tags=image_tags,
             reregister=args.reregister,
         )
+    elif args.email:
+        # --email as its own stage: subscribe without a full apply
+        from scripts.provision_compute_stack import stage_email
+
+        stage_email(session, args.email)
     if args.schedule:
         from scripts.provision_compute_stack import register_task_definitions
 
