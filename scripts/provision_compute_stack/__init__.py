@@ -268,21 +268,19 @@ def ensure_cluster(session) -> str:
     Scheduler ECS targets demand a **cluster** ARN as the target ``Arn``
     (the task-definition ARN rides in ``EcsParameters``) — targeting the
     task definition ARN directly fails CreateSchedule with a misleading
-    "Provided Arn is not in correct format".
+    "Provided Arn is not in correct format". ``describe_clusters`` reports
+    a missing cluster as an empty ``clusters`` list plus a `failures`
+    entry (no raise), so the empty response is the create signal.
 
     Returns:
         The cluster ARN.
     """
     ecs = session.client("ecs")
-    try:
-        response = ecs.describe_clusters(clusters=[CLUSTER_TASKS])["clusters"]
-        if response:
-            arn = response[0]["clusterArn"]
-            print(f"cluster exists: {CLUSTER_TASKS}")
-            return arn
-    except ecs.exceptions.ClientError as exc:
-        if "ClusterNotFound" not in str(exc):
-            raise
+    existing = ecs.describe_clusters(clusters=[CLUSTER_TASKS])["clusters"]
+    if existing:
+        arn = existing[0]["clusterArn"]
+        print(f"cluster exists: {CLUSTER_TASKS}")
+        return arn
     arn = ecs.create_cluster(clusterName=CLUSTER_TASKS)["cluster"]["clusterArn"]
     print(f"created cluster: {CLUSTER_TASKS}")
     return arn
@@ -483,6 +481,13 @@ def ensure_role(iam, name: str, services: list[str], policy: dict[str, Any]) -> 
             AssumeRolePolicyDocument=json.dumps(assume_role_document(services)),
         )
         print(f"created role: {name}")
+        # a freshly created role gets no policy put from the drift branch
+        # above (its try aborted at get_role) — put the inline policy here
+        iam.put_role_policy(
+            RoleName=name,
+            PolicyName=f"{name}-policy",
+            PolicyDocument=json.dumps(policy),
+        )
     return arn
 
 
@@ -605,6 +610,15 @@ def ensure_log_groups(session: boto3.Session) -> None:
         )
 
 
+def _put_lambda_invoke_config(lam) -> None:
+    """The async-invoke retry policy (2 retries, events die after 1 hour)."""
+    lam.put_function_event_invoke_config(
+        FunctionName=LAMBDA_ATS,
+        MaximumRetryAttempts=LAMBDA_RETRY_ATTEMPTS,
+        MaximumEventAgeInSeconds=3600,
+    )
+
+
 def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> str:
     """Create-or-ignore the ATS Lambda function; return its ARN.
 
@@ -684,15 +698,15 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
                 f"lambda update did not settle after {30 * 2}s — inspect "
                 f"the console (LastUpdateStatus={state})"
             )
+        # pre-existing functions were provisioned before the invoke-config
+        # existed here — reconcile the retry policy on the update path too
+        _put_lambda_invoke_config(lam)
+        print(f"async retry policy applied ({LAMBDA_RETRY_ATTEMPTS} retries)")
     except lam.exceptions.ResourceNotFoundException:
         try:
             lam.create_function(**params)
             print(f"created lambda: {LAMBDA_ATS}")
-            lam.put_function_event_invoke_config(
-                FunctionName=LAMBDA_ATS,
-                MaximumRetryAttempts=LAMBDA_RETRY_ATTEMPTS,
-                MaximumEventAgeInSeconds=3600,
-            )
+            _put_lambda_invoke_config(lam)
             print(f"async retry policy set ({LAMBDA_RETRY_ATTEMPTS} retries)")
         except lam.exceptions.InvalidParameterValueException:
             raise RuntimeError(
@@ -824,9 +838,10 @@ def create_schedules(
         session: The boto3 session.
         acct: The account id.
         region: The bucket region.
-        arns: The ``lambda`` ARN plus the per-tier ``task_defs`` mapping
-            (tagged via :func:`register_task_definitions`); the clean and
-            curator schedules index their own tier's task-definition ARN.
+        arns: The ``lambda`` ARN, the cluster ARN, and the per-tier
+            ``task_defs`` mapping (tagged via :func:`register_task_definitions`);
+            the clean and curator schedules index their own tier's
+            task-definition ARN and RunTask into the cluster.
         state: ``DISABLED`` (smoke-first contract) or ``ENABLED``.
     """
     scheduler = session.client("scheduler")
@@ -869,6 +884,54 @@ def enable_schedules(session) -> None:
             Target=schedule["Target"],
         )
         print(f"schedule enabled: {name}")
+
+
+def retarget_schedules(session, acct: str, region: str, arns: dict[str, Any]) -> None:
+    """Point the existing curator/clean schedules at fresh task-def revisions.
+
+    ``--reregister`` mints NEW ``family:N`` revisions, and existing
+    schedules keep their revision-pinned ``EcsParameters.TaskDefinitionArn``
+    unless explicitly updated — an ECS target does NOT follow the family
+    to the latest revision. Existing schedules move to the new revision;
+    missing ones stay a :func:`create_schedules` concern. State,
+    expression, and time window ride the current values untouched, so
+    this neither disables nor re-arms anything. The `ats` tier is skipped
+    — a Lambda target ARN is name-pinned, not revision-pinned.
+
+    Args:
+        session: The boto3 session.
+        acct: The AWS account id.
+        region: The AWS region.
+        arns: Same mapping passed to :func:`create_schedules`
+            (``lambda``, ``cluster``, ``task_defs``).
+    """
+    scheduler = session.client("scheduler")
+    for name, _, tier in SCHEDULE_SPECS:
+        if tier == "ats":
+            continue
+        try:
+            schedule = scheduler.get_schedule(GroupName=SCHEDULE_GROUP, Name=name)
+        except scheduler.exceptions.ResourceNotFoundException:
+            continue  # not yet created — create_schedules owns that path
+        new_target = _schedule_target(tier, acct, region, arns)
+        current_arn = (
+            schedule["Target"].get("EcsParameters", {}).get("TaskDefinitionArn")
+        )
+        new_arn = new_target["EcsParameters"]["TaskDefinitionArn"]
+        if current_arn == new_arn:
+            print(f"schedule already current: {name}")
+            continue
+        scheduler.update_schedule(
+            GroupName=SCHEDULE_GROUP,
+            Name=name,
+            State=schedule["State"],
+            ScheduleExpression=schedule["ScheduleExpression"],
+            ScheduleExpressionTimezone=schedule["ScheduleExpressionTimezone"],
+            FlexibleTimeWindow=schedule["FlexibleTimeWindow"],
+            Description=schedule.get("Description", ""),
+            Target=new_target,
+        )
+        print(f"schedule re-targeted: {name} -> {new_arn}")
 
 
 def put_alarm(session, topic_arn: str) -> None:
@@ -1081,6 +1144,11 @@ def stage_create(
     cluster_arn = ensure_cluster(session)
     arns = {"lambda": lambda_arn, "task_defs": task_arns, "cluster": cluster_arn}
     create_schedules(session, acct, region, arns, state="DISABLED")
+    if reregister:
+        # the new revisions exist but existing schedules stay pinned to
+        # the old revision unless re-targeted (ECS targets do NOT follow
+        # the family to the latest revision)
+        retarget_schedules(session, acct, region, arns)
     print(f"dlq arn: {dlq_arn}")
 
 

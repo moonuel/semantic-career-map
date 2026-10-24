@@ -4,6 +4,10 @@ DLQ statement (finding 9), the Fargate execution role (finding 10), the
 Lambda image-update re-point (finding 12), the read-only ECR verify row
 (finding 13 — via the pattern helper for finding 15), policy-diff warn
 (finding 16), email dedupe (finding 17), and tag rendering (finding 19).
+
+Also the 2026-10-24 fixes: fresh-create inline policy on roles, the
+``--reregister`` schedule re-target, the Lambda invoke-config reconcile
+on the update path, and the cluster create-or-ignore.
 """
 
 from __future__ import annotations
@@ -41,13 +45,28 @@ class FakeScheduler:
 
     def __init__(self) -> None:
         self.created: dict[str, dict] = {}
+        self.schedules: dict[str, dict] = {}
+        self.updates: list[dict] = []
 
     def get_schedule_group(self, *, Name): ...
     def get_schedule(self, *, GroupName, Name):
-        raise _RNFE(Name)
+        if Name not in self.schedules:
+            raise _RNFE(Name)
+        return self.schedules[Name]
 
     def create_schedule(self, **body):
         self.created[body["Name"]] = body["Target"]
+        self.schedules[body["Name"]] = {
+            "State": body["State"],
+            "ScheduleExpression": body["ScheduleExpression"],
+            "ScheduleExpressionTimezone": body["ScheduleExpressionTimezone"],
+            "FlexibleTimeWindow": body["FlexibleTimeWindow"],
+            "Target": body["Target"],
+        }
+
+    def update_schedule(self, **kw):
+        self.updates.append(kw)
+        self.schedules[kw["Name"]].update(kw)
 
 
 class FakeSession:
@@ -113,6 +132,45 @@ def test_schedules_fail_loud_on_missing_tier(env) -> None:
         )
 
 
+def test_retarget_schedules_moves_ecs_targets_to_new_revision(env) -> None:
+    """--reregister revisions never reach existing schedules on their own:
+    ECS targets are revision-pinned, so the retarget stage moves them."""
+    session = FakeSession()
+    lambda_arn = f"arn:aws:lambda:{REGION_OK}:{ACCT}:function:{pcs.LAMBDA_ATS}"
+    cluster_arn = f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{pcs.CLUSTER_TASKS}"
+    old_arns = {
+        "lambda": lambda_arn,
+        "task_defs": {
+            "curator": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-scrape-curator:1",
+            "clean": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-clean:1",
+        },
+        "cluster": cluster_arn,
+    }
+    pcs.create_schedules(session, ACCT, REGION_OK, old_arns, state="ENABLED")
+    new_arns = {
+        "lambda": lambda_arn,
+        "task_defs": {
+            "curator": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-scrape-curator:2",
+            "clean": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-clean:2",
+        },
+        "cluster": cluster_arn,
+    }
+    pcs.retarget_schedules(session, ACCT, REGION_OK, new_arns)
+    updates = {u["Name"]: u["Target"] for u in session.scheduler.updates}
+    assert updates[pcs.SCHEDULE_CURATOR]["EcsParameters"]["TaskDefinitionArn"].endswith(
+        ":2"
+    )
+    assert updates[pcs.SCHEDULE_CLEAN]["EcsParameters"]["TaskDefinitionArn"].endswith(
+        ":2"
+    )
+    # the ats target is name-pinned (Lambda ARN) — never re-targeted
+    assert pcs.SCHEDULE_ATS not in updates
+    assert session.scheduler.schedules[pcs.SCHEDULE_ATS]["State"] == "ENABLED"
+    # no churn once the stored target matches the passed revision
+    pcs.retarget_schedules(session, ACCT, REGION_OK, new_arns)
+    assert len(session.scheduler.updates) == 2
+
+
 def test_scheduler_policy_carries_the_dlq_statement() -> None:
     policy = pcs.scheduler_policy(ACCT, REGION_OK)
     statements = [
@@ -175,6 +233,69 @@ def test_ensure_fargate_execution_role_creates_and_attaches(env) -> None:
     assert len(iam.attached[pcs.ROLE_FARGATE_EXECUTION]) == 1
 
 
+def test_ensure_role_fresh_create_attaches_inline_policy(env) -> None:
+    """A role that doesn't exist yet still gets its inline policy — the
+    drift branch's try aborts at get_role, so creation must not rely on
+    it (a policy-less role passes provisioning and fails at runtime)."""
+    iam = FakeIam()
+    policy = pcs.scheduler_policy(ACCT, REGION_OK)
+    arn = pcs.ensure_role(iam, "role-fresh", ["scheduler.amazonaws.com"], policy)
+    assert iam.roles == {"role-fresh"}
+    stored = json.loads(iam.policies["role-fresh/role-fresh-policy"])
+    assert stored == policy
+    assert arn == pcs.role_arn(ACCT, "role-fresh")
+
+
+class FakeECS:
+    def __init__(self) -> None:
+        self.exists = False
+        self.created_clusters: list[str] = []
+
+    def describe_clusters(self, clusters):
+        if self.exists:
+            return {
+                "clusters": [
+                    {
+                        "clusterArn": f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{clusters[0]}"
+                    }
+                ]
+            }
+        return {
+            "clusters": [],
+            "failures": [{"reason": "MISSING", "name": clusters[0]}],
+        }
+
+    def create_cluster(self, clusterName):
+        self.exists = True
+        self.created_clusters.append(clusterName)
+        return {
+            "cluster": {
+                "clusterArn": f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{clusterName}"
+            }
+        }
+
+
+class FakeECSSession:
+    def __init__(self, ecs) -> None:
+        self._ecs = ecs
+
+    def client(self, kind: str):
+        assert kind == "ecs"
+        return self._ecs
+
+
+def test_ensure_cluster_creates_when_missing(env) -> None:
+    """describe_clusters answers an empty list for a missing cluster (no
+    raise) — the empty response is the create signal, and a second pass
+    must not recreate."""
+    ecs = FakeECS()
+    arn = pcs.ensure_cluster(FakeECSSession(ecs))
+    assert ecs.created_clusters == [pcs.CLUSTER_TASKS]
+    assert arn == f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{pcs.CLUSTER_TASKS}"
+    assert pcs.ensure_cluster(FakeECSSession(ecs)) == arn
+    assert len(ecs.created_clusters) == 1
+
+
 def test_pipeline_policy_has_no_static_secrets(env) -> None:
     policy_doc = json.dumps(pcs.pipeline_policy(ACCT, REGION_OK))
     assert "STORE_S3_ACCESS_KEY_ID" not in policy_doc
@@ -194,6 +315,7 @@ class FakeLambda:
         self._exists = exists
         self._last = last_status
         self.updated: list[dict] = []
+        self.invoke_config: dict = {}
 
     def get_function(self, *, FunctionName):
         if not self._exists:
@@ -212,6 +334,9 @@ class FakeLambda:
     def create_function(self, **kw):
         self.created = kw
 
+    def put_function_event_invoke_config(self, **kw):
+        self.invoke_config = kw
+
 
 def test_ensure_lambda_repoints_stale_image(env) -> None:
     region = pcs.aws_region()
@@ -221,12 +346,24 @@ def test_ensure_lambda_repoints_stale_image(env) -> None:
     expected = pcs.image_arn(ACCT, region, pcs.IMAGE_TAG_SCRAPE)
     assert lam.updated == [{"FunctionName": pcs.LAMBDA_ATS, "ImageUri": expected}]
     assert lam.config_updated["LoggingConfig"]["LogGroup"] == pcs.LOG_GROUP_ATS
+    # the update path reconciles the async-invoke policy too
+    assert lam.invoke_config["FunctionName"] == pcs.LAMBDA_ATS
+    assert lam.invoke_config["MaximumRetryAttempts"] == pcs.LAMBDA_RETRY_ATTEMPTS
+    assert lam.invoke_config["MaximumEventAgeInSeconds"] == 3600
 
 
 def test_ensure_lambda_repoints_failing_image_raises(env) -> None:
     lam = FakeLambda(exists=True, last_status="Failed")
     with pytest.raises(RuntimeError, match="rejected the image update"):
         pcs.ensure_lambda(FakeLambdaSession(lam), ACCT)
+
+
+def test_ensure_lambda_create_applies_invoke_config(env) -> None:
+    lam = FakeLambda(exists=False)
+    pcs.ensure_lambda(FakeLambdaSession(lam), ACCT)
+    assert lam.created["FunctionName"] == pcs.LAMBDA_ATS
+    assert lam.created["LoggingConfig"]["LogGroup"] == pcs.LOG_GROUP_ATS
+    assert lam.invoke_config["MaximumRetryAttempts"] == pcs.LAMBDA_RETRY_ATTEMPTS
 
 
 class FakeLambdaSession:

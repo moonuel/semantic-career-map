@@ -84,8 +84,8 @@ def main() -> None:
         "--reregister",
         action="store_true",
         help="with --create: register task defs as NEW revisions (applies"
-        " JSON changes like runtimePlatform; schedules follow the family"
-        " to the latest revision automatically)",
+        " JSON changes like runtimePlatform) and re-target the"
+        " curator/clean schedules at the new revisions",
     )
     parser.add_argument("--dry-run", action="store_true", help="print the plan only")
     parser.add_argument(
@@ -144,7 +144,10 @@ def main() -> None:
 
         stage_email(session, args.email)
     if args.schedule:
-        from scripts.provision_compute_stack import register_task_definitions
+        from scripts.provision_compute_stack import (
+            ensure_cluster,
+            register_task_definitions,
+        )
 
         try:
             session.client("lambda").get_function(FunctionName=LAMBDA_ATS)
@@ -155,11 +158,16 @@ def main() -> None:
             ) from None
         lambda_arn = f"arn:aws:lambda:{region}:{acct}:function:{LAMBDA_ATS}"
         task_arns = register_task_definitions(session, image_tags)
+        cluster_arn = ensure_cluster(session)
         create_schedules(
             session,
             acct,
             region,
-            arns={"lambda": lambda_arn, "task_defs": task_arns},
+            arns={
+                "lambda": lambda_arn,
+                "task_defs": task_arns,
+                "cluster": cluster_arn,
+            },
             state="DISABLED",
         )
     if args.enable:
