@@ -31,19 +31,27 @@ import argparse
 import csv
 import hashlib
 import io
-import os
 import sys
-import time
 
 import boto3
 from dotenv import load_dotenv
 
+from backend.pipeline.athena import (
+    iter_query_results,
+    poll_query_completion,
+    results_location,
+    submit_query,
+)
 from backend.pipeline.selection import (
     build_selection_manifest,
     parse_query_results,
     select_uncleaned_sql,
 )
-from scripts.provision_query_layer import DATABASE_DEFAULT, aws_region
+from scripts.provision_query_layer import (
+    DATABASE_DEFAULT,
+    WORKGROUP_DEFAULT,
+    aws_region,
+)
 
 # The re-baseline (design.md Context, re-baselined 2026-10-21).
 EXPECTED_COUNTS: dict[str, int] = {
@@ -77,13 +85,6 @@ TEXT_COLUMN: dict[str, str] = {
     "linkedin": "content",
 }
 
-_TERMINAL_STATES = frozenset({"SUCCEEDED", "FAILED", "CANCELLED"})
-
-
-def _results_location() -> str:
-    """The workgroup's in-bucket results prefix (read from the store env)."""
-    return f"s3://{os.environ['STORE_S3_BUCKET']}/athena-results/"
-
 
 def _csv_line(cells) -> str:
     """One strict-CSV row row (quotes comma-bearing cells like ``source_id``).
@@ -106,6 +107,11 @@ def _csv_line(cells) -> str:
 def run_query(athena, database: str, sql: str) -> list[str]:
     """Submit one query, poll to completion, return CSV rows (with header).
 
+    The lifecycle (submit/poll/paginate) is the shared runner — the module
+    docstring's workgroup-cap claim holds because the query is bound to the
+    provisioned workgroup here, where the fixed dry-run digest binding and
+    the row serialization stay this gate's own.
+
     The selection-style queries bind their ``:config`` placeholder to a
     fixed dry-run digest; over an artifacts-less layer the join is empty, so
     the binding only matters after task 3.4 lands.
@@ -123,36 +129,15 @@ def run_query(athena, database: str, sql: str) -> list[str]:
     """
     config = hashlib.sha256(b"query-layer-dry-run").hexdigest()
     sql = sql.replace(":config", f"'{config}'")
-    response = athena.start_query_execution(
-        QueryString=sql,
-        QueryExecutionContext={"Database": database},
-        ResultConfiguration={"OutputLocation": _results_location()},
+    execution_id = submit_query(
+        athena,
+        sql,
+        database=database,
+        workgroup=WORKGROUP_DEFAULT,
+        output_location=results_location(),
     )
-    execution_id = response["QueryExecutionId"]
-    while True:
-        status = athena.get_query_execution(QueryExecutionId=execution_id)[
-            "QueryExecution"
-        ]["Status"]
-        if status["State"] in _TERMINAL_STATES:
-            break
-        time.sleep(2)
-    if status["State"] != "SUCCEEDED":
-        raise RuntimeError(
-            f"query {execution_id} ended {status['State']}: "
-            f"{status.get('StateChangeReason', 'no reason given')}"
-        )
-    rows: list[str] = []
-    next_token = None
-    while True:
-        kwargs = {"QueryExecutionId": execution_id}
-        if next_token:
-            kwargs["NextToken"] = next_token
-        page = athena.get_query_results(**kwargs)
-        for row in page["ResultSet"]["Rows"]:
-            rows.append(_csv_line(cell.get("VarCharValue", "") for cell in row["Data"]))
-        next_token = page.get("NextToken")
-        if not next_token:
-            return rows
+    poll_query_completion(athena, execution_id)
+    return [_csv_line(cells) for cells in iter_query_results(athena, execution_id)]
 
 
 def counts_query() -> str:
@@ -184,7 +169,7 @@ def uncleaned_dry_query() -> str:
     ``select_uncleaned.sql`` must fail this gate loudly, not silently
     verify parity against a stale expression.
     """
-    hash_expr = "regexp_extract(\"$path\", 'sha256=([0-9a-f]{64})\\.json', 1)"
+    hash_expr = "regexp_extract(r.\"$path\", 'sha256=([0-9a-f]{64})\\.json', 1)"
     if hash_expr not in select_uncleaned_sql():
         raise ValueError(
             "uncleaned_dry_query hash extraction drifted from "

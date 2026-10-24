@@ -15,8 +15,7 @@
       "command": ["--source", "dataroles"],
       "environment": [
         {"name": "STORE_S3_BUCKET", "value": "<STORE_S3_BUCKET>"},
-        {"name": "STORE_S3_REGION", "value": "<REGION>"},
-        {"name": "PIPELINE_VERSION", "value": "scrape"}
+        {"name": "STORE_S3_REGION", "value": "<REGION>"}
       ],
       "logConfiguration": {
         "logDriver": "awslogs",

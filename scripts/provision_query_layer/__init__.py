@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import json
 import os
-import re
 
 import boto3
+
+from backend.pipeline.athena import aws_region
 
 SCRAPED_JOB_COLUMNS: list[tuple[str, str]] = [
     ("url", "string"),
@@ -108,24 +109,9 @@ MAX_SCAN_BYTES_DEFAULT = (
     256 * 1024 * 1024
 )  # full-lake JSON scan ≈ 100 MB; 256 MB ≈ $0.001
 
-
-def aws_region() -> str:
-    """The lake bucket's region (Athena/Glue endpoints are region-local).
-
-    ``STORE_S3_REGION`` is authoritative when set; else parse the bucket
-    name's region suffix (``…-<region>-an``). AWS CLI defaults never
-    override — an ambient us-east-1 default against a us-east-2 bucket was
-    observed live: Athena rejects out-of-region results prefixes.
-    """
-    env = os.environ.get("STORE_S3_REGION")
-    if env:
-        return env
-    match = re.search(r"-(us-[a-z]+-\d)-an$", os.environ["STORE_S3_BUCKET"])
-    if match is None:
-        raise ValueError(
-            "STORE_S3_REGION unset and bucket name carries no <region> suffix"
-        )
-    return match.group(1)
+# The single ``aws_region`` implementation is the shared Athena runner's
+# (backend/pipeline/athena.py): one region rule for provisioners, gate, and
+# the daily driver. Re-exported here to keep every existing importer stable.
 
 
 def _raw_columns(columns: list[tuple[str, str]]) -> list[dict[str, str]]:
@@ -183,6 +169,69 @@ def _create_raw_table(
         print(f"created table: {table} (source={source})")
 
 
+def _storage_descriptor_matches(stored: dict, target: dict[str, dict]) -> bool:
+    """True when the catalog's stored table already matches the managed
+    definition.
+
+    Managed: location, input/output formats, serde, and the provisioned
+    columns — external additive evolution (extra stored columns) survives;
+    missing, retyped, or relocated ones trigger the update so the
+    registration stays authoritative. Skipping the no-op update keeps
+    externally evolved definitions (a later version-bump location
+    registration, manually extended columns) from being silently reverted
+    on every provision run.
+
+    Args:
+        stored: The ``StorageDescriptor`` of the existing catalog table.
+        target: The table_input's ``StorageDescriptor`` this provisioner
+            would apply.
+
+    Returns:
+        True when an ``update_table`` call would be a no-op-or-regression.
+    """
+
+    def shape(sd: dict) -> tuple:
+        """The format/location fingerprint of one descriptor."""
+        return (
+            sd.get("Location"),
+            sd.get("InputFormat"),
+            sd.get("OutputFormat"),
+            (sd.get("SerdeInfo") or {}).get("SerializationLibrary"),
+        )
+
+    if shape(stored) != shape(target):
+        return False
+    stored_columns = {(c["Name"], c["Type"]) for c in stored.get("Columns") or []}
+    return all(
+        (name, ctype) in stored_columns
+        for name, ctype in ((c["Name"], c["Type"]) for c in target["Columns"])
+    )
+
+
+def _apply_managed_table(glue, database: str, table: str, table_input: dict) -> None:
+    """Create the table, or update it only when its managed def drifted.
+
+    Args:
+        glue: The boto3 Glue client (or a testing double).
+        database: The Glue database.
+        table: The table name (``table_input["Name"]``).
+        table_input: The full ``create-table``/``update-table`` input.
+    """
+    try:
+        stored = glue.get_table(DatabaseName=database, Name=table)["Table"][
+            "StorageDescriptor"
+        ]
+    except glue.exceptions.EntityNotFoundException:
+        glue.create_table(DatabaseName=database, TableInput=table_input)
+        print(f"created table: {table}")
+        return
+    if _storage_descriptor_matches(stored, table_input["StorageDescriptor"]):
+        print(f"table up to date: {table}")
+        return
+    glue.update_table(DatabaseName=database, TableInput=table_input)
+    print(f"table updated: {table}")
+
+
 def _create_ingestion_manifest_table(glue, database: str, bucket: str) -> None:
     table_input = {
         "Name": INGESTION_TABLE,
@@ -207,13 +256,7 @@ def _create_ingestion_manifest_table(glue, database: str, bucket: str) -> None:
             "storage.location.template": f"s3://{bucket}/lake/manifests/ingestion/ingested_on=${{ingested_on}}",
         },
     }
-    try:
-        glue.get_table(DatabaseName=database, Name=INGESTION_TABLE)
-        glue.update_table(DatabaseName=database, TableInput=table_input)
-        print(f"table updated: {INGESTION_TABLE}")
-    except glue.exceptions.EntityNotFoundException:
-        glue.create_table(DatabaseName=database, TableInput=table_input)
-        print(f"created table: {INGESTION_TABLE}")
+    _apply_managed_table(glue, database, INGESTION_TABLE, table_input)
 
 
 def _create_artifacts_table(glue, database: str, bucket: str) -> None:
@@ -233,13 +276,7 @@ def _create_artifacts_table(glue, database: str, bucket: str) -> None:
             "Columns": [{"Name": c, "Type": t} for c, t in ARTIFACTS_COLUMNS],
         },
     }
-    try:
-        glue.get_table(DatabaseName=database, Name=ARTIFACTS_TABLE)
-        glue.update_table(DatabaseName=database, TableInput=table_input)
-        print(f"table updated: {ARTIFACTS_TABLE}")
-    except glue.exceptions.EntityNotFoundException:
-        glue.create_table(DatabaseName=database, TableInput=table_input)
-        print(f"created table: {ARTIFACTS_TABLE}")
+    _apply_managed_table(glue, database, ARTIFACTS_TABLE, table_input)
 
 
 def _create_workgroup(athena, name: str, bucket: str, max_bytes: int) -> None:

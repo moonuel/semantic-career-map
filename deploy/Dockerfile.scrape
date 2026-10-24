@@ -7,7 +7,8 @@ RUN pip install boto3==1.43.* botocore==1.43.* python-dotenv==1.2.* pyarrow==25.
 RUN mkdir -p scripts deploy
 COPY scripts/__init__.py scripts/__init__.py
 COPY scripts/scrape.py scripts/scrape.py
-COPY backend/ backend/
+COPY backend/ingestion/ backend/ingestion/
+COPY backend/storage/ backend/storage/
 COPY deploy/lambda_ats.py deploy/lambda_ats.py
 
 ENV STORE_S3_ENDPOINT=

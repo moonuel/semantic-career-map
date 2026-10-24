@@ -50,13 +50,19 @@ import signal
 import subprocess
 import tempfile
 import threading
-import time
 from dataclasses import dataclass
 from typing import Any
 
 import boto3
 from dotenv import load_dotenv
 
+from backend.pipeline.athena import (
+    aws_region,
+    iter_query_results,
+    poll_query_completion,
+    results_location,
+    submit_query,
+)
 from backend.pipeline.cleaning import runner
 from backend.pipeline.cleaning.configuration import configuration_hash
 from backend.pipeline.cleaning.llm_client import GatewayClient
@@ -75,7 +81,6 @@ WORKGROUP_DEFAULT = "semantic_career_map"
 MODEL_DEFAULT = "google/gemini-2.5-flash-lite"
 SSM_SECRET_PATH_DEFAULT = "/semantic-career-map/KILO_API_KEY"
 
-_TERMINAL_STATES = frozenset({"SUCCEEDED", "FAILED", "CANCELLED"})
 # stable join-handle contract of the selection query's first three columns
 _HEADER = ("source", "source_hash", "source_id")
 
@@ -164,10 +169,11 @@ def select_query_results(athena, sql: str, settings: Settings) -> str:
     "No output location provided", and the artifacts anti-join table
     resolves only under the right database context.
 
-    Cells are collected per row and written with the :mod:`csv` module, so
-    a ``source_id`` carrying a comma survives
-    :func:`parse_query_results` intact (the gate's earlier
-    ``",".join`` preview could and did corrupt that field).
+    Pages are streamed row-by-row (the shared runner's generator) straight
+    into the :mod:`csv` writer — no whole-selection accumulation — so a
+    ``source_id`` carrying a comma survives :func:`parse_query_results`
+    intact (the gate's earlier ``",".join`` preview could and did corrupt
+    that field) and the process never holds the page rows past writing.
 
     Args:
         athena: The boto3 Athena client (or a testing double).
@@ -181,45 +187,24 @@ def select_query_results(athena, sql: str, settings: Settings) -> str:
     Raises:
         RuntimeError: when the query ends in a non-SUCCEEDED state.
     """
-    response = athena.start_query_execution(
-        QueryString=sql,
-        QueryExecutionContext={"Database": settings.database},
-        WorkGroup=settings.workgroup,
-        ResultConfiguration={"OutputLocation": _results_location(settings)},
+    execution_id = submit_query(
+        athena,
+        sql,
+        database=settings.database,
+        workgroup=settings.workgroup,
+        output_location=results_location(),
     )
-    execution_id = response["QueryExecutionId"]
-    while True:
-        status = athena.get_query_execution(QueryExecutionId=execution_id)[
-            "QueryExecution"
-        ]["Status"]
-        if status["State"] in _TERMINAL_STATES:
-            break
-        time.sleep(2)
-    if status["State"] != "SUCCEEDED":
-        raise RuntimeError(
-            f"query {execution_id} ended {status['State']}: "
-            f"{status.get('StateChangeReason', 'no reason given')}"
-        )
+    poll_query_completion(athena, execution_id)
 
-    rows: list[list[str]] = []
-    next_token = None
-    while True:
-        kwargs: dict[str, Any] = {"QueryExecutionId": execution_id}
-        if next_token:
-            kwargs["NextToken"] = next_token
-        page = athena.get_query_results(**kwargs)
-        for row in page["ResultSet"]["Rows"]:
-            rows.append([cell.get("VarCharValue", "") for cell in row["Data"]])
-        next_token = page.get("NextToken")
-        if not next_token:
-            break
-
-    if rows and tuple(rows[0][:3]) == _HEADER:
-        rows = rows[1:]
+    rows = iter_query_results(athena, execution_id)
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(_HEADER)
-    writer.writerows(rows)
+    first = next(rows, None)
+    if first is not None and tuple(first[:3]) != _HEADER:
+        writer.writerow(first)
+    for row in rows:
+        writer.writerow(row)
     return buffer.getvalue()
 
 
@@ -357,11 +342,6 @@ def run_daily_dry(athena, store, settings: Settings) -> dict:
     }
 
 
-def _results_location(settings: Settings) -> str:
-    """The in-bucket Athena results prefix (the workgroup's pinned output)."""
-    return f"s3://{os.environ['STORE_S3_BUCKET']}/athena-results/"
-
-
 def settings_from_env(args: argparse.Namespace) -> Settings:
     """Merge the task-def environment + CLI flags into a :class:`Settings`.
 
@@ -447,8 +427,8 @@ def main() -> None:
 
 
 def boto3_client(kind: str) -> Any:
-    """A boto3 client pinned to the lake's region."""
-    return boto3.Session().client(kind, region_name=os.environ["STORE_S3_REGION"])
+    """A boto3 client pinned to the lake's region (the shared region rule)."""
+    return boto3.Session().client(kind, region_name=aws_region())
 
 
 if __name__ == "__main__":

@@ -351,10 +351,11 @@ def render_task_definitions(
 
     The rendered payloads are exactly ``register_task_definition`` bodies
     (``family`` included). Image tags are the variables — the JSON's
-    static ``:scrape``/``:clean`` values and ``PIPELINE_VERSION`` env are
-    overwritten from the ``image_tags`` mapping (defaults: the
-    ``IMAGE_TAG_*`` constants; promotion reads pinned
-    ``scrape:<sha>``-style tags from the ``--image-tags`` CLI flag).
+    static ``:scrape``/``:clean`` image values are overwritten, and the
+    ``PIPELINE_VERSION`` env is upserted (added when absent) from the
+    ``image_tags`` mapping (defaults: the ``IMAGE_TAG_*`` constants;
+    promotion reads pinned ``scrape:<sha>``-style tags from the
+    ``--image-tags`` CLI flag).
 
     Args:
         acct: The AWS account id (fills the ARNs).
@@ -388,9 +389,13 @@ def render_task_definitions(
         payload: dict[str, Any] = json.loads(spec)
         container = payload["containerDefinitions"][0]
         container["image"] = image_arn(acct, region, tags[tier])
-        for env in container.get("environment", []):
+        envs = container.setdefault("environment", [])
+        for env in envs:
             if env["name"] == "PIPELINE_VERSION":
                 env["value"] = tags[tier]
+                break
+        else:
+            envs.append({"name": "PIPELINE_VERSION", "value": tags[tier]})
         rendered[tier] = payload
     return rendered
 
@@ -577,7 +582,6 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
             "Variables": {
                 "STORE_S3_BUCKET": bucket_name(),
                 "STORE_S3_REGION": region,
-                "PIPELINE_VERSION": image_uri.rsplit(":", 1)[1],
             }
         },
         "DeadLetterConfig": {"TargetArn": f"arn:aws:sqs:{region}:{acct}:{QUEUE_DLQ}"},
@@ -637,7 +641,11 @@ def _register_or_skip(session, family: str, payload: dict[str, Any]) -> str:
         print(f"task definition exists: {family} (rev {existing['revision']})")
         return existing["taskDefinitionArn"]
     except ecs.exceptions.ClientError as exc:
-        if "does not exist" not in str(exc):
+        message = str(exc)
+        if (
+            "Task definition not found" not in message
+            and "does not exist" not in message
+        ):
             raise
     response = ecs.register_task_definition(**payload)
     print(

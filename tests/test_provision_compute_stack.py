@@ -330,10 +330,28 @@ def test_render_task_definitions_wires_tags_and_version(env, tmp_path) -> None:
         if e["name"] == "PIPELINE_VERSION"
     }
     assert version["PIPELINE_VERSION"] == "clean-def5678"
+    curator_version = {
+        e["name"]: e["value"]
+        for e in curator.get("environment", [])
+        if e["name"] == "PIPELINE_VERSION"
+    }
+    assert curator_version["PIPELINE_VERSION"] == "scrape-abc1234"
     rendered_default = pcs.render_task_definitions(ACCT, REGION_OK)
     assert rendered_default["clean"]["containerDefinitions"][0]["image"].endswith(
         ":clean"
     )
+
+
+def test_render_task_definitions_adds_version_when_absent(env) -> None:
+    """The curator def carries no static PIPELINE_VERSION env entry — the
+    renderer must add it (scrape manifests record the tag, not 'unknown')."""
+    rendered = pcs.render_task_definitions(ACCT, REGION_OK)
+    for tier, tag in (
+        ("curator", pcs.IMAGE_TAG_SCRAPE),
+        ("clean", pcs.IMAGE_TAG_CLEAN),
+    ):
+        envs = rendered[tier]["containerDefinitions"][0]["environment"]
+        assert {"name": "PIPELINE_VERSION", "value": tag} in envs
 
 
 def test_render_task_definitions_rejects_unresolved_placeholders(

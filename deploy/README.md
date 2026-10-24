@@ -84,7 +84,7 @@ image).
 
 The tiers parse untrusted job-posting content while holding lake-write
 IAM credentials (and, on the clean tier, the LLM key) in-process, with
-default-VPC egress unrestricted. Egress control via NAT/vegetatable VPC
+default-VPC egress unrestricted. Egress control via NAT/gateway VPC
 endpoints conflicts with the roadmap's explicit no-NAT/no-VPC guardrail
 (`docs/architecture/aws-migration-roadmap.md` §2.4) and its cost budget
 — so no SG egress allowlist is attached today. If the task-driving
