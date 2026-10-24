@@ -151,7 +151,7 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
         {
             "Sid": "LakeBucketList",
             "Effect": "Allow",
-            "Action": ["s3:ListBucket"],
+            "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
             "Resource": [bucket_arn(bucket)],
         },
         {

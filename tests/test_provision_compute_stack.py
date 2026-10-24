@@ -203,6 +203,9 @@ class FakeLambda:
     def update_function_code(self, **kw):
         self.updated.append(kw)
 
+    def update_function_configuration(self, **kw):
+        self.config_updated = kw
+
     def get_function_configuration(self, *, FunctionName):
         return {"LastUpdateStatus": self._last}
 
@@ -217,6 +220,7 @@ def test_ensure_lambda_repoints_stale_image(env) -> None:
     assert arn.endswith(f"function:{pcs.LAMBDA_ATS}")
     expected = pcs.image_arn(ACCT, region, pcs.IMAGE_TAG_SCRAPE)
     assert lam.updated == [{"FunctionName": pcs.LAMBDA_ATS, "ImageUri": expected}]
+    assert lam.config_updated["LoggingConfig"]["LogGroup"] == pcs.LOG_GROUP_ATS
 
 
 def test_ensure_lambda_repoints_failing_image_raises(env) -> None:
