@@ -53,14 +53,6 @@ def golden_prefix(variant: str = "author", version: str = "v1") -> str:
     )
 
 
-def results_prefix(variant: str = "exp003", version: str = "v1") -> str:
-    """Compose + validate the results dataset version's part prefix."""
-    keys.eval_result("cleaning_quality", variant, version, _PROBE_RUN_ID, 1)
-    return (
-        f"lake/eval/results/type=cleaning_quality/variant={variant}/version={version}/"
-    )
-
-
 def _read_rows(store: Any, part_keys: list[str]) -> list[dict[str, Any]]:
     """Read every row of the given Parquet parts, part order preserved."""
     rows: list[dict[str, Any]] = []

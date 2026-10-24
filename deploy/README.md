@@ -32,6 +32,9 @@ docker buildx build --platform linux/arm64 -f deploy/Dockerfile.clean \
 
 Pin the tags per-iteration (`:scrape-$(git rev-parse --short HEAD)`) when
 promoting a new pipeline version; the moving tags stay for schedule targets.
+`--create` re-apply is idempotent: the Lambda code is re-pointed only when
+the target tag's ECR digest differs from the function's resolved image, so
+plain re-applies cannot roll a pinned promotion back to a stale moving tag.
 
 ## Offline smoke (no network, no credentials needed)
 
@@ -62,7 +65,7 @@ process env — never baked into images or task definitions, never logged.
 | `STORE_S3_ENDPOINT` | baked empty | baked empty | empty = real S3, default credential chain = the pipeline role |
 | `SOURCE_*` CLI flags | `CMD`/command override | n/a | ATS: `--source ashby --source greenhouse --source lever`; curator: `--source dataroles` |
 | `STORE_S3_ACCESS_KEY_ID` / `..._SECRET...` | **must not be set** | **must not be set** | `ObjectStore.from_env` refuses static keys on real S3 |
-| `CONFIGURATION_HASH` | n/a | optional (default: computed from `CLEAN_MODEL` + shipped prompts) | re-run override only — never pin a stale digest after a prompts/model change |
+| `CONFIGURATION_HASH` | n/a | optional (default: computed from `CLEAN_MODEL` + shipped prompts) | re-run override only — binds the selection, the cache resolution, and the run record to one earlier generation; never pin a stale digest after a prompts/model change |
 | `CLEAN_MODEL` | n/a | task def (default `google/gemini-2.5-flash-lite`, exp 008 A3) | |
 | `CLEAN_WORKERS` | n/a | task def default 8 (D8) | |
 | `MAX_RUN_HOURS` | n/a | task def default 2 | wall-clock guard over BOTH the selection query and the run; fires the runner's SIGINT/`interrupted` path |

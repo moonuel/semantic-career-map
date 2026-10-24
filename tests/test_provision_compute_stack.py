@@ -303,17 +303,48 @@ def test_pipeline_policy_has_no_static_secrets(env) -> None:
     statements = {s["Sid"] for s in pcs.pipeline_policy(ACCT, REGION_OK)["Statement"]}
     assert {
         "LakeBucketReadWrite",
-        "SelectionQueryRead",
+        "SelectionAthenaQueries",
+        "SelectionGlueRead",
         "ReadTheOneSecret",
     } <= statements
+
+
+def test_pipeline_policy_scopes_query_reads(env) -> None:
+    """Athena/Glue read grants must name exact resources, never ``*``.
+
+    The compute tiers run on untrusted scraped content; an account-wide
+    wildcard would let a compromised task enumerate and query every Glue
+    database in the account.
+    """
+    policy = pcs.pipeline_policy(ACCT, REGION_OK)
+    for statement in policy["Statement"]:
+        resources = statement.get("Resource", [])
+        assert "*" not in resources, statement["Sid"]
+    by_sid = {s["Sid"]: s for s in policy["Statement"]}
+    athena = by_sid["SelectionAthenaQueries"]
+    assert athena["Resource"] == [
+        f"arn:aws:athena:{REGION_OK}:{ACCT}:workgroup/semantic_career_map"
+    ]
+    glue = by_sid["SelectionGlueRead"]
+    assert glue["Resource"] == [
+        f"arn:aws:glue:{REGION_OK}:{ACCT}:catalog",
+        f"arn:aws:glue:{REGION_OK}:{ACCT}:database/semantic_career_map",
+        f"arn:aws:glue:{REGION_OK}:{ACCT}:table/semantic_career_map/*",
+    ]
 
 
 class FakeLambda:
     exceptions = _Exceptions()
 
-    def __init__(self, exists: bool, last_status: str = "Successful") -> None:
+    def __init__(
+        self,
+        exists: bool,
+        last_status: str = "Successful",
+        resolved_image_uri: str = "",
+    ) -> None:
         self._exists = exists
         self._last = last_status
+        self._resolved = resolved_image_uri
         self.updated: list[dict] = []
         self.invoke_config: dict = {}
 
@@ -329,7 +360,10 @@ class FakeLambda:
         self.config_updated = kw
 
     def get_function_configuration(self, *, FunctionName):
-        return {"LastUpdateStatus": self._last}
+        return {
+            "LastUpdateStatus": self._last,
+            "Code": {"ResolvedImageUri": self._resolved},
+        }
 
     def create_function(self, **kw):
         self.created = kw
@@ -338,10 +372,23 @@ class FakeLambda:
         self.invoke_config = kw
 
 
+class FakeECR:
+    """ECR double answering the digest probe for one tag."""
+
+    def __init__(self, digest: str) -> None:
+        self._digest = digest
+
+    def describe_images(self, **kw):
+        return {"imageDetails": [{"imageDigest": self._digest}]}
+
+
 def test_ensure_lambda_repoints_stale_image(env) -> None:
     region = pcs.aws_region()
-    lam = FakeLambda(exists=True)
-    arn = pcs.ensure_lambda(FakeLambdaSession(lam), ACCT)
+    lam = FakeLambda(
+        exists=True, resolved_image_uri="...ecr.../pipeline-images@sha256:old"
+    )
+    ecr = FakeECR("sha256:new")  # the moving tag now resolves elsewhere
+    arn = pcs.ensure_lambda(FakeLambdaSession(lam, ecr), ACCT)
     assert arn.endswith(f"function:{pcs.LAMBDA_ATS}")
     expected = pcs.image_arn(ACCT, region, pcs.IMAGE_TAG_SCRAPE)
     assert lam.updated == [{"FunctionName": pcs.LAMBDA_ATS, "ImageUri": expected}]
@@ -352,29 +399,55 @@ def test_ensure_lambda_repoints_stale_image(env) -> None:
     assert lam.invoke_config["MaximumEventAgeInSeconds"] == 3600
 
 
+def test_ensure_lambda_skips_current_image(env) -> None:
+    """Idempotence: a re-apply against an unchanged digest must not re-point.
+
+    Re-pointing a function that already runs the target tag's digest can
+    silently roll back a ``--image-tags scrape:<sha>`` promotion to
+    whatever the moving tag holds.
+    """
+    lam = FakeLambda(
+        exists=True, resolved_image_uri="...ecr.../pipeline-images@sha256:same"
+    )
+    ecr = FakeECR("sha256:same")
+    pcs.ensure_lambda(FakeLambdaSession(lam, ecr), ACCT)
+    assert lam.updated == []  # no update_function_code call
+    # configuration reconcile still happens on the skip path
+    assert lam.config_updated["LoggingConfig"]["LogGroup"] == pcs.LOG_GROUP_ATS
+    assert lam.invoke_config["MaximumRetryAttempts"] == pcs.LAMBDA_RETRY_ATTEMPTS
+
+
 def test_ensure_lambda_repoints_failing_image_raises(env) -> None:
-    lam = FakeLambda(exists=True, last_status="Failed")
+    lam = FakeLambda(
+        exists=True,
+        last_status="Failed",
+        resolved_image_uri="...ecr.../pipeline-images@sha256:old",
+    )
+    ecr = FakeECR("sha256:new")
     with pytest.raises(RuntimeError, match="rejected the image update"):
-        pcs.ensure_lambda(FakeLambdaSession(lam), ACCT)
+        pcs.ensure_lambda(FakeLambdaSession(lam, ecr), ACCT)
 
 
 def test_ensure_lambda_create_applies_invoke_config(env) -> None:
     lam = FakeLambda(exists=False)
-    pcs.ensure_lambda(FakeLambdaSession(lam), ACCT)
+    pcs.ensure_lambda(FakeLambdaSession(lam, FakeECR("sha256:new")), ACCT)
     assert lam.created["FunctionName"] == pcs.LAMBDA_ATS
     assert lam.created["LoggingConfig"]["LogGroup"] == pcs.LOG_GROUP_ATS
     assert lam.invoke_config["MaximumRetryAttempts"] == pcs.LAMBDA_RETRY_ATTEMPTS
 
 
 class FakeLambdaSession:
-    """Session double exposing only the lambda client."""
+    """Session double exposing the lambda and ecr clients."""
 
-    def __init__(self, lam) -> None:
+    def __init__(self, lam, ecr=None) -> None:
         self._lam = lam
+        self._ecr = ecr or FakeECR("")
 
     def client(self, kind: str):
-        assert kind == "lambda"
-        return self._lam
+        if kind == "lambda":
+            return self._lam
+        assert kind == "ecr"
+        return self._ecr
 
 
 class FakeSNS:

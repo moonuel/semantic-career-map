@@ -40,6 +40,13 @@ CLEANED_SCHEMA = pa.schema(
 )
 
 
+def _results_prefix(variant: str = "exp003", version: str = "v1") -> str:
+    """The results dataset prefix (same composition ``write_results`` uses)."""
+    return (
+        f"lake/eval/results/type=cleaning_quality/variant={variant}/version={version}/"
+    )
+
+
 def _seed_raw(store: MemorySink, source: str, source_hash: str, text: str) -> None:
     """Put the raw payload the hallucination metric reads."""
     payload = {"description_html": text}
@@ -120,7 +127,7 @@ def test_evaluation_rows_carry_lineage(tmp_path) -> None:
         created_at="2026-10-22T01:00:00Z",
     )
     part = summary.part_key
-    assert part.startswith(eval_run.results_prefix(variant="exp003", version="v1"))
+    assert part.startswith(_results_prefix(variant="exp003", version="v1"))
     table = pq.read_table(io.BytesIO(store.get(part)))
     rows = table.to_pylist()
     by_hash = {row["source_hash"]: row for row in rows}
@@ -154,10 +161,10 @@ def test_second_evaluation_version_writes_new_prefix() -> None:
         created_at="2026-10-22T02:00:00Z",
         evaluation_version="v2",
     )
-    assert first.part_key.startswith(eval_run.results_prefix(version="v1"))
-    assert second.part_key.startswith(eval_run.results_prefix(version="v2"))
-    v1_parts = store.list_keys(eval_run.results_prefix(version="v1"))
-    v2_parts = store.list_keys(eval_run.results_prefix(version="v2"))
+    assert first.part_key.startswith(_results_prefix(version="v1"))
+    assert second.part_key.startswith(_results_prefix(version="v2"))
+    v1_parts = store.list_keys(_results_prefix(version="v1"))
+    v2_parts = store.list_keys(_results_prefix(version="v2"))
     assert len(v1_parts) == 1 and len(v2_parts) == 1
     rows2 = pq.read_table(io.BytesIO(store.get(second.part_key))).to_pylist()
     assert all(row["evaluation_version"] == "v2" for row in rows2)
@@ -170,7 +177,7 @@ def test_dry_run_writes_nothing(tmp_path) -> None:
     _seed_two_postings(store)
     summary = eval_run.run_evaluation(store, write=False)
     assert summary.part_key == ""
-    assert not store.list_keys(eval_run.results_prefix())
+    assert not store.list_keys(_results_prefix())
     assert len(summary.rows) == 2
 
 

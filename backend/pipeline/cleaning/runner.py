@@ -127,6 +127,7 @@ def run_cleaning(
     flush_seconds: float = FLUSH_SECONDS_DEFAULT,
     pacing_budget: float = RATE_LIMIT_SECONDS,
     heal: bool = True,
+    config_hash: str | None = None,
 ) -> dict[str, Any]:
     """Run the cleaning stage over a pinned manifest.
 
@@ -150,6 +151,11 @@ def run_cleaning(
         flush_seconds: Writer dwell trigger.
         pacing_budget: Worker jitter budget in seconds (0 disables).
         heal: Back-fill orphan checkpoints at start (D10).
+        config_hash: The run's configuration digest; ``None`` derives it
+            from ``(model, system_prompt, user_template)``. The daily
+            driver passes its resolved digest (env override included) so
+            selection, cache resolution, and written artifacts share one
+            identity.
 
     Returns:
         The persisted run record (see :func:`runs.merge_run_record`).
@@ -158,7 +164,7 @@ def run_cleaning(
         KeyboardInterrupt: re-raised after the interrupted-status record
             was made durable (CLI exit semantics preserved).
     """
-    config = configuration_hash(model, system_prompt, user_template)
+    config = config_hash or configuration_hash(model, system_prompt, user_template)
     run_id = ids.new_id()
     started_at = _utc_now()
     if heal:

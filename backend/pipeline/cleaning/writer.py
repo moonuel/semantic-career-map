@@ -120,6 +120,7 @@ def build_flush_checkpoint(
     trigger: str,
     part_key: str,
     source_hashes: list[str],
+    configuration_hash: str,
     batch_range: list[str] | None,
     durations: list[float],
     usage: dict[str, int],
@@ -133,6 +134,9 @@ def build_flush_checkpoint(
         trigger: The trigger label recorded in the checkpoint.
         part_key: The committed part key (this checkpoint's subject).
         source_hashes: The rows' ``source_hash`` values (sorted here).
+        configuration_hash: The run's configuration digest — rows of one
+            part share it by construction; the cache index (task 3.5)
+            reads it here instead of downloading the part.
         batch_range: The flush's first/last batch ids (``None`` for a
             recovered checkpoint).
         durations: Per-row LLM call durations (recovered checkpoints pass
@@ -156,6 +160,7 @@ def build_flush_checkpoint(
         "row_count": cleaned,
         "batch_range": batch_range,
         "source_hashes": sorted(source_hashes),
+        "configuration_hash": configuration_hash,
         "counters": {"cleaned": cleaned},
         "latency": latency_aggregates(durations),
         "usage": {
@@ -369,6 +374,7 @@ class FlushWriter:
             trigger=trigger,
             part_key=part_key,
             source_hashes=[r["source_hash"] for r in rows],
+            configuration_hash=rows[0]["configuration_hash"],
             batch_range=[pending[0].batch_id, pending[-1].batch_id],
             durations=[p.duration_s for p in pending if p.duration_s is not None],
             usage={

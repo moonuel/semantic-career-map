@@ -47,6 +47,40 @@ def test_index_pairs_over_parts() -> None:
     assert index.row_count == 2
 
 
+def test_index_reads_checkpoints_not_parts() -> None:
+    """Index build must not download the (multi-MiB) parts themselves.
+
+    Corrupting the part bytes proves the checkpoint path never reads
+    them: the per-flush checkpoint carries the identity pairs.
+    """
+    store = JournalSink()
+    w = FlushWriter(store, run_id=ids.new_id(), pipeline_version="dev", flush_rows=1)
+    w.add(_row("a", _hash("c1")), batch_id="b1")
+    part_key = w.results[0]["part_key"]
+    store.objects[part_key] = b"garbage"  # unreadable — must never be fetched
+    index = load_cache_index(store)
+    assert index.row_count == 1
+    assert (_hash("a"), _hash("c1")) in index
+
+
+def test_index_falls_back_to_part_without_checkpoint() -> None:
+    """Legacy parts (checkpoints without configuration_hash) still index.
+
+    Parts written before checkpoints carried the configuration digest —
+    and unhealed orphans under heal=False — read the part's identity
+    columns directly.
+    """
+    store = JournalSink()
+    w = FlushWriter(store, run_id=ids.new_id(), pipeline_version="dev", flush_rows=1)
+    w.add(_row("a", _hash("c1")), batch_id="b1")
+    part_key = w.results[0]["part_key"]
+    run_id, seq = parse_part_key(part_key)
+    del store.objects[keys.manifest_run_checkpoint(run_id, seq)]
+    index = load_cache_index(store)
+    assert index.row_count == 1
+    assert (_hash("a"), _hash("c1")) in index
+
+
 def test_index_not_shares_state_across_versions() -> None:
     store = JournalSink()
     w = FlushWriter(store, run_id=ids.new_id(), pipeline_version="dev", flush_rows=1)

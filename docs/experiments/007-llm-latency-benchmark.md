@@ -139,6 +139,7 @@ Preserved for the buffering-delta read. Full table printed by `analyze_results.p
 3. **One time window, one gateway.** Round 1 vs round 2 differences (ling's rebirth, qwen's TTFT surge) prove gateway routing drifts over days. Rerun before finalizing a production choice.
 4. **398 words ≠ 500 tokens exactly.** The reference scale is a word count used as a token-scale proxy (the `dev`/tok/s denominations are honest but shouldn't be over-precise).
 5. **Cost columns degrade silently to zero** when the pricing probe fails — the `pricing_source` field makes this auditable (`gateway_probe` for this run).
+6. **Every measured call pays a fresh TCP+TLS handshake.** `latency_client.py` uses top-level `httpx.stream(...)` / `httpx.post(...)`, which construct a new client (and therefore a new connection) per call — so all recorded `ttft_s`/`latency_s` values include the full handshake overhead in addition to gateway/model latency. Cross-model *rankings* are largely unaffected (the constant is shared), but absolute TTFT numbers overstate what a persistent-connection production client would see. The frozen 007 script stays untouched (immutable artifact); any future benchmark revision should hold one shared `httpx.Client` per track and reuse its connection pool.
 
 ## Next steps
 

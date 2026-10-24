@@ -11,6 +11,13 @@ record — the day-2 idempotence proof artifact.
 
 The driver adds only orchestration glue:
 
+- **Deployment bounds**: the scheduled selection is bounded — a
+  ``manifests_ingestion`` recency window (``--window-days``, default 3)
+  plus a deterministic row cap (``--max-postings``, default 5000) — so a
+  configuration change can never silently re-enroll the whole historical
+  lake through the cloud tier. ``--backfill`` disables both bounds for
+  the explicit full-lake path (run locally first per the automation
+  report's backfill policy).
 - **Secrets**: the one non-IAM secret, ``KILO_API_KEY``, is fetched from SSM
   Parameter Store (a ``SecureString``) into the process environment before
   the gateway client is constructed — absent an already-set value, so local
@@ -36,7 +43,8 @@ Usage (Fargate ``CMD`` and local runs are the same CLI)::
     python -m backend.pipeline.cleaning.daily \
         [--database semantic_career_map] [--workgroup semantic_career_map] \
         [--model ...] [--workers 8] [--version-root v1] \
-        [--max-run-hours 2] [--dry-run]
+        [--max-run-hours 2] [--window-days N] [--max-postings N] \
+        [--backfill] [--dry-run]
 """
 
 from __future__ import annotations
@@ -71,6 +79,8 @@ from backend.pipeline.cleaning.prompts import (
     USER_MESSAGE_TEMPLATE,
 )
 from backend.pipeline.selection import (
+    DEFAULT_MAX_POSTINGS,
+    DEFAULT_WINDOW_DAYS,
     build_selection_manifest,
     parse_query_results,
     select_uncleaned_sql,
@@ -96,6 +106,8 @@ class Settings:
     version: str
     max_run_hours: float
     configuration_hash: str
+    window_days: int = DEFAULT_WINDOW_DAYS
+    max_postings: int = DEFAULT_MAX_POSTINGS
 
 
 def _require_hex64(value: str) -> str:
@@ -291,7 +303,13 @@ def run_daily(
     """
     timer = arm_deadline(settings.max_run_hours)  # guards selection too
     try:
-        sql = bind_config_sql(select_uncleaned_sql(), settings.configuration_hash)
+        sql = bind_config_sql(
+            select_uncleaned_sql(
+                window_days=settings.window_days,
+                max_postings=settings.max_postings,
+            ),
+            settings.configuration_hash,
+        )
         csv_text = select_query_results(athena, sql, settings)
         rows = parse_query_results(csv_text)
         manifest_bytes = build_selection_manifest(
@@ -309,6 +327,7 @@ def run_daily(
             pipeline_version=pipeline_version or resolve_pipeline_version(),
             workers=settings.workers,
             version=settings.version,
+            config_hash=settings.configuration_hash,
         )
     finally:
         if timer is not None:
@@ -329,7 +348,13 @@ def run_daily_dry(athena, store, settings: Settings) -> dict:
     Returns:
         A summary dict: status, digest, and the manifest posting count.
     """
-    sql = bind_config_sql(select_uncleaned_sql(), settings.configuration_hash)
+    sql = bind_config_sql(
+        select_uncleaned_sql(
+            window_days=settings.window_days,
+            max_postings=settings.max_postings,
+        ),
+        settings.configuration_hash,
+    )
     csv_text = select_query_results(athena, sql, settings)
     rows = parse_query_results(csv_text)
     manifest_bytes = build_selection_manifest(
@@ -367,6 +392,17 @@ def settings_from_env(args: argparse.Namespace) -> Settings:
     max_run_hours = args.max_run_hours
     if max_run_hours is None:
         max_run_hours = float(os.environ.get("MAX_RUN_HOURS", "2"))
+    window_days = args.window_days
+    if window_days is None:
+        window_days = int(os.environ.get("CLEAN_WINDOW_DAYS", DEFAULT_WINDOW_DAYS))
+    max_postings = args.max_postings
+    if max_postings is None:
+        max_postings = int(os.environ.get("CLEAN_MAX_POSTINGS", DEFAULT_MAX_POSTINGS))
+    if args.backfill:
+        # the explicit full-lake path: both deployment bounds disabled
+        # (cleaning-automation-report.md backfill policy — local first)
+        window_days = 0
+        max_postings = 0
     return Settings(
         database=database,
         workgroup=workgroup,
@@ -375,6 +411,8 @@ def settings_from_env(args: argparse.Namespace) -> Settings:
         version=version,
         max_run_hours=max_run_hours,
         configuration_hash=resolve_configuration_hash(model),
+        window_days=window_days,
+        max_postings=max_postings,
     )
 
 
@@ -392,6 +430,27 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--version-root", default=None)
     parser.add_argument("--max-run-hours", type=float, default=None)
+    parser.add_argument(
+        "--window-days",
+        type=int,
+        default=None,
+        help=f"recency window for the selection (days); 0 disables"
+        f" (default: {DEFAULT_WINDOW_DAYS}, env CLEAN_WINDOW_DAYS)",
+    )
+    parser.add_argument(
+        "--max-postings",
+        type=int,
+        default=None,
+        help=f"deterministic row cap for the selection; 0 disables"
+        f" (default: {DEFAULT_MAX_POSTINGS}, env CLEAN_MAX_POSTINGS)",
+    )
+    parser.add_argument(
+        "--backfill",
+        action="store_true",
+        help="explicit full-lake backfill: disable the recency window and"
+        " the row cap (run the full-lake clean locally first — see"
+        " docs/architecture/cleaning-automation-report.md backfill policy)",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",

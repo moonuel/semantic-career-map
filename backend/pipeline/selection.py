@@ -36,21 +36,69 @@ from backend.storage.raw import RawStore
 # whose runner consumes their product.
 SELECT_SQL_PATH = "select_uncleaned.sql"
 
+# Deployment bounds on the scheduled selection (deploy-safety: the daily
+# tier must never silently re-enroll the whole historical lake —
+# configuration changes re-key the anti-join and would otherwise re-spend
+# the full-corpus LLM cost through the scheduled cloud tier; full
+# backfills run as explicit ``--backfill`` invocations).
+DEFAULT_WINDOW_DAYS = 3
+DEFAULT_MAX_POSTINGS = 5000
+
 # Hex SHA-256 shape check for incoming query rows (defense vs a drifted
 # table column: fail loudly at render time, not at run time).
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
-def select_uncleaned_sql() -> str:
-    """Return the versioned selection query text.
+def select_uncleaned_sql(
+    *, window_days: int | None = None, max_postings: int | None = None
+) -> str:
+    """Return the versioned selection query text, deployment-bounded.
+
+    The shipped anti-join (raw keys with no artifact row for the
+    configuration) is wrapped with the two bounds the scheduled tier
+    rides on:
+
+    - a recency window over ``manifests_ingestion`` (only postings
+      ingested within ``window_days`` days are selected), and
+    - a deterministic row cap (``ORDER BY source, source_hash`` then
+      ``LIMIT``), so a bounded run processes the same first N postings
+      on every retry.
+
+    Either bound at 0 disables it — the explicit ``--backfill`` path.
+
+    Args:
+        window_days: Recency window in days; ``None`` uses
+            :data:`DEFAULT_WINDOW_DAYS`, ``0`` disables the bound.
+        max_postings: Row cap; ``None`` uses :data:`DEFAULT_MAX_POSTINGS`,
+            ``0`` disables the bound.
 
     Returns:
-        The SQL text of ``select_uncleaned.sql`` (parameterized on
-        ``:config``).
+        The bounded SQL text (parameterized on ``:config``).
     """
     from pathlib import Path
 
-    return (Path(__file__).parent / "sql" / SELECT_SQL_PATH).read_text(encoding="utf-8")
+    window_days = DEFAULT_WINDOW_DAYS if window_days is None else window_days
+    max_postings = DEFAULT_MAX_POSTINGS if max_postings is None else max_postings
+    inner = (
+        (Path(__file__).parent / "sql" / SELECT_SQL_PATH)
+        .read_text(encoding="utf-8")
+        .strip()
+    )
+    lines = [
+        "SELECT s.source, s.source_hash, s.source_id",
+        f"FROM ({inner}) s",
+    ]
+    if window_days > 0:
+        lines.append(
+            "JOIN (SELECT DISTINCT content_sha256 FROM manifests_ingestion "
+            f"WHERE ingested_on >= CURRENT_DATE - INTERVAL '{window_days}' DAY"
+            ") rec ON rec.content_sha256 = s.source_hash"
+        )
+    lines.append("ORDER BY s.source, s.source_hash")
+    sql = "\n".join(lines)
+    if max_postings > 0:
+        sql += f"\nLIMIT {max_postings}"
+    return sql
 
 
 def parse_query_results(csv_text: str) -> list[dict[str, str]]:

@@ -147,3 +147,45 @@ def test_no_false_positive_healing_on_healthy_runs() -> None:
     w.add(_row("a"), batch_id="b1", duration_s=0.5)
     w.add(_row("b"), batch_id="b2", duration_s=0.5)
     assert runs.heal_orphan_checkpoints(store) == []
+
+
+def test_merge_run_record_survives_existing_run_json() -> None:
+    """Re-merging a run whose ``run.json`` already exists must not crash.
+
+    The run record lives under the same prefix as the flush checkpoints;
+    the checkpoint listing must skip it (it carries no ``seq``) so the
+    runner's re-settle paths (SIGINT tail, infra-failure tail) work.
+    """
+    store = JournalSink()
+    w = _writer(store, flush_rows=1)
+    w.add(_row("a"), batch_id="b1", duration_s=1.0)
+    first = runs.merge_run_record(
+        store,
+        w._run_id,
+        status="completed",
+        input_dataset="m",
+        output_dataset_id=runs.dataset_id_for(),
+        model="m",
+        configuration_hash=hashlib.sha256(b"config").hexdigest(),
+        pipeline_version="dev",
+        started_at="s",
+        completed_at="c",
+    )
+    assert first["status"] == "completed"
+    # the re-settle: run.json is already durable under the run prefix
+    second = runs.merge_run_record(
+        store,
+        w._run_id,
+        status="interrupted",
+        input_dataset="m",
+        output_dataset_id=runs.dataset_id_for(),
+        model="m",
+        configuration_hash=hashlib.sha256(b"config").hexdigest(),
+        pipeline_version="dev",
+        started_at="s",
+        completed_at="c",
+    )
+    assert second["status"] == "interrupted"
+    assert second["counters"]["cleaned"] == 1
+    stored = json.loads(store.get(keys.manifest_run(w._run_id)).decode())
+    assert stored["status"] == "interrupted"

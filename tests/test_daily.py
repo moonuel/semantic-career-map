@@ -5,6 +5,7 @@ exit-code mapping."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -224,6 +225,74 @@ def test_run_daily_end_to_end(bucket_env: None) -> None:
     assert len(client.calls) == 2
     artifact_keys = [k for k in store.journal if k.startswith("lake/artifacts/")]
     assert artifact_keys and any(k.endswith(".parquet") for k in artifact_keys)
+
+
+def test_run_daily_override_hash_binds_selection_and_run(
+    bucket_env: None,
+) -> None:
+    """An override digest must flow into the run record, not be re-derived.
+
+    The selection SQL and manifest bind to the resolved digest; the runner
+    must stamp the same digest on artifacts and the run record (re-runs
+    targeting an earlier dataset generation) instead of recomputing the
+    current (model, prompts) hash.
+    """
+    override = "9" * 64
+    store = JournalSink()
+    a = _post(store, "greenhouse", "description_html", "html p1 <p>boiler</p>")
+    athena = FakeAthena(
+        [
+            [
+                ["source", "source_hash", "source_id"],
+                [a["source"], a["source_hash"], a["source_id"]],
+            ]
+        ]
+    )
+    record = daily.run_daily(
+        athena, store, StubClient(), _settings(configuration_hash=override)
+    )
+    assert record["status"] == "completed"
+    assert record["configuration_hash"] == override
+
+
+def test_run_daily_submits_bounded_selection(bucket_env: None) -> None:
+    """The scheduled tier's SQL carries the recency window and row cap."""
+    store = JournalSink()
+    athena = FakeAthena([[["source", "source_hash", "source_id"]]])
+    daily.run_daily(athena, store, StubClient(), _settings())
+    sql = athena.executed[0]
+    assert "WHERE ingested_on >= CURRENT_DATE" in sql
+    assert "LIMIT" in sql
+
+    # the explicit backfill path submits the unbounded anti-join
+    athena2 = FakeAthena([[["source", "source_hash", "source_id"]]])
+    daily.run_daily(
+        athena2, store, StubClient(), _settings(window_days=0, max_postings=0)
+    )
+    assert "WHERE ingested_on >= CURRENT_DATE" not in athena2.executed[0]
+    assert "LIMIT" not in athena2.executed[0]
+
+
+def test_settings_from_env_backfill_disables_bounds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--backfill`` turns off both deployment bounds in one flag."""
+    args = argparse.Namespace(
+        database=None,
+        workgroup=None,
+        model=None,
+        workers=None,
+        version_root=None,
+        max_run_hours=None,
+        window_days=None,
+        max_postings=None,
+        backfill=True,
+        dry_run=False,
+    )
+    monkeypatch.delenv("CONFIGURATION_HASH", raising=False)
+    settings = daily.settings_from_env(args)
+    assert settings.window_days == 0
+    assert settings.max_postings == 0
 
 
 def test_run_daily_resolves_version_from_env_when_unspecified(

@@ -134,4 +134,24 @@ def test_select_uncleaned_sql_contains_all_sources() -> None:
     for source in sorted(keys.RAW_SOURCES):
         assert f"raw_{source} " in sql, f"missing table for {source}"
     assert ":config" in sql
-    assert "ORDER BY source, source_hash" in sql
+    assert "ORDER BY s.source, s.source_hash" in sql
+
+
+def test_select_uncleaned_sql_bounded_by_default() -> None:
+    """The scheduled selection must never enroll the whole historical lake.
+
+    Default render carries the manifests_ingestion recency window and a
+    deterministic row cap; ``0`` disables both (the explicit backfill).
+    """
+    sql = selection.select_uncleaned_sql()
+    assert "WHERE ingested_on >= CURRENT_DATE" in sql
+    assert f"LIMIT {selection.DEFAULT_MAX_POSTINGS}" in sql
+    assert f"INTERVAL '{selection.DEFAULT_WINDOW_DAYS}' DAY" in sql, (
+        "missing default recency window"
+    )
+
+
+def test_select_uncleaned_sql_backfill_unbounded() -> None:
+    sql = selection.select_uncleaned_sql(window_days=0, max_postings=0)
+    assert "WHERE ingested_on >= CURRENT_DATE" not in sql
+    assert "LIMIT" not in sql

@@ -134,27 +134,6 @@ def read_raw_payload(store: RawStore, key: str) -> RawPayload:
     return RawPayload(source=source, source_hash=source_hash, key=key, data=payload)
 
 
-def iter_raw_payloads(
-    store: RawStore, *, source: str | None = None
-) -> Iterator[RawPayload]:
-    """Yield every raw payload (optionally one source) in stable key order.
-
-    Args:
-        store: The object store to read from.
-        source: Restrict to one source partition; ``None`` iterates all
-            sources.
-
-    Yields:
-        One parsed :class:`RawPayload` per object, sorted by key.
-
-    Raises:
-        ValueError: if any payload is unparseable — callers that must tolerate
-            malformed objects catch and record the key instead.
-    """
-    for key in list_raw_keys(store, source=source):
-        yield read_raw_payload(store, key)
-
-
 def fetch_all(
     store: RawStore,
     source: str,

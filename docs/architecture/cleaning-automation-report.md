@@ -38,7 +38,7 @@ EventBridge Scheduler — rate(1 day)
 
 The cleaning tier is a third Fargate task (same pattern the roadmap established in Phase 3b), running one new entrypoint — the **daily driver** — that chains in-process:
 
-1. **Select**: Athena `select_uncleaned.sql` (parameterized by `configuration_hash`) via boto3.
+1. **Select**: Athena `select_uncleaned.sql` (parameterized by `configuration_hash`) via boto3 — deployment-bounded by default (a `manifests_ingestion` recency window of `--window-days` and a deterministic `--max-postings` row cap), so a configuration change can never silently re-enroll the whole historical lake through the scheduled tier; `--backfill` disables both bounds for the explicit full-lake path.
 2. **Render**: existing `backend/pipeline/selection.py` adapter turns query rows into the canonical pinned manifest (in-task temp file — its format is already the runner's input).
 3. **Clean**: existing `python -m backend.pipeline.cleaning` runner consumes the manifest, writes Parquet parts + flush checkpoints + run record + dataset manifest to the lake.
 4. **Exit 0** only on a `completed` run record; failures and `interrupted` status exit non-zero — feeding the Phase 4 alarm unchanged.
@@ -76,7 +76,7 @@ Eval stays a **manual gate**: it runs when a cleaning configuration changes (`--
 - [ ] New `backend/pipeline/cleaning/daily.py` (module docstring + CLI): Athena query → manifest render → runner, then exit-code mapping (`completed` → 0; `interrupted`/`failed` → 1). Sizing: under ~150 lines; reuses `selection.py`, `runs.py`, runner CLI as libraries.
 - [ ] Add `--max-run-hours` guard: at the deadline the driver sets the existing stop event (flush-on-stop path), so an over-long run lands `interrupted` durably and the next run replays the remainder via cache hits. This is the Fargate substitute for a task timeout — wall-clock billing makes "must exit" (Phase 3b invariant) a first-class requirement.
 - [ ] Unit tests: driver over stubbed Athena client (fixture rows → manifest byte-identical to `selection.py`'s), stop-event fired at deadline path.
-- [ ] Backfill policy: run the 9,316-row full-lake clean **locally first** (~35–50 min at 8 workers, ~$3.40 LLM, D8's measured basis), then confirm the cloud tier idempotent (0 new LLM calls). Either host produces identical artifacts — rows are content-identical by design.
+- [ ] Backfill policy: run the 9,316-row full-lake clean **locally first** (~35–50 min at 8 workers, ~$3.40 LLM, D8's measured basis), then confirm the cloud tier idempotent (0 new LLM calls). Either host produces identical artifacts — rows are content-identical by design. A cloud full-lake run is the explicit `daily --backfill` invocation (both deployment bounds off).
 
 ### 4.6 Scheduling + observability (small extension of Phase 4)
 

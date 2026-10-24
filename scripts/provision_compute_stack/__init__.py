@@ -34,7 +34,11 @@ from typing import Any
 
 import boto3
 
-from scripts.provision_query_layer import aws_region
+from scripts.provision_query_layer import (
+    DATABASE_DEFAULT,
+    WORKGROUP_DEFAULT,
+    aws_region,
+)
 
 ECR_REPO = "pipeline-images"
 IMAGE_TAG_SCRAPE = "scrape"
@@ -166,13 +170,22 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
             "Resource": [f"arn:aws:logs:{region}:{acct}:log-group:/pipeline/*"],
         },
         {
-            "Sid": "SelectionQueryRead",
+            "Sid": "SelectionAthenaQueries",
             "Effect": "Allow",
             "Action": [
                 "athena:StartQueryExecution",
                 "athena:StopQueryExecution",
                 "athena:GetQueryExecution",
                 "athena:GetQueryResults",
+            ],
+            "Resource": [
+                f"arn:aws:athena:{region}:{acct}:workgroup/{WORKGROUP_DEFAULT}"
+            ],
+        },
+        {
+            "Sid": "SelectionGlueRead",
+            "Effect": "Allow",
+            "Action": [
                 "glue:GetDatabase",
                 "glue:GetDatabases",
                 "glue:GetTable",
@@ -180,7 +193,11 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
                 "glue:GetPartition",
                 "glue:GetPartitions",
             ],
-            "Resource": ["*"],
+            "Resource": [
+                f"arn:aws:glue:{region}:{acct}:catalog",
+                f"arn:aws:glue:{region}:{acct}:database/{DATABASE_DEFAULT}",
+                f"arn:aws:glue:{region}:{acct}:table/{DATABASE_DEFAULT}/*",
+            ],
         },
         {
             "Sid": "PushFailuresToDLQ",
@@ -619,12 +636,43 @@ def _put_lambda_invoke_config(lam) -> None:
     )
 
 
+def _lambda_runs_target_digest(lam, ecr, tag: str) -> bool:
+    """True when the function already runs the tag's current digest.
+
+    Idempotence gate for the exists-path re-point: compares the
+    function's ``ResolvedImageUri`` digest against the ECR digest the
+    target tag currently resolves to.
+
+    Args:
+        lam: The boto3 Lambda client (or testing double).
+        ecr: The boto3 ECR client (or testing double).
+        tag: The ``scrape`` image tag being applied.
+
+    Returns:
+        False when the digests cannot be determined (reconcile by
+        updating, the pre-gate behavior).
+    """
+    try:
+        resolved = lam.get_function_configuration(FunctionName=LAMBDA_ATS)["Code"][
+            "ResolvedImageUri"
+        ]
+        details = ecr.describe_images(
+            repositoryName=ECR_REPO, imageIds=[{"imageTag": tag}]
+        )["imageDetails"]
+        digest = details[0]["imageDigest"]
+        return resolved.endswith(digest)
+    except Exception:  # noqa: BLE001 — unknown state reconciles by updating
+        return False
+
+
 def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> str:
     """Create-or-ignore the ATS Lambda function; return its ARN.
 
     The image URI is tag-pinned (see :func:`image_arn`) — on an existing
-    function the code is re-pointed and polled so a re-apply after a
-    promotion push cannot silently keep serving the stale digest.
+    function the code is re-pointed only when the tag resolves to a
+    different digest, so a re-apply is idempotent and cannot silently
+    roll a ``--image-tags scrape:<sha>`` promotion back to a stale
+    moving tag.
 
     Args:
         session: The boto3 session.
@@ -665,41 +713,55 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
     try:
         lam.get_function(FunctionName=LAMBDA_ATS)
         print(f"lambda exists: {LAMBDA_ATS}")
-        # the tag is MUTABLE (README promotion flow): re-point the function
-        # at the freshly pushed digest so `--create` after a push is not a
-        # silent no-op running the stale image
-        lam.update_function_code(FunctionName=LAMBDA_ATS, ImageUri=image_uri)
-        for _ in range(15):
-            try:
-                lam.update_function_configuration(
-                    FunctionName=LAMBDA_ATS,
-                    LoggingConfig=params["LoggingConfig"],
-                )
-                break
-            except lam.exceptions.ResourceConflictException:
-                time.sleep(2)  # the code update above holds the function lock
-        else:
-            raise RuntimeError("function lock contended for 30s — inspect the console")
-        for _ in range(30):
-            state = lam.get_function_configuration(FunctionName=LAMBDA_ATS)[
-                "LastUpdateStatus"
-            ]
-            if state == "Successful":
-                print(f"lambda image updated: {image_uri}")
-                break
-            if state == "Failed":
-                raise RuntimeError(
-                    f"lambda {LAMBDA_ATS} rejected the image update "
-                    f"(LastUpdateStatus=Failed) — check the pushed :{image_uri.rsplit(':', 1)[1]} tag"
-                )
-            time.sleep(2)
-        else:
-            raise RuntimeError(
-                f"lambda update did not settle after {30 * 2}s — inspect "
-                f"the console (LastUpdateStatus={state})"
+        if _lambda_runs_target_digest(
+            lam, session.client("ecr"), tag or IMAGE_TAG_SCRAPE
+        ):
+            # idempotent re-apply: the function already runs the target
+            # tag's digest — re-pointing cannot improve anything here and
+            # would silently roll back a pinned promotion
+            print(f"lambda image already current: {image_uri}")
+            lam.update_function_configuration(
+                FunctionName=LAMBDA_ATS,
+                LoggingConfig=params["LoggingConfig"],
             )
+        else:
+            # the tag is MUTABLE (README promotion flow): re-point the
+            # function at the freshly pushed digest so `--create` after
+            # a push is not a silent no-op running the stale image
+            lam.update_function_code(FunctionName=LAMBDA_ATS, ImageUri=image_uri)
+            for _ in range(15):
+                try:
+                    lam.update_function_configuration(
+                        FunctionName=LAMBDA_ATS,
+                        LoggingConfig=params["LoggingConfig"],
+                    )
+                    break
+                except lam.exceptions.ResourceConflictException:
+                    time.sleep(2)  # the code update above holds the function lock
+            else:
+                raise RuntimeError(
+                    "function lock contended for 30s — inspect the console"
+                )
+            for _ in range(30):
+                state = lam.get_function_configuration(FunctionName=LAMBDA_ATS)[
+                    "LastUpdateStatus"
+                ]
+                if state == "Successful":
+                    print(f"lambda image updated: {image_uri}")
+                    break
+                if state == "Failed":
+                    raise RuntimeError(
+                        f"lambda {LAMBDA_ATS} rejected the image update "
+                        f"(LastUpdateStatus=Failed) — check the pushed :{image_uri.rsplit(':', 1)[1]} tag"
+                    )
+                time.sleep(2)
+            else:
+                raise RuntimeError(
+                    f"lambda update did not settle after {30 * 2}s — inspect "
+                    f"the console (LastUpdateStatus={state})"
+                )
         # pre-existing functions were provisioned before the invoke-config
-        # existed here — reconcile the retry policy on the update path too
+        # existed here — reconcile the retry policy on both paths
         _put_lambda_invoke_config(lam)
         print(f"async retry policy applied ({LAMBDA_RETRY_ATTEMPTS} retries)")
     except lam.exceptions.ResourceNotFoundException:

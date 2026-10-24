@@ -300,16 +300,16 @@ def main() -> None:
 
     bands = tuple(int(t) for t in args.bands.split(","))
     store = ObjectStore.from_env()
-    manifest = build_manifest(
+    data = sample_bytes(
         store,
         per_source=args.per_source,
         bands=bands,
         seed=args.seed,
         sources=args.source,
     )
-    data = serialize_manifest(manifest)
     with open(args.output, "wb") as f:
         f.write(data)
+    manifest = json.loads(data)  # the written bytes are the summary source
     counts: defaultdict[str, int] = defaultdict(int)
     for posting in manifest["postings"]:
         counts[posting["source"]] += 1

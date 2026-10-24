@@ -77,6 +77,7 @@ def main() -> None:
         variant=args.artifacts_variant,
         version=args.artifacts_version,
         configuration_hash=args.configuration_hash,
+        text_hashes={g.source_hash for g in golden},
     )
     summary = run.run_evaluation(
         store,

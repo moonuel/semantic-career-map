@@ -65,6 +65,28 @@ def test_payload_text_normalizes_shape_field() -> None:
     assert mig.payload_text(payload) == "Hi there"
 
 
+def test_scan_candidates_streams_and_skips_malformed() -> None:
+    """The scan reduces payloads to identity-only records, tolerating junk.
+
+    Malformed objects are skipped in place (read-or-none semantics) and
+    the candidate records carry no payload reference — the whole parsed
+    lake is never resident.
+    """
+    store = MemorySink()
+    _seed_payload(
+        store, "ashby", "description_html", "alpha beta", source_id="ashby:b:1"
+    )
+    store.put(f"lake/raw/source=ashby/sha256={'a' * 64}.json", b"{ not json")
+    cands = mig.scan_candidates(store, workers=2)
+    assert len(cands) == 1  # malformed payload skipped, one candidate kept
+    assert cands[0].source == "ashby"
+    assert cands[0].source_id == "ashby:b:1"
+    assert "alpha" in cands[0].words
+    assert all(
+        not isinstance(c, mig.RawPayload) for c in cands
+    )  # identity-only records
+
+
 def test_match_golden_unique_winner() -> None:
     payloads = [_rp("ashby", "0" * 64, {"description_html": "alpha beta gamma delta"})]
     match, coverage, runners = mig.match_golden("alpha beta", mig.candidates(payloads))

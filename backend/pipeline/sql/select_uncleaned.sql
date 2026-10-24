@@ -17,6 +17,13 @@
 --
 -- The cost-bearing scan is the raw side; the artifacts side is tiny and
 -- pruned by configuration_hash.
+--
+-- Deployment bounds (applied by the adapter, backend/pipeline/selection.py
+-- :func:`select_uncleaned_sql`): the scheduled daily tier wraps this
+-- anti-join with a manifests_ingestion recency window and a deterministic
+-- row cap, so a configuration change can never silently re-enroll the
+-- whole historical lake through the scheduled cloud tier. Full-lake
+-- backfills run as explicit ``--backfill`` invocations (bounds disabled).
 
 SELECT 'ashby' AS source,
        regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1) AS source_hash,
@@ -81,5 +88,3 @@ LEFT JOIN artifacts_cleaned a
   ON a.source_hash = regexp_extract(r."$path", 'sha256=([0-9a-f]{64})\.json', 1)
  AND a.configuration_hash = :config
 WHERE a.source_hash IS NULL
-
-ORDER BY source, source_hash

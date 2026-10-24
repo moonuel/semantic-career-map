@@ -10,17 +10,23 @@ dual source of truth (design line: "cache hit = artifact row already
 exists for that pair").
 
 Index construction lists the dataset version's Parquet parts and pairs
-rows by the two identity columns. Parts are listed/validated through the
-same key discipline as everything else: no hand-built part keys; the
-version prefix is composed from validated segments and every returned
-part key passes :func:`keys.validate_key` before reading.
+rows by the two identity columns, checkpoint-first: a part's flush
+checkpoint (a few KB of JSON) carries the part's ``source_hashes`` and
+``configuration_hash``, so the per-run index build costs one GET per
+checkpoint instead of downloading every 2 MiB part; the part itself is
+read (identity columns only) only when its checkpoint is missing or
+drifted (legacy parts, unhealed orphans). Parts are listed/validated
+through the same key discipline as everything else: no hand-built part
+keys; the version prefix is composed from validated segments and every
+returned part key passes :func:`keys.validate_key` before reading.
 """
 
 from __future__ import annotations
 
 import io
+import json
 from collections.abc import Iterable
-from typing import Protocol
+from typing import Any, Protocol
 
 import pyarrow.parquet as pq
 
@@ -123,6 +129,29 @@ class ArtifactCacheIndex:
         return len(self.pairs)
 
 
+def _read_part_checkpoint(store: GetListStore, part_key: str) -> dict[str, Any] | None:
+    """Read a part's flush checkpoint; ``None`` when absent or unusable.
+
+    Args:
+        store: Object store (or testing double).
+        part_key: A :func:`keys.artifact_part` result.
+
+    Returns:
+        The checkpoint dict, or ``None`` (missing key, unparseable JSON,
+        or non-object document) — callers fall back to reading the part.
+    """
+    run_id, seq = parse_part_key(part_key)
+    try:
+        raw = store.get(keys.manifest_run_checkpoint(run_id, seq))
+    except FileNotFoundError:
+        return None
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except UnicodeDecodeError, json.JSONDecodeError:
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
 def load_cache_index(
     store: GetListStore,
     *,
@@ -131,6 +160,14 @@ def load_cache_index(
     version: str = "v1",
 ) -> ArtifactCacheIndex:
     """Build the cache-resolution index over one dataset version.
+
+    Checkpoint-first: each part's flush checkpoint (a few KB) provides
+    the identity pairs, so the index build downloads O(number of parts)
+    small JSON objects — not the O(cleaned corpus) bytes the parts
+    themselves weigh. A part is read directly (identity columns
+    projected) only when its checkpoint is missing or drifted — legacy
+    parts written before checkpoints carried ``configuration_hash``, and
+    orphans when healing is disabled.
 
     Args:
         store: Object store (or testing double).
@@ -151,6 +188,13 @@ def load_cache_index(
     for part_key in list_dataset_parts(
         store, artifact_type=artifact_type, variant=variant, version=version
     ):
+        checkpoint = _read_part_checkpoint(store, part_key)
+        if checkpoint is not None and checkpoint.get("configuration_hash"):
+            hashes = checkpoint.get("source_hashes") or []
+            if len(hashes) == checkpoint.get("row_count"):
+                pairs.update((h, checkpoint["configuration_hash"]) for h in hashes)
+                row_count += checkpoint["row_count"]
+                continue
         buf = io.BytesIO(store.get(part_key))
         schema = pq.read_schema(buf)
         for column in ("source_hash", "configuration_hash"):

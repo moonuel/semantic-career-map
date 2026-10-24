@@ -40,6 +40,8 @@ this specific job, its team, or its work context. When unsure, keep the text.
 
 Curation of 34 postings via the 003-style interactive CLI loop proved infeasible, so the flow was redesigned: raw text for all 39 postings was staged in a workpad (`scripts/008_boilerplate_only_cleaning/data/008_golden_workpad.md`), stripped in place, finalized in a user-side diff review, then ported mechanically into `data/golden_cleaned.json` by `pad_to_golden.py`. The pad **is** the sign-off record; the port script is dry-run by default and never overwrites an existing golden entry. Golden coverage: 39/39 postings (up from 5 in 003). The strip taxonomy from this review is what the v3 prompt encodes — curation and prompt tuning closed their loop.
 
+**Source-of-truth rule:** the workpad is the sole edit source for the golden set — `data/golden_cleaned.json` is generated from it (`pad_to_golden.py --write`), never hand-edited, and `tests/test_golden_workpad_sync.py` fails on any drift between the two copies.
+
 ## Results
 
 Each arm ran once per posting; `MiniLM-L6-v2` evaluated the downstream embedding quality of every variant. 310 (arm, posting) rows scored against the golden set.

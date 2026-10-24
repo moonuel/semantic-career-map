@@ -11,7 +11,6 @@ from backend.ingestion.raw import canonical_json
 from backend.storage import keys
 from backend.storage.raw import (
     fetch_all,
-    iter_raw_payloads,
     list_raw_keys,
     parse_raw_key,
     read_raw_payload,
@@ -112,17 +111,6 @@ def test_read_raw_payload_non_object_json_raises(memory_sink: MemorySink) -> Non
     memory_sink.objects[key] = json.dumps(["list"]).encode()
     with pytest.raises(TypeError, match="not a JSON object"):
         read_raw_payload(memory_sink, key)
-
-
-def test_iter_raw_payloads_stable_order(memory_sink: MemorySink) -> None:
-    _store_with(memory_sink)
-    payloads = list(iter_raw_payloads(memory_sink))
-    assert len(payloads) == 3
-    assert [p.key for p in payloads] == sorted(p.key for p in payloads)
-    assert [p.source_hash for p in payloads] == [
-        parse_raw_key(k)[1] for k in sorted(p.key for p in payloads)
-    ]
-    assert all(isinstance(p.data, dict) for p in payloads)
 
 
 def test_fetch_all_tolerates_malformed_in_place(memory_sink: MemorySink) -> None:

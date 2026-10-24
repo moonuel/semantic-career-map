@@ -34,8 +34,11 @@ import hashlib
 import io
 import json
 import sys
+from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
+from typing import NamedTuple
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -48,7 +51,7 @@ from backend.pipeline.cleaning.normalization import (
 from backend.pipeline.eval import metrics as m
 from backend.pipeline.eval import run as eval_run
 from backend.storage import ids, keys
-from backend.storage.raw import RawPayload, fetch_all
+from backend.storage.raw import RawPayload, list_raw_keys, read_raw_payload
 from backend.storage.store import ObjectStore
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -80,22 +83,85 @@ UNIQUE_MARGIN = 0.05
 UNIQUE_EXTRA_WORDS = 3
 
 
-def candidates(payloads: list[RawPayload]) -> list[tuple[set, RawPayload]]:
-    """Precompute each payload's word set once (normalization is the cost).
+class Candidate(NamedTuple):
+    """Identity-only scan record — the matcher's memory-light payload stand-in.
+
+    The raw payload (its full JSON dict) is dropped once reduced to the
+    word set + identity fields, so the scan never holds the parsed lake.
+    """
+
+    words: set[str]
+    source: str
+    source_hash: str
+    source_id: str
+
+
+def candidates(payloads: Iterable[RawPayload]) -> list[Candidate]:
+    """Reduce payloads to matcher-ready candidate records.
 
     Args:
-        payloads: Every raw payload in the lake.
+        payloads: Raw payloads (one posting's parsed JSON each).
 
     Returns:
-        ``(word_set, payload)`` pairs, payload order preserved — the
-        matcher's ready-to-score candidate list; empty payloads (no shape
-        text) are dropped.
+        :class:`Candidate` records, payload order preserved — the
+        matcher's ready-to-score candidate list; empty payloads (no
+        shape text) are dropped.
     """
-    out = []
+    out: list[Candidate] = []
     for payload in payloads:
         words = m.word_set(payload_text(payload))
         if words:
-            out.append((words, payload))
+            out.append(
+                Candidate(
+                    words=words,
+                    source=payload.source,
+                    source_hash=payload.source_hash,
+                    source_id=payload.data.get("source_id", ""),
+                )
+            )
+    return out
+
+
+def scan_candidates(store: object, *, workers: int) -> list[Candidate]:
+    """Stream every raw payload in the lake into candidate records.
+
+    The whole lake is never materialized: each payload is fetched,
+    reduced to a :class:`Candidate`, and dropped before the next read —
+    memory is O(candidate word sets), not O(parsed corpus). Malformed
+    payloads are skipped at their position (``fetch_all``'s
+    read-or-none semantics), and the bounded pool keeps concurrent GETs
+    at ``workers`` per source.
+
+    Args:
+        store: Object store (or testing double).
+        workers: Concurrent raw-GET bound per source.
+
+    Returns:
+        Candidates over every parseable payload, sources and keys in
+        sorted order (stable scan order, like :func:`candidates`).
+    """
+
+    def build(object_key: str) -> Candidate | None:
+        try:
+            payload = read_raw_payload(store, object_key)
+        except ValueError, TypeError:
+            return None
+        words = m.word_set(payload_text(payload))
+        if not words:
+            return None
+        return Candidate(
+            words=words,
+            source=payload.source,
+            source_hash=payload.source_hash,
+            source_id=payload.data.get("source_id", ""),
+        )
+
+    out: list[Candidate] = []
+    for source in sorted(keys.RAW_SOURCES):
+        object_keys = list_raw_keys(store, source=source)
+        with ThreadPoolExecutor(max_workers=max(workers, 1)) as pool:
+            out.extend(c for c in pool.map(build, object_keys) if c is not None)
+        print(f"  source={source}: {len(object_keys)} raw objects")
     return out
 
 
@@ -114,44 +180,47 @@ def payload_text(payload: RawPayload) -> str:
 
 def match_golden(
     golden_text: str,
-    candidates: list[tuple[set, RawPayload]],
-) -> tuple[RawPayload | None, float, int]:
-    """Resolve one golden reference to its unique raw payload.
+    candidates: list[Candidate],
+) -> tuple[Candidate | None, float, int]:
+    """Resolve one golden reference to its unique raw posting candidate.
 
     Args:
         golden_text: The golden reference text.
-        candidates: Precomputed ``(word_set, payload)`` candidates
-            (:func:`candidates`).
+        candidates: Precomputed :class:`Candidate` records
+            (:func:`candidates` / :func:`scan_candidates`).
 
     Returns:
-        ``(payload, coverage, runners_up)`` — payload is None when either
-        no candidate reaches :data:`MIN_COVERAGE`, the best candidates sit
-        within :data:`UNIQUE_MARGIN` (incomplete coverage), or full-coverage
-        scraper-overlap ties can't be broken by the tightest superset
-        (:data:`UNIQUE_EXTRA_WORDS` margin). ``runners_up`` counts the
-        near-miss candidates.
+        ``(candidate, coverage, runners_up)`` — candidate is None when
+        either no candidate reaches :data:`MIN_COVERAGE`, the best
+        candidates sit within :data:`UNIQUE_MARGIN` (incomplete
+        coverage), or full-coverage scraper-overlap ties can't be broken
+        by the tightest superset (:data:`UNIQUE_EXTRA_WORDS` margin).
+        ``runners_up`` counts the near-miss candidates.
     """
     golden_words = m.word_set(golden_text)
     scored = sorted(
-        ((len(golden_words & cw) / len(golden_words), cw, p) for cw, p in candidates),
+        (
+            (len(golden_words & cand.words) / len(golden_words), cand)
+            for cand in candidates
+        ),
         key=lambda pair: pair[0],
         reverse=True,
     )
-    best, _, best_payload = scored[0]
+    best, best_cand = scored[0]
     if best < MIN_COVERAGE:
         return None, best, 0
     if best < 1.0:
         # Incomplete coverage: uniqueness rides on the coverage margin alone
-        runners = sum(1 for cov, _, _ in scored[1:] if cov > best - UNIQUE_MARGIN)
+        runners = sum(1 for cov, _ in scored[1:] if cov > best - UNIQUE_MARGIN)
         if runners:
             return None, best, runners
-        return best_payload, best, 0
+        return best_cand, best, 0
     # Full coverage: scraper-overlap ties are broken by the tightest
     # superset (fewest extra words) — the golden's origin is the payload
     # whose rendering the hand-cleaned text was drawn from
     full = [
-        (len(cw - golden_words), idx, p)
-        for idx, (cov, cw, p) in enumerate(scored)
+        (len(cand.words - golden_words), idx, cand)
+        for idx, (cov, cand) in enumerate(scored)
         if cov >= 1.0
     ]
     full.sort(key=lambda item: item[0])
@@ -235,17 +304,14 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     store: object = ObjectStore.from_env()
-    payloads: list[RawPayload] = []
-    for source in sorted(keys.RAW_SOURCES):
-        fetched = fetch_all(store, source, workers=args.workers)
-        payloads.extend(p for p in fetched if p is not None)
-        print(f"  source={source}: {len(fetched)} raw objects")
+    print("scanning raw payloads (streamed; identity-only candidates):")
+    cands = scan_candidates(store, workers=args.workers)
 
     created_at = args.created_at or datetime.now(UTC).isoformat().replace("+00:00", "Z")
     return migrate(
         store,
         refs,
-        candidates(payloads),
+        cands,
         sha_before=sha_before,
         write=args.write or args.manifest_only,
         part=not args.manifest_only,
@@ -259,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
 def migrate(
     store: object,
     refs: list[dict],
-    candidates: list[tuple[set, RawPayload]],
+    candidates: list[Candidate],
     *,
     sha_before: str,
     write: bool,
@@ -274,8 +340,8 @@ def migrate(
     Args:
         store: Object store (or testing double).
         refs: Legacy golden references (``posting_id`` / ``source`` / ``text``).
-        candidates: Precomputed candidate pairs
-            (:func:`candidates` over every raw payload).
+        candidates: Precomputed :class:`Candidate` records
+            (:func:`scan_candidates` over every raw payload).
         sha_before: The legacy file's sha256 at load (verify it stays).
         write: Write the Parquet part when True; dry otherwise.
         variant: Authoring variant of the target dataset.
@@ -292,8 +358,8 @@ def migrate(
     print(f"\n{'posting_id':<48} {'coverage':>8}  finding")
     for ref in refs:
         posting_id = ref["posting_id"]
-        payload, coverage, runners = match_golden(ref["text"], candidates)
-        if payload is None:
+        cand, coverage, runners = match_golden(ref["text"], candidates)
+        if cand is None:
             if runners:
                 reason = f"AMBIGUOUS ({runners} within margin, best {coverage:.3f})"
             else:
@@ -302,13 +368,13 @@ def migrate(
             failures += 1
             continue
         print(
-            f"{posting_id:<48} {coverage:>8.3f}  {payload.source} {payload.source_hash[:12]}"
+            f"{posting_id:<48} {coverage:>8.3f}  {cand.source} {cand.source_hash[:12]}"
         )
         rows.append(
             {
-                "source": payload.source,
-                "source_hash": payload.source_hash,
-                "source_id": payload.data.get("source_id", ""),
+                "source": cand.source,
+                "source_hash": cand.source_hash,
+                "source_id": cand.source_id,
                 "golden_text": ref["text"],
                 "annotator": ref.get("source", "manual"),
                 "created_at": created_at,

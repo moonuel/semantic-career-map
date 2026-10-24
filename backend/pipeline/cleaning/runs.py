@@ -96,6 +96,11 @@ def list_flush_checkpoints(
     for key in store.list_keys(run_prefix):
         if not key.endswith(".json"):
             continue
+        leaf = key.rstrip("/").rsplit("/", 1)[-1]
+        if not leaf.startswith("flush="):
+            # the run record itself (``run.json``) lives under the same
+            # prefix; it is not a flush checkpoint and carries no ``seq``
+            continue
         keys.validate_key(key)
         checkpoints.append(json.loads(store.get(key).decode("utf-8")))
     return sorted(checkpoints, key=lambda c: c["seq"])
@@ -151,13 +156,17 @@ def heal_orphan_checkpoints(
         run_id, seq = parse_part_key(part_key)
         if (run_id, seq) in existing:
             continue
-        rows = pq.read_table(io.BytesIO(store.get(part_key)), columns=["source_hash"])
+        rows = pq.read_table(
+            io.BytesIO(store.get(part_key)),
+            columns=["source_hash", "configuration_hash"],
+        )
         checkpoint = build_flush_checkpoint(
             run_id=run_id,
             seq=seq,
             trigger="recovered",
             part_key=part_key,
             source_hashes=rows.column("source_hash").to_pylist(),
+            configuration_hash=rows.column("configuration_hash")[0].as_py(),
             batch_range=None,
             durations=[],
             usage={"prompt_tokens": 0, "completion_tokens": 0},
