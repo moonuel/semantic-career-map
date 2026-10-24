@@ -628,6 +628,12 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
             }
         },
         "DeadLetterConfig": {"TargetArn": f"arn:aws:sqs:{region}:{acct}:{QUEUE_DLQ}"},
+        # pin logs to the provisioned group — the default
+        # /aws/lambda/<fn> group is outside the role's /pipeline/* scope
+        "LoggingConfig": {
+            "LogGroup": LOG_GROUP_ATS,
+            "LogFormat": "Text",
+        },
     }
     try:
         lam.get_function(FunctionName=LAMBDA_ATS)
@@ -636,6 +642,19 @@ def ensure_lambda(session: boto3.Session, acct: str, tag: str | None = None) -> 
         # at the freshly pushed digest so `--create` after a push is not a
         # silent no-op running the stale image
         lam.update_function_code(FunctionName=LAMBDA_ATS, ImageUri=image_uri)
+        for _ in range(15):
+            try:
+                lam.update_function_configuration(
+                    FunctionName=LAMBDA_ATS,
+                    LoggingConfig=params["LoggingConfig"],
+                )
+                break
+            except lam.exceptions.ResourceConflictException:
+                time.sleep(2)  # the code update above holds the function lock
+        else:
+            raise RuntimeError(
+                "function lock contended for 30s — inspect the console"
+            )
         for _ in range(30):
             state = lam.get_function_configuration(FunctionName=LAMBDA_ATS)[
                 "LastUpdateStatus"
