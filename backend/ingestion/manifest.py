@@ -15,6 +15,7 @@ module implements it.
 from __future__ import annotations
 
 import io
+import os
 import subprocess
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -128,17 +129,24 @@ def _check_tz(value: datetime, *, name: str) -> None:
 
 
 def pipeline_version() -> str:
-    """Version of the pipeline code: short git sha, else ``unknown``.
+    """Version of the pipeline code: tag env override, git sha, else ``unknown``.
 
     Shared provenance stamp for every run manifest header; callers print or
     record it verbatim. The manifest contract requires a non-empty version.
+    Containers carry no git binary, so cloud tiers set ``PIPELINE_VERSION``
+    (the image tag, wired by the provisioner's task-definition renderer)
+    and the subprocess fallback never runs there.
 
     Args:
         None.
 
     Returns:
-        A non-empty git short sha when available, else ``"unknown"``.
+        A non-empty version string: the ``PIPELINE_VERSION`` override when
+        set, else a git short sha, else ``"unknown"``.
     """
+    env_version = os.environ.get("PIPELINE_VERSION")
+    if env_version:
+        return env_version
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -326,7 +334,7 @@ def write_ingestion_manifest(
     string-interpolate manifest keys.
 
     Args:
-        sink: The storage to write through (``ObjectStore`` or ``FileSink``).
+        sink: The storage to write through (``ObjectStore``).
         manifest_bytes: Output of :func:`build_ingestion_manifest`.
         ingested_on: The run date the manifest was built with.
         ingestion_id: The run id the manifest was built with.

@@ -6,7 +6,7 @@ Items I'm still working on.
 
 - "Formalization of the pipeline in multiple stages in backend modules may be helpful in the short term." — [2026-07-23](dev-log/2026.md#july-23-2026)
 - "An architecture document to accommodate modularity and future expansion would be good." — [2026-07-23](dev-log/2026.md#july-23-2026)
-- "Boilerplate removal should probably be its own pipeline step." — [2026-07-27](dev-log/2026.md#july-27-2026) *(realized in Exp 002/003)*
+- ~~"Boilerplate removal should probably be its own pipeline step." — [2026-07-27](dev-log/2026.md#july-27-2026)~~ **landed as the production cleaning stage** — [2026-10-23](dev-log/2026.md#october-23-2026)
 - "It would fall under pre-processing - the boilerplate-cleaned text minus the raw text should always be empty (no hallucination)" — [2026-07-27](dev-log/2026.md#july-27-2026)
 
 ## Data & Versioning
@@ -16,7 +16,8 @@ Items I'm still working on.
 - ~~"Data versioning will become crucial. Use S3 object store" — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Done
 - ~~"One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques." — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Used real data scrapers
 - Scheduled data scraping
-- MLflow-style run lineage: ingestion manifests already carry `pipeline_version` (git sha) and `configuration_hash` (run config digest) — MLflow's code + params columns are covered. The gap: no **environment snapshot** (runtime-dependency digest — two runs on the same commit aren't provably the same code), and no **dataset versions** (which raw objects / content hashes fed an embedding or eval run). The reserved `embeddings`/`eval`/`runs` manifest keys in [`backend/storage/keys.py`](../backend/storage/keys.py) are where both land; an env-digest column is the cheaper first step. Also: the sha pins the checked-out commit, not the working tree (uncommitted edits run stale — `git describe --dirty` is the cheap fix if it ever matters).
+- ~~MLflow-style run lineage: dataset versions + run manifests~~ — **landed for the cleaning+eval branch** [2026-10-23](dev-log/2026.md#october-23-2026): `manifests/runs|datasets` live with `pipeline_version` (git sha) + `configuration_hash`, per-run flush checkpoints, per-dataset manifests for artifacts/golden/results. Still open from the original thread: no **environment snapshot** (runtime-dependency digest — two runs on the same commit aren't provably the same code), and the hard-kill window the 5.1 lineage verify caught live (a SIGKILLed run leaves part + checkpoint but no run record — reconstrucible, not complete). The sha pins the checked-out commit, not the working tree — `git describe --dirty` is the cheap fix if it ever matters.
+- Next cleaning variant: the **organizational-context field** — split company-context lines off the cleaned text as a second artifact column so over-deletion has a measured home instead of a 5% flag — and a fuller golden set beyond the 39 references. — [2026-10-23](dev-log/2026.md#october-23-2026)
 
 ## Taxonomy & Clustering Validation
 

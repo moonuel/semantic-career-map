@@ -2,7 +2,7 @@
 
 Worker isolation, cross-board dedup under the shared partition lock,
 per-source politeness gates, retry/backoff behavior, deterministic manifest
-row order, and the interrupt drain path — all against a file-mirror sink and
+row order, and the interrupt drain path — all against an in-memory sink and
 stub fetchers (no real HTTP).
 """
 
@@ -10,15 +10,15 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable, Iterator
-from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import requests
 
-from backend.ingestion.raw import FileSink
 from backend.ingestion.scrapers import ScrapedJob
 from scripts import scrape
+from tests.conftest import MemorySink
 
 _FETCH = Callable[[str, str, int | None], list[ScrapedJob]]
 
@@ -51,19 +51,19 @@ def _defer_fetch(counts: dict[str, int], body: _FETCH) -> _FETCH:
     return fetch
 
 
-def _manifest(root: Path) -> tuple[list[dict[str, object]], dict[str, str]]:
+def _manifest(sink: MemorySink) -> tuple[list[dict[str, object]], dict[str, str]]:
     """Read the run's single manifest back; return (rows, board_status)."""
-    paths = list(root.glob("lake/manifests/ingestion/**/*.parquet"))
+    paths = sink.list_keys("lake/manifests/ingestion/")
     assert len(paths) == 1
-    rows = pq.read_table(paths[0]).to_pylist()
+    rows = pq.read_table(pa.BufferReader(sink.get(paths[0]))).to_pylist()
     board_status = dict(rows[0]["board_status"])
     return rows, board_status
 
 
-def test_boards_run_in_parallel(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_boards_run_in_parallel(monkeypatch: pytest.MonkeyPatch) -> None:
     """Three dry-board fetches overlap on the pool, or the barrier breaks."""
+
+    sink = MemorySink()
     calls: list[tuple[str, str]] = []
     barrier = threading.Barrier(3)
 
@@ -77,21 +77,23 @@ def test_boards_run_in_parallel(
     code = scrape.run(
         run_sources=["ashby", "greenhouse"],
         boards_override={"ashby": ["supabase"], "greenhouse": ["blee", "bletch"]},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=3,
     )
     assert code == 0
     assert len(calls) == 3
-    rows, board_status = _manifest(tmp_path)
+    rows, board_status = _manifest(sink)
     assert sorted(board_status.values()) == ["ok", "ok", "ok"]
     assert sum(row["action"] == "stored" for row in rows) == 3
 
 
 def test_cross_board_identical_payload_yields_one_stored(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Two boards of one source ingesting the same payload at once: one stored."""
+
+    sink = MemorySink()
     payload = _job("shared:1", body="identical")
 
     def fetch(source: str, board: str, limit: int | None) -> list[ScrapedJob]:
@@ -101,20 +103,22 @@ def test_cross_board_identical_payload_yields_one_stored(
     code = scrape.run(
         run_sources=["lever"],
         boards_override={"lever": ["one", "two", "three"]},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=3,
     )
     assert code == 0
-    rows, _ = _manifest(tmp_path)
+    rows, _ = _manifest(sink)
     assert sum(row["action"] == "stored" for row in rows) == 1
     assert sum(row["action"] == "duplicate" for row in rows) == 2
     content_shas = {row["content_sha256"] for row in rows}
     assert len(content_shas) == 1
 
 
-def test_failed_board_isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_failed_board_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
     """One board failing leaves siblings ingested; status lands in the header."""
+
+    sink = MemorySink()
 
     def fetch(source: str, board: str, limit: int | None) -> list[ScrapedJob]:
         if board == "dead":
@@ -129,12 +133,12 @@ def test_failed_board_isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     code = scrape.run(
         run_sources=["lever"],
         boards_override={"lever": ["dead", "alive"]},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=2,
     )
     assert code == 0
-    rows, board_status = _manifest(tmp_path)
+    rows, board_status = _manifest(sink)
     assert "severed" in board_status["lever/dead"]
     assert board_status["lever/alive"] == "ok"
     assert sum(row["action"] == "stored" for row in rows) == 1
@@ -142,8 +146,10 @@ def test_failed_board_isolated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert counts["lever/dead"] == scrape._FETCH_ATTEMPTS
 
 
-def test_retry_then_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_retry_then_success(monkeypatch: pytest.MonkeyPatch) -> None:
     """Two transient failures then success: backoff ran, board is ok."""
+
+    sink = MemorySink()
     calls: list[str] = []
     sleeps: list[float] = []
 
@@ -158,12 +164,12 @@ def test_retry_then_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     code = scrape.run(
         run_sources=["lever"],
         boards_override={"lever": ["palantir"]},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=1,
     )
     assert code == 0
-    rows, board_status = _manifest(tmp_path)
+    rows, board_status = _manifest(sink)
     assert board_status["lever/palantir"] == "ok"
     assert sum(row["action"] == "stored" for row in rows) == 1
     assert len(sleeps) == 2
@@ -172,9 +178,11 @@ def test_retry_then_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_non_retryable_http_error_is_single_attempt(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """HTTP 404 on an unknown board slug: failed once, immediately."""
+
+    sink = MemorySink()
     sleeps: list[float] = []
     response = requests.models.Response()
     response.status_code = 404
@@ -189,22 +197,22 @@ def test_non_retryable_http_error_is_single_attempt(
     code = scrape.run(
         run_sources=["lever"],
         boards_override={"lever": ["ghost", "alive"]},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=1,
     )
     assert code == 0
-    rows, board_status = _manifest(tmp_path)
+    rows, board_status = _manifest(sink)
     assert board_status["lever/ghost"] != "ok"
     assert board_status["lever/alive"] == "ok"
     assert sleeps == []
     assert sum(row["action"] == "stored" for row in rows) == 1
 
 
-def test_manifest_rows_stable_order(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_manifest_rows_stable_order(monkeypatch: pytest.MonkeyPatch) -> None:
     """Observation rows are sorted (source, board, sha) regardless of completion order."""
+
+    sink = MemorySink()
 
     def fetch(source: str, board: str, limit: int | None) -> list[ScrapedJob]:
         return [_job(f"{source}:{board}")]
@@ -213,20 +221,20 @@ def test_manifest_rows_stable_order(
     code = scrape.run(
         run_sources=["greenhouse", "ashby"],
         boards_override={},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=4,
     )
     assert code == 0
-    rows, _ = _manifest(tmp_path)
+    rows, _ = _manifest(sink)
     keys = [(row["source"], row["board"], row["content_sha256"]) for row in rows]
     assert keys == sorted(keys)
 
 
-def test_interrupt_drains_and_writes_manifest(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_interrupt_drains_and_writes_manifest(monkeypatch: pytest.MonkeyPatch) -> None:
     """KeyboardInterrupt during collection: workers drain, manifest still lands."""
+
+    sink = MemorySink()
 
     def fetch(source: str, board: str, limit: int | None) -> list[ScrapedJob]:
         return [_job(f"{source}:{board}")]
@@ -242,12 +250,12 @@ def test_interrupt_drains_and_writes_manifest(
     code = scrape.run(
         run_sources=["lever"],
         boards_override={"lever": ["one", "two", "three"]},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=None,
         max_workers=3,
     )
     assert code == 130
-    rows, board_status = _manifest(tmp_path)
+    rows, board_status = _manifest(sink)
     assert sorted(board_status.values()) == ["ok", "ok", "ok"]
     assert sum(row["action"] == "stored" for row in rows) == 3
 
@@ -263,8 +271,10 @@ def test_board_tasks_collapse_duplicate_slugs() -> None:
     ]
 
 
-def test_dataroles_gate_is_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dataroles_gate_is_one(monkeypatch: pytest.MonkeyPatch) -> None:
     """The curator's fetch concurrency is 1, even under a parallel pool."""
+
+    sink = MemorySink()
 
     def fetch(source: str, board: str, limit: int | None) -> list[ScrapedJob]:
         return [_job(f"{source}:{board}")]
@@ -273,12 +283,12 @@ def test_dataroles_gate_is_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     code = scrape.run(
         run_sources=["dataroles"],
         boards_override={},
-        sink=FileSink(tmp_path),
+        sink=sink,
         limit=1,
         max_workers=4,
     )
     assert code == 0
-    rows, board_status = _manifest(tmp_path)
+    rows, board_status = _manifest(sink)
     assert board_status == {"dataroles/curated": "ok"}
     assert sum(row["action"] == "stored" for row in rows) == 1
     assert scrape._PER_SOURCE_CONCURRENCY["dataroles"] == 1

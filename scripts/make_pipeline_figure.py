@@ -188,7 +188,14 @@ def render_figure(
     _style_2d_axes(ax2d, "4. Low-dimensional projections provide interpretable visuals")
 
     handles, labels_out = ax2d.get_legend_handles_labels()
-    fig.legend(handles, labels_out, loc="lower center", ncol=len(ROLE_GROUPS), frameon=False, fontsize=10)
+    fig.legend(
+        handles,
+        labels_out,
+        loc="lower center",
+        ncol=len(ROLE_GROUPS),
+        frameon=False,
+        fontsize=10,
+    )
 
     fig.tight_layout(rect=(0, 0.07, 1, 0.95))
     fig.savefig(output, dpi=160, bbox_inches="tight")
@@ -206,7 +213,15 @@ def _apply_science_style() -> None:
     plt.rcParams.update(
         {
             "axes.prop_cycle": plt.cycler(
-                color=["#0C5DA5", "#00B945", "#FF9500", "#FF2C00", "#845B97", "#474747", "#9e9e9e"]
+                color=[
+                    "#0C5DA5",
+                    "#00B945",
+                    "#FF9500",
+                    "#FF2C00",
+                    "#845B97",
+                    "#474747",
+                    "#9e9e9e",
+                ]
             ),
             "xtick.direction": "in",
             "xtick.major.size": 3,
@@ -247,16 +262,22 @@ def main() -> None:
 
     texts, labels = build_corpus()
     model = SentenceTransformer(MODEL_NAME)
-    embeddings = model.encode(texts, normalize_embeddings=True, show_progress_bar=False).astype(np.float32)
+    embeddings = model.encode(
+        texts, normalize_embeddings=True, show_progress_bar=False
+    ).astype(np.float32)
 
-    reducer3d = umap.UMAP(n_components=3, random_state=RANDOM_SEED, n_neighbors=8, min_dist=0.1)
+    reducer3d = umap.UMAP(
+        n_components=3, random_state=RANDOM_SEED, n_neighbors=8, min_dist=0.1
+    )
     points3d = reducer3d.fit_transform(embeddings)
 
     kmeans = KMeans(n_clusters=N_CLUSTERS, n_init=10, random_state=RANDOM_SEED)
     kmeans.fit(points3d)
     labels = kmeans.labels_
 
-    reducer2d = umap.UMAP(n_components=2, random_state=RANDOM_SEED, n_neighbors=8, min_dist=0.1)
+    reducer2d = umap.UMAP(
+        n_components=2, random_state=RANDOM_SEED, n_neighbors=8, min_dist=0.1
+    )
     points2d = reducer2d.fit_transform(embeddings)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

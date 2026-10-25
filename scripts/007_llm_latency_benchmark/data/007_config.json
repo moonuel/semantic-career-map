@@ -1,0 +1,116 @@
+{
+  "experiment": "007_llm_latency_benchmark",
+  "written_utc": "2026-10-17T22:16:49-0400",
+  "commit": "47b5e76283401e3dd424d4aabb5edc908f0c11cc",
+  "models": [
+    "meta-llama/llama-3.1-8b-instruct",
+    "google/gemma-3-4b-it",
+    "mistralai/mistral-small-24b-instruct-2501",
+    "nex-agi/nex-n2.5-mini",
+    "ibm-granite/granite-4.0-h-micro",
+    "mistralai/ministral-3b-2512",
+    "microsoft/phi-4",
+    "qwen/qwen3.7-flash",
+    "google/gemma-3-12b-it",
+    "amazon/nova-micro-v1",
+    "cohere/command-r7b-12-2024",
+    "google/gemma-3-27b-it",
+    "inclusionai/ling-3.0-flash",
+    "deepseek/deepseek-v4-flash",
+    "nvidia/nemotron-3-nano-30b-a3b",
+    "mistralai/ministral-8b-2512",
+    "mistralai/mistral-nemo",
+    "tencent/hy-mt2-7b",
+    "google/gemini-2.5-flash-lite",
+    "openai/gpt-5-nano"
+  ],
+  "ttft_passes": 10,
+  "throughput_passes": 3,
+  "pace_s": 1.0,
+  "seed": 8008,
+  "ttft_prompt_sha256": "7f1965ec1d4815384e89e82ea5afaf1eb6a754c1be0a7dff30dfe649dfa2eba8",
+  "throughput_prompt_sha256": "20e53109f27390a1d6d0f86cab9bc8b9dbcd277d0c566392073ada16bfb00c94",
+  "pricing": {
+    "meta-llama/llama-3.1-8b-instruct": [
+      2e-08,
+      4e-08
+    ],
+    "google/gemma-3-4b-it": [
+      4e-08,
+      5e-08
+    ],
+    "mistralai/mistral-small-24b-instruct-2501": [
+      5e-08,
+      8e-08
+    ],
+    "nex-agi/nex-n2.5-mini": [
+      2.5e-08,
+      1e-07
+    ],
+    "ibm-granite/granite-4.0-h-micro": [
+      1.7e-08,
+      1.12e-07
+    ],
+    "mistralai/ministral-3b-2512": [
+      1e-07,
+      1e-07
+    ],
+    "microsoft/phi-4": [
+      5.6e-08,
+      1.12e-07
+    ],
+    "qwen/qwen3.7-flash": [
+      3e-08,
+      1.3e-07
+    ],
+    "google/gemma-3-12b-it": [
+      4e-08,
+      1.2e-07
+    ],
+    "amazon/nova-micro-v1": [
+      3.5e-08,
+      1.4e-07
+    ],
+    "cohere/command-r7b-12-2024": [
+      3.75e-08,
+      1.5e-07
+    ],
+    "google/gemma-3-27b-it": [
+      8e-08,
+      1.6e-07
+    ],
+    "inclusionai/ling-3.0-flash": [
+      6e-08,
+      1.8e-07
+    ],
+    "deepseek/deepseek-v4-flash": [
+      9.1e-08,
+      1.82e-07
+    ],
+    "nvidia/nemotron-3-nano-30b-a3b": [
+      5e-08,
+      2e-07
+    ],
+    "mistralai/ministral-8b-2512": [
+      1.5e-07,
+      1.5e-07
+    ],
+    "mistralai/mistral-nemo": [
+      1.5e-07,
+      1.5e-07
+    ],
+    "tencent/hy-mt2-7b": [
+      7.4e-08,
+      2.95e-07
+    ],
+    "google/gemini-2.5-flash-lite": [
+      1e-07,
+      4e-07
+    ],
+    "openai/gpt-5-nano": [
+      5e-08,
+      4e-07
+    ]
+  },
+  "pricing_source": "gateway_probe"
+}

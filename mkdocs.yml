@@ -44,6 +44,8 @@ nav:
     - Overview: architecture/overview.md
     # - Design Decisions: architecture/design-decisions.md
     - Data Architecture: architecture/data.md
+    - AWS Migration Roadmap: architecture/aws-migration-roadmap.md
+    - Cleaning & Ingestion Automation: architecture/cleaning-automation-report.md
   - Technical Details:
     - Overview: technical/overview.md
     - Favourite Resources: technical/resources.md
@@ -60,6 +62,8 @@ nav:
     - "004 - GPT vs DeepSeek Speed": experiments/004-gpt-deepseek-benchmark.md
     - "005 - Semantic Partitioning": experiments/005-semantic-partitioning.md
     - "006 - Taxonomy-Driven Role Labeling": experiments/006-taxonomy-role-labeling.md
+    - "007 - LLM Latency Benchmark": experiments/007-llm-latency-benchmark.md
+    - "008 - Boilerplate-Only LLM Cleaning": experiments/008-boilerplate-only-cleaning.md
   - Research Reports:
     - Overview: research-reports/index.md
     - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md
@@ -78,6 +82,8 @@ nav:
     - "014 - Semantic Search Tools & Architecture": research-reports/014-semantic-search-tools-architecture.md
     - "015 - HiringCafe MCP": research-reports/015-hiringcafe-mcp.md
     - "016 - ESCO EU Jobs Taxonomy": research-reports/016-esco-eu-jobs-taxonomy.md
+    - "017 - Near-Duplicate Text Detection": research-reports/017-near-duplicate-text-detection.md
+    - "018 - spaCy & spaCy-LLM": research-reports/018-spacy-and-spacy-llm.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md

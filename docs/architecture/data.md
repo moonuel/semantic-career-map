@@ -74,13 +74,13 @@ The raw key therefore carries only `source=` plus the hash leaf. There is delibe
 
 Exact-byte hashing is sometimes too exact -- a trailing space should not mint a new identity. Once canonicalization rules exist, keep both a `raw_hash` (exact received bytes, the address) and a `canonical_content_hash` (semantically equivalent canonicalized content).
 
-### 2.2 Posting ids
+### 2.2 Posting identity
 
-The posting `<id>` stays a time-ordered **UUIDv7** (RFC 9562 §5.7) minted once at ingestion -- lexicographic order equals chronological order, which keeps exports sortable for free. What changes is placement: `posting_id` stops being the load-bearing path segment and becomes a row column, the join handle tying one posting's artifact row, embedding row, and eval rows back together. Ids are still minted by exactly one generator in [`ids.py`](../../backend/storage/ids.py).
+The lake has no minted posting id and needs none (D11, resolved 2026-10-21 by profiling the live raw layer: 6/6 sampled sources carry no posting id, and none is needed): **the `source_hash` -- the canonical payload bytes' SHA-256 -- is the posting's identity and its join handle**, tying one posting's artifact row and eval rows back to its raw object (whose key derives from the same hash, §2.1). A payload's hash is permanent, recomputable from the stored bytes, and constant across scraper re-ingestions of identical content; the mutable parts of a posting (the ATS it came from, its human-readable `source_id`) travel in row columns, not in identity. Provenance dates live in manifests, not in the address. Ids are still minted by exactly one generator in [`ids.py`](../../backend/storage/ids.py) -- for *run* and *batch* identities (UUIDv7, lexicographic order equals chronological order, which keeps exports sortable for free), never for postings. (Decision record: [dev log, October 23, 2026](../dev-log/2026.md#october-23-2026).)
 
 ### 2.3 Partitions
 
-Directory levels are Hive-style `<column>=<value>` pairs, which become Athena partition columns (e.g. `source=linkedin/`). Partition on low-to-moderate-cardinality dimensions that queries actually filter on -- `source`, `event_date`. Never partition on high-cardinality identifiers such as `posting_id` or `content_hash`: an address identifies an object, a partition prunes a scan. But a partition also has to earn its place: the raw layer carries no time partition not because dates are high-cardinality, but because identical re-ingested content must not mint new keys (§2.1) -- its time provenance lives in manifests, pruned there instead. Partitioning exists to reduce what Athena reads, not to encode application identity into the directory tree.
+Directory levels are Hive-style `<column>=<value>` pairs, which become Athena partition columns (e.g. `source=linkedin/`). Partition on low-to-moderate-cardinality dimensions that queries actually filter on -- `source`, `event_date`. Never partition on high-cardinality identifiers such as `source_hash`: an address identifies an object, a partition prunes a scan. But a partition also has to earn its place: the raw layer carries no time partition not because dates are high-cardinality, but because identical re-ingested content must not mint new keys (§2.1) -- its time provenance lives in manifests, pruned there instead. Partitioning exists to reduce what Athena reads, not to encode application identity into the directory tree.
 
 ### 2.4 Versions
 
@@ -146,9 +146,16 @@ At tens of postings, one object per posting was fine -- good, even: simple, insp
 A row under `type=responsibility_text/variant=llm/version=v1`:
 
 ```
-artifact_id, source_hash, posting_id, variant, version,
-responsibility_text, pipeline_version, created_at
+source_hash, variant, version,
+responsibility_text, configuration_hash, pipeline_version, created_at
 ```
+
+The landed shape is exactly this minus the subject field: the live
+`type=cleaned_text/variant=llm/version=v1` dataset carries
+`source_hash, variant, version, cleaned_text, configuration_hash,
+pipeline_version, created_at` (plus the run-id naming the producing run)
+-- the artifact hash *is* the join handle (§2.2); there is no `artifact_id`
+and no minted posting id to collide with it.
 
 Raw data stays JSON -- verbatim source preservation beats columnar convenience.
 
@@ -163,7 +170,7 @@ model=<model>/variant=<variant>/version=<vN>/
 with rows of:
 
 ```
-posting_id, source_hash, embedding, model, model_version,
+source_hash, embedding, model, model_version,
 input_artifact, input_version, embedding_dimension, normalization, created_at
 ```
 
@@ -173,18 +180,26 @@ The dataset is the authoritative representation of the vectors. Any vector index
 
 `eval/` separates what is authored from what is generated, the same discipline the old `eval/` branch enforced -- it just draws the line twice. `datasets/` holds human ground truth, versioned by authorship. `results/` holds machine output over those datasets, regenerated whenever a different model, judge, or prompt evaluates them.
 
-A dataset row:
+A dataset row -- the landed cleaning-golden version shows the shape:
 
 ```
-posting_id, query, expected_relevance, annotation, annotator
+source, source_hash, source_id, golden_text, annotator, created_at
 ```
 
-A results row:
+(a future relevance-judging dataset would add its own subject fields in the
+same spirit -- identity first, reference text, annotation provenance)
+
+A results row -- the landed `cleaning_quality` rubric shows the shape:
 
 ```
-posting_id, prediction, score, judge_model, prompt_version,
-evaluation_version, created_at
+source, source_hash, source_id, jaccard, boilerplate_hits,
+hallucination_count, hallucination_sample, over_deletion_pct,
+over_deletion_flagged, over_deletion_sample, golden_words, clean_words,
+evaluation_configuration_hash, evaluation_version, created_at
 ```
+
+(generic relevance results would swap the metric columns for
+`prediction, score, judge_model, prompt_version`)
 
 The same evaluation set can therefore be evaluated repeatedly under different assumptions, which is the whole point. This absorbs the evaluation machinery deferred from the [LLM-evals research](../research-reports/004-llm-evals-report.md): samples and references land as datasets, judgments as results, and rubrics stay Git-versioned. The `_current.json` pointer gives way to explicit `version=vN` addressing and manifest-pinned snapshots (§10).
 
@@ -249,12 +264,12 @@ It is retrieval-first -- everything about one posting is one prefix away -- whic
 
 | Concept | Legacy | Lakehouse |
 |---|---|---|
-| Raw address | `live/raw/<id>/source.md` | content-addressed JSON (§2.1) |
-| Posting identity | `<id>` path segment | `posting_id` row column (§2.2) |
-| Query interface | key prefix | Glue catalog + Athena tables (§9) |
-| One artifact | one JSON object | one Parquet row (§6) |
-| One embedding | one `<id>.npy` | vector column (§7) |
-| Config record | `configs/<hash>.json` | `configuration_hash` + manifests (§3) |
-| Eval-set pin | `eval/_current.json` | explicit version pins (§8, §10) |
+| Raw address | `live/raw/<id>/source.md` | content-addressed JSON (§2.1) — **live** (9.2k objects) |
+| Posting identity | `<id>` path segment | `source_hash` = identity + join handle; no minted ids (§2.2, D11) |
+| Query interface | key prefix | Glue catalog + Athena tables (§9) — **live for selection** (D12, Phase 5 pulled forward): production cleaning selects via the `select_uncleaned` anti-join |
+| One artifact | one JSON object | one Parquet row (§6) — **live**: `type=cleaned_text/variant=llm/version=v1` (flush-watermark parts + per-run dataset manifests) |
+| One embedding | one `<id>.npy` | vector column (§7) — planned |
+| Config record | `configs/<hash>.json` | `configuration_hash` + manifests (§3) — **live** (run/dataset manifests in `manifests/runs/`, `manifests/datasets/`) |
+| Eval-set pin | `eval/_current.json` | explicit version pins (§8, §10) — **live**: golden `variant=author/version=v1` + quality results `variant=exp003/version=v1,v2` with per-run manifests |
 
 Legacy objects aren't converted -- derived data is supposed to be regenerable, so only raw payloads are re-addressed by content hash and everything else re-generates as Parquet when its pipeline stage is formalized. Migration is branch-by-branch, key builders first. The old §A.1 hunch -- that the metadata sidecar may eventually expand into an Athena SQL database -- is answered by §9.

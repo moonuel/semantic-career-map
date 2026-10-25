@@ -3,8 +3,8 @@
 All hermetic: a fake MCP client records calls, can fail selected queries,
 and serves synthetic records; politeness sleeps are patched out; no network
 happens (the live endpoint was verified separately — spec Appendix B). The
-runner also writes provenance: raw objects under the temporary file mirror
-and one Parquet manifest per run, asserted through the mirror.
+runner also writes provenance: raw objects and one Parquet manifest per run,
+asserted through the injected in-memory sink.
 
 Covered: query-set selection (``--set``/``--query``/``--set-all`` union,
 ``core`` default, de-duplication), per-query failure isolation and exit
@@ -15,15 +15,16 @@ skipping.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from backend.ingestion import mcp
 from backend.storage import ids
 from scripts import query
+from tests.conftest import MemorySink
 
 
 class _FakeClient:
@@ -91,29 +92,39 @@ def _install(monkeypatch: pytest.MonkeyPatch, client: _FakeClient) -> None:
 
 
 def _main(
-    monkeypatch: pytest.MonkeyPatch, client: _FakeClient, tmp_path: Path, *argv: str
+    monkeypatch: pytest.MonkeyPatch, client: _FakeClient, sink: MemorySink, *argv: str
 ) -> int:
-    """Run the CLI against the fake client with a file mirror sink."""
+    """Run the CLI against the fake client and an injected in-memory sink."""
     _install(monkeypatch, client)
-    return query.main(["--target", "files", "--data-dir", str(tmp_path), *argv])
+
+    class _StubStore:
+        @staticmethod
+        def from_env() -> MemorySink:
+            return sink
+
+    monkeypatch.setattr(query, "ObjectStore", _StubStore)
+    return query.main([*argv])
 
 
-def _raw_keys(mirror: Path) -> list[Path]:
+def _raw_keys(sink: MemorySink) -> list[str]:
     """Raw objects written under ``lake/raw/source=hiringcafe/``."""
-    return list(mirror.glob("lake/raw/source=hiringcafe/sha256=*.json"))
+    return sink.list_keys("lake/raw/source=hiringcafe/")
 
 
-def _manifest_rows(mirror: Path) -> list[dict[str, Any]]:
+def _manifest_rows(sink: MemorySink) -> list[dict[str, Any]]:
     """The run's single manifest; rows for header+observation columns."""
-    paths = list(mirror.glob("lake/manifests/ingestion/**/*.parquet"))
+    paths = sink.list_keys("lake/manifests/ingestion/")
     assert len(paths) == 1, f"expected one manifest, got {paths}"
-    return pq.read_table(paths[0]).to_pylist()
+    return pq.read_table(pa.BufferReader(sink.get(paths[0]))).to_pylist()
 
 
-def _all_manifests(mirror: Path) -> list[dict[str, Any]]:
-    """Every run's manifest rows, newest (uuid7-ordered) manifest first."""
-    paths = sorted(mirror.glob("lake/manifests/ingestion/**/*.parquet"))
-    return [row for path in paths for row in pq.read_table(path).to_pylist()]
+def _all_manifests(sink: MemorySink) -> list[dict[str, Any]]:
+    """Every run's manifest rows, oldest (uuid7-ordered) manifest first."""
+    return [
+        row
+        for path in sink.list_keys("lake/manifests/ingestion/")
+        for row in pq.read_table(pa.BufferReader(sink.get(path))).to_pylist()
+    ]
 
 
 def _board_status(row: dict[str, Any]) -> dict[str, str]:
@@ -125,48 +136,48 @@ def _board_status(row: dict[str, Any]) -> dict[str, str]:
 
 
 def test_default_set_is_core(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=0)
-    assert _main(monkeypatch, client, tmp_path) == 0
+    assert _main(monkeypatch, client, memory_sink) == 0
     queries_run = [c["search"] for c in client.search_calls]
     assert queries_run == list(query._QUERY_SETS["core"])
     assert client.initialized
 
 
 def test_query_flag_overrides_default(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=0)
-    assert _main(monkeypatch, client, tmp_path, "--query", "rust developer") == 0
+    assert _main(monkeypatch, client, memory_sink, "--query", "rust developer") == 0
     assert [c["search"] for c in client.search_calls] == ["rust developer"]
 
 
 def test_set_selection(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=0)
-    assert _main(monkeypatch, client, tmp_path, "--set", "research") == 0
+    assert _main(monkeypatch, client, memory_sink, "--set", "research") == 0
     assert [c["search"] for c in client.search_calls] == list(
         query._QUERY_SETS["research"]
     )
 
 
 def test_set_all_iterates_every_set(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=0)
-    assert _main(monkeypatch, client, tmp_path, "--set-all") == 0
+    assert _main(monkeypatch, client, memory_sink, "--set-all") == 0
     expected = [q for members in query._QUERY_SETS.values() for q in members]
     assert [c["search"] for c in client.search_calls] == expected
 
 
 def test_set_union_with_queries_and_dedup(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=0)
     argv = ("--set", "research", "--set", "core", "--query", "mlops")
-    assert _main(monkeypatch, client, tmp_path, *argv) == 0
+    assert _main(monkeypatch, client, memory_sink, *argv) == 0
     queries_run = [c["search"] for c in client.search_calls]
     expected = list(
         dict.fromkeys([*query._QUERY_SETS["research"], *query._QUERY_SETS["core"]])
@@ -188,15 +199,15 @@ def test_selection_pure_function() -> None:
 def test_failed_query_isolated(
     monkeypatch: pytest.MonkeyPatch,
     no_sleep,
-    tmp_path: Path,
+    memory_sink: MemorySink,
     capsys: pytest.CaptureFixture,
 ) -> None:
     second = query._QUERY_SETS["core"][1]
     client = _FakeClient(fail_on={second}, rows_per_search=1)
-    assert _main(monkeypatch, client, tmp_path) == 0
+    assert _main(monkeypatch, client, memory_sink) == 0
     assert "failed" in capsys.readouterr().err
     assert len(client.search_calls) == len(query._QUERY_SETS["core"])
-    rows = _manifest_rows(tmp_path)
+    rows = _manifest_rows(memory_sink)
     assert rows[0]["boards_attempted"] == len(query._QUERY_SETS["core"])
     assert rows[0]["boards_failed"] == 1
     assert rows[0]["status"] == "partial"
@@ -206,45 +217,56 @@ def test_failed_query_isolated(
 
 
 def test_all_failed_exit_one(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(fail_on=set(query._QUERY_SETS["core"]), rows_per_search=0)
-    assert _main(monkeypatch, client, tmp_path) == 1
+    assert _main(monkeypatch, client, memory_sink) == 1
     # every query failed: nothing ingested, the record is a zero-row manifest
-    assert _manifest_rows(tmp_path) == []
+    assert _manifest_rows(memory_sink) == []
 
 
 def test_handshake_failure_exit_one(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture
+    monkeypatch: pytest.MonkeyPatch,
+    memory_sink: MemorySink,
+    capsys: pytest.CaptureFixture,
 ) -> None:
     class _HandshakeFail(_FakeClient):
         def initialize(self) -> dict[str, Any]:
             raise mcp.MCPError("mcp initialize: down")
 
     monkeypatch.setattr(mcp, "HiringCafeClient", lambda **_: _HandshakeFail())
-    assert query.main(["--target", "files", "--data-dir", str(tmp_path)]) == 1
+
+    class _StubStore:
+        @staticmethod
+        def from_env() -> MemorySink:
+            return memory_sink
+
+    monkeypatch.setattr(query, "ObjectStore", _StubStore)
+    assert query.main([]) == 1
     assert "handshake" in capsys.readouterr().err
 
 
-def test_limit_validation_rejects_non_positive(monkeypatch, no_sleep, tmp_path) -> None:
+def test_limit_validation_rejects_non_positive(
+    monkeypatch, no_sleep, memory_sink: MemorySink
+) -> None:
     with pytest.raises(SystemExit):
-        _main(monkeypatch, _FakeClient(), tmp_path, "--limit", "0")
+        _main(monkeypatch, _FakeClient(), memory_sink, "--limit", "0")
 
 
-def test_unknown_set_rejected(monkeypatch, no_sleep, tmp_path) -> None:
+def test_unknown_set_rejected(monkeypatch, no_sleep, memory_sink: MemorySink) -> None:
     with pytest.raises(SystemExit):
-        _main(monkeypatch, _FakeClient(), tmp_path, "--set", "not-a-set")
+        _main(monkeypatch, _FakeClient(), memory_sink, "--set", "not-a-set")
 
 
 # --- fetch semantics ------------------------------------------------------------
 
 
 def test_details_expansion_capped(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient()
     assert (
-        _main(monkeypatch, client, tmp_path, "--query", "one role", "--details", "1")
+        _main(monkeypatch, client, memory_sink, "--query", "one role", "--details", "1")
         == 0
     )
     assert len(client.details_calls) == 1
@@ -252,14 +274,14 @@ def test_details_expansion_capped(
 
 
 def test_search_arguments_pass_through(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=0)
     assert (
         _main(
             monkeypatch,
             client,
-            tmp_path,
+            memory_sink,
             "--query",
             "one role",
             "--limit",
@@ -278,11 +300,11 @@ def test_search_arguments_pass_through(
 
 
 def test_politeness_delay_per_call(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=1)
     assert (
-        _main(monkeypatch, client, tmp_path, "--query", "one role", "--details", "1")
+        _main(monkeypatch, client, memory_sink, "--query", "one role", "--details", "1")
         == 0
     )
     # one sleep before the search, one before the single details call
@@ -294,19 +316,19 @@ def test_politeness_delay_per_call(
 
 
 def test_ingest_stores_raw_and_manifest_row(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=1)
     assert (
-        _main(monkeypatch, client, tmp_path, "--query", "one role", "--details", "1")
+        _main(monkeypatch, client, memory_sink, "--query", "one role", "--details", "1")
         == 0
     )
 
-    keys = _raw_keys(tmp_path)
+    keys = _raw_keys(memory_sink)
     assert len(keys) == 1
-    assert keys[0].name.startswith("sha256=")
+    assert keys[0].rsplit("/", 1)[-1].startswith("sha256=")
 
-    rows = _manifest_rows(tmp_path)
+    rows = _manifest_rows(memory_sink)
     assert len(rows) == 1
     row = rows[0]
     assert row["source"] == "hiringcafe"
@@ -324,63 +346,63 @@ def test_ingest_stores_raw_and_manifest_row(
 
 
 def test_rerun_is_all_duplicate(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=1)
     argv = ("--query", "one role", "--details", "1")
-    assert _main(monkeypatch, client, tmp_path, *argv) == 0
+    assert _main(monkeypatch, client, memory_sink, *argv) == 0
     # same client, same synthetic content: the second run must observe duplicates
-    assert _main(monkeypatch, client, tmp_path, *argv) == 0
-    manifests = list(tmp_path.glob("lake/manifests/ingestion/**/*.parquet"))
+    assert _main(monkeypatch, client, memory_sink, *argv) == 0
+    manifests = memory_sink.list_keys("lake/manifests/ingestion/")
     assert len(manifests) == 2
-    oldest_path, newest_path = min(manifests), max(manifests)
-    first = pq.read_table(oldest_path).to_pylist()
-    newest = pq.read_table(newest_path).to_pylist()
+    oldest_path, newest_path = manifests[0], manifests[-1]
+    first = pq.read_table(pa.BufferReader(memory_sink.get(oldest_path))).to_pylist()
+    newest = pq.read_table(pa.BufferReader(memory_sink.get(newest_path))).to_pylist()
     assert first and any(row["action"] == "stored" for row in first)
     assert newest and all(row["action"] == "duplicate" for row in newest)
     # still exactly one raw object: content-addressed, idempotent
-    assert len(_raw_keys(tmp_path)) == 1
+    assert len(_raw_keys(memory_sink)) == 1
 
 
 def test_survey_mode_writes_zero_row_manifest(
-    monkeypatch: pytest.MonkeyPatch, no_sleep, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, no_sleep, memory_sink: MemorySink
 ) -> None:
     client = _FakeClient(rows_per_search=2)
     assert (
-        _main(monkeypatch, client, tmp_path, "--query", "one role", "--details", "0")
+        _main(monkeypatch, client, memory_sink, "--query", "one role", "--details", "0")
         == 0
     )
     assert client.details_calls == []
-    assert not _raw_keys(tmp_path)
-    rows = _manifest_rows(tmp_path)
+    assert not _raw_keys(memory_sink)
+    rows = _manifest_rows(memory_sink)
     assert rows == []
 
 
 def test_shell_records_skipped(
     monkeypatch: pytest.MonkeyPatch,
     no_sleep,
-    tmp_path: Path,
+    memory_sink: MemorySink,
     capsys: pytest.CaptureFixture,
 ) -> None:
     client = _FakeClient(rows_per_search=1, shell_details=True)
     assert (
-        _main(monkeypatch, client, tmp_path, "--query", "one role", "--details", "1")
+        _main(monkeypatch, client, memory_sink, "--query", "one role", "--details", "1")
         == 0
     )
-    assert not _raw_keys(tmp_path)
-    assert _manifest_rows(tmp_path) == []
+    assert not _raw_keys(memory_sink)
+    assert _manifest_rows(memory_sink) == []
     assert "no title/description" in capsys.readouterr().err
 
 
 def test_slug_collision_skips_second_query(
     monkeypatch: pytest.MonkeyPatch,
     no_sleep,
-    tmp_path: Path,
+    memory_sink: MemorySink,
     capsys: pytest.CaptureFixture,
 ) -> None:
     client = _FakeClient(rows_per_search=0)
     argv = ("--query", "One Role", "--query", "one role")
-    assert _main(monkeypatch, client, tmp_path, *argv) == 0
+    assert _main(monkeypatch, client, memory_sink, *argv) == 0
     assert len(client.search_calls) == 1  # second query is the same window, skipped
     assert "already covered" in capsys.readouterr().err
 
@@ -388,15 +410,15 @@ def test_slug_collision_skips_second_query(
 def test_unsluggable_query_fails_that_query_only(
     monkeypatch: pytest.MonkeyPatch,
     no_sleep,
-    tmp_path: Path,
+    memory_sink: MemorySink,
     capsys: pytest.CaptureFixture,
 ) -> None:
     client = _FakeClient(rows_per_search=1)
     argv = ("--query", "!!!", "--query", "valid query")
-    exit_code = _main(monkeypatch, client, tmp_path, *argv)
+    exit_code = _main(monkeypatch, client, memory_sink, *argv)
     assert exit_code == 0
     assert "failed" in capsys.readouterr().err
-    rows = _manifest_rows(tmp_path)
+    rows = _manifest_rows(memory_sink)
     assert rows[0]["boards_attempted"] == 2
     assert rows[0]["boards_failed"] == 1
     assert rows[0]["status"] == "partial"

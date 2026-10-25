@@ -1,0 +1,84 @@
+{
+  "experiment": "008_boilerplate_only_cleaning",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "normalized": true,
+  "seed": 42,
+  "n_postings": 39,
+  "n_labeled_separation": 27,
+  "summary": {
+    "Raw": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.006034344434738159,
+      "mean_pairwise_cosine": 0.41322794556617737,
+      "max_pairwise_cosine": 0.9227830767631531
+    },
+    "Section-Cleaned": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.020307719707489014,
+      "mean_pairwise_cosine": 0.43049097061157227,
+      "max_pairwise_cosine": 0.8775346279144287
+    },
+    "Golden": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.06569725275039673,
+      "mean_pairwise_cosine": 0.49963822960853577,
+      "max_pairwise_cosine": 0.9849492907524109
+    },
+    "C2 gpt-5.4-nano old-prompt": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.04370570182800293,
+      "mean_pairwise_cosine": 0.5337024331092834,
+      "max_pairwise_cosine": 0.9260143041610718
+    },
+    "C1 gpt-5.4-nano new-prompt": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.02797567844390869,
+      "mean_pairwise_cosine": 0.4451620876789093,
+      "max_pairwise_cosine": 0.9498500823974609
+    },
+    "C3 gpt-5.4-nano v3-prompt": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.03510430455207825,
+      "mean_pairwise_cosine": 0.47087493538856506,
+      "max_pairwise_cosine": 0.9839249849319458
+    },
+    "A1 nemotron-3-nano-30b-a3b": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.028900563716888428,
+      "mean_pairwise_cosine": 0.4366774559020996,
+      "max_pairwise_cosine": 0.7654907703399658
+    },
+    "A2 gemma-3-4b-it": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.05170249938964844,
+      "mean_pairwise_cosine": 0.4879928231239319,
+      "max_pairwise_cosine": 0.7945519685745239
+    },
+    "A3 gemini-2.5-flash-lite": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.07691159844398499,
+      "mean_pairwise_cosine": 0.4826977550983429,
+      "max_pairwise_cosine": 0.7933104038238525
+    },
+    "A4 llama-3.1-8b-instruct": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.04993921518325806,
+      "mean_pairwise_cosine": 0.49203017354011536,
+      "max_pairwise_cosine": 0.7844865918159485
+    },
+    "A5 ling-3.0-flash": {
+      "self_retrieval_pct": 100.0,
+      "separation_gap_labeled27": 0.08134561777114868,
+      "mean_pairwise_cosine": 0.4653179347515106,
+      "max_pairwise_cosine": 0.8828873038291931
+    }
+  },
+  "artifacts": [
+    "/home/olimoon/repos/python/semantic-career-map/scripts/008_boilerplate_only_cleaning/data/plots/008-cleaning_comparison.png"
+  ],
+  "limitations": [
+    "12 of 39 postings md-only and role-unlabeled: excluded from separation gap, included in self-retrieval and pairwise stats.",
+    "Missing variant texts fall back to raw_full_text so panels stay aligned at n=39.",
+    "n=27 with role-heavy classes keeps formal Fisher testing weak; metrics are comparative, not inferential."
+  ]
+}

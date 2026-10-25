@@ -64,6 +64,18 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
     LLM assigns fine-grained function tags from a 13-category ML/AI responsibility taxonomy to 27 job postings. 22 unique tag sets with 80% golden recall. `deep-learning` + `mlops-production` is the dominant pair (10 co-occurrences). Qualitative UMAP evaluation shows tag-set-colored clusters align with embedding similarity.
 
+-   [**007 — Two-Track LLM Latency Benchmark**](007-llm-latency-benchmark.md){ .md-button }
+
+    **2026-10-19**
+
+    20 cheap instruct models benchmarked on two tracks: streaming TTFT (micro-prompt) and non-streaming fixed-length copy task. The round-1 `empty response` fault class is confirmed streaming-only; `nemotron-3-nano-30b-a3b` and `gemini-2.5-flash-lite` lead on speed with clean failure records; no model actually copied the reference exactly. **Adoption finalized 2026-10-23:** the winning lane became the production cleaning configuration — see the adoption section (sample eval means: Jaccard 0.958, over-deletion 0.9%, zero hallucinations).
+
+-   [**008 — Boilerplate-Only LLM Cleaning**](008-boilerplate-only-cleaning.md){ .md-button }
+
+    **2026-10-20**
+
+    Corrected boilerplate-only prompt fixes 003's over-deletion at scale (22.8% → 2.3–5.2% on one model) on a 39-posting hand-curated golden set. Prompt v3, distilled from human strip behavior, lifts Jaccard 0.826 → 0.858. Deploy recommendation: `gemini-2.5-flash-lite` (Jaccard 0.894, $0.00036/posting). **Deployed as production 2026-10-23** — see the [landing update](../technical/data-processing.md#step-2-llm-cleaning).
+
 </div>
 
 <!-- ## Results at a Glance

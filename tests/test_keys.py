@@ -29,9 +29,21 @@ MODEL = "all-minilm-l6-v2"
 VARIANT = "llm-clean-text"
 HASH = "a" * 64
 
+# ``run_id`` shares the posting-id identity: a canonical UUIDv7 minted once
+# per pipeline run by ``ids.new_id()``; builders only validate it.
+RUN_ID = ID
+ARTIFACT_TYPE = "cleaned_text"
+ARTIFACT_VARIANT = "llm"
+EVAL_TYPE_GOLDEN = "cleaning_golden"
+EVAL_TYPE_RESULT = "cleaning_quality"
+EVAL_VARIANT = "author"
+DATASET_ID = "cleaned_text-llm-v1"
+
 ALL_VARIANTS = sorted(keys._DERIVED_VARIANTS)
 ALL_VERSIONS = ["v1", "v2", "v10"]
 ALL_RAW_SOURCES = sorted(keys.RAW_SOURCES)
+ALL_ARTIFACT_TYPES = sorted(keys.ARTIFACT_TYPES)
+ALL_EVAL_TYPES = sorted(keys.EVAL_TYPES)
 
 
 # --- 1. Exact shapes ---------------------------------------------------------
@@ -198,9 +210,9 @@ class TestValidateLakeManifest:
                 keys.validate_key(key)
 
     def test_other_manifest_sub_branches_stay_unpinned(self) -> None:
-        # ``datasets``/``runs`` are reserved and not yet committed to a shape;
-        # only the ``ingestion`` sub-branch is pinned here.
-        key = "lake/manifests/datasets/part-00000.parquet"
+        # ``datasets``/``runs`` are now pinned by their builders
+        # (TestManifestDataset / TestManifestRuns); ``ingestion`` stays here.
+        key = "lake/manifests/datasets/x.json"
         assert keys.validate_key(key) == key
 
     def test_rejects_bad_dates(self) -> None:
@@ -236,6 +248,382 @@ class TestValidateLakeManifest:
                 keys.validate_key(
                     f"lake/manifests/ingestion/ingested_on=2026-10-06/{wrong_leaf}"
                 )
+
+
+# --- 1c. Artifact parts (lakehouse artifacts branch) -------------------------
+
+
+class TestArtifactPart:
+    """The ``lake/artifacts`` Parquet part builder: governed ``type`` /
+    ``variant`` / ``version`` partitions and a run-minted part leaf."""
+
+    def test_full_shape(self) -> None:
+        assert keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", RUN_ID, 1) == (
+            f"lake/artifacts/type={ARTIFACT_TYPE}/variant={ARTIFACT_VARIANT}"
+            f"/version=v1/part-{RUN_ID}-00001.parquet"
+        )
+
+    def test_seq_is_zero_padded_by_five(self) -> None:
+        key = keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v2", RUN_ID, 12)
+        assert key.endswith(f"part-{RUN_ID}-00012.parquet")
+
+    @pytest.mark.parametrize("artifact_type", ALL_ARTIFACT_TYPES)
+    def test_each_allowlisted_type(self, artifact_type: str) -> None:
+        assert keys.artifact_part(
+            artifact_type, ARTIFACT_VARIANT, "v1", RUN_ID, 1
+        ).startswith(f"lake/artifacts/type={artifact_type}/")
+
+    def test_output_is_valid(self) -> None:
+        key = keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v3", RUN_ID, 1)
+        assert keys.validate_key(key) == key
+
+    def test_is_deterministic(self) -> None:
+        assert keys.artifact_part(
+            ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", RUN_ID, 1
+        ) == keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", RUN_ID, 1)
+
+    def test_rejects_unknown_type(self) -> None:
+        with pytest.raises(ValueError):
+            keys.artifact_part("knowbs", ARTIFACT_VARIANT, "v1", RUN_ID, 1)
+
+    def test_rejects_bad_run_id(self) -> None:
+        for bad in ("", "not-a-uuid", ID.replace("7", "4"), RUN_ID.upper()):
+            with pytest.raises(ValueError):
+                keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", bad, 1)
+
+    def test_rejects_bad_seq(self) -> None:
+        for seq in (0, -1):
+            with pytest.raises(ValueError):
+                keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", RUN_ID, seq)
+
+
+class TestValidateLakeArtifact:
+    """``validate_key`` pins the semantic shape of ``lake/artifacts``: the
+    ``type``/``variant``/``version`` partition stack in order, the allowlisted
+    type, the ``vN`` version, and the ``part-<run-id>-<seq>.parquet`` leaf."""
+
+    def _key(self, **overrides: str) -> str:
+        parts = {
+            "type": ARTIFACT_TYPE,
+            "variant": ARTIFACT_VARIANT,
+            "version": "v1",
+            "run_id": RUN_ID,
+            "seq": "00001",
+        }
+        parts.update(overrides)
+        return (
+            f"lake/artifacts/type={parts['type']}/variant={parts['variant']}"
+            f"/version={parts['version']}/part-{parts['run_id']}-{parts['seq']}.parquet"
+        )
+
+    def test_valid_key_round_trips(self) -> None:
+        assert keys.validate_key(self._key()) == self._key()
+
+    def test_rejects_wrong_segment_count(self) -> None:
+        for key in (
+            "lake/artifacts",
+            f"lake/artifacts/type={ARTIFACT_TYPE}",
+            f"lake/artifacts/type={ARTIFACT_TYPE}/variant={ARTIFACT_VARIANT}",
+            (
+                f"lake/artifacts/type={ARTIFACT_TYPE}/variant={ARTIFACT_VARIANT}"
+                "/version=v1"
+            ),
+            self._key() + "/extra",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_rejects_unknown_type_partition(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(self._key(type="knowbs"))
+
+    def test_rejects_wrong_partition_names_or_order(self) -> None:
+        long_run_part = f"part-{RUN_ID}-00001.parquet"
+        reordered = (
+            f"type={ARTIFACT_TYPE}/version=v1/variant={ARTIFACT_VARIANT}"
+            f"/{long_run_part}"
+        )
+        extra_partition = (
+            f"type={ARTIFACT_TYPE}/variant={ARTIFACT_VARIANT}/day=2026-10-05"
+            f"/version=v1/{long_run_part}"
+        )
+        for wrong_tail in (
+            f"{ARTIFACT_VARIANT}/version=v1/{long_run_part}",  # type missing
+            reordered,
+            extra_partition,
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/artifacts/{wrong_tail}")
+
+    def test_rejects_non_version_partition_value(self) -> None:
+        for bad_version in ("v0", "v01", "V1", "1"):
+            with pytest.raises(ValueError):
+                keys.validate_key(self._key(version=bad_version))
+
+    def test_rejects_bad_part_leaf(self) -> None:
+        for wrong_leaf in (
+            f"part-{RUN_ID}-00000.parquet",  # zero is not 1-based
+            f"part-{RUN_ID}-00001",  # missing extension
+            f"part-{RUN_ID}-00001.json",  # wrong extension
+            f"part-{RUN_ID.replace('7', '4')}-00001.parquet",  # not a uuid7
+            f"part=chunk-{RUN_ID}-00001.parquet",  # leaf reads as a partition
+            f"chunk-{RUN_ID}-00001.parquet",  # not a part leaf
+            f"part-{RUN_ID}.parquet",  # missing sequence
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(
+                    f"lake/artifacts/type={ARTIFACT_TYPE}"
+                    f"/variant={ARTIFACT_VARIANT}/version=v1/{wrong_leaf}"
+                )
+
+
+# --- 1d. Eval datasets and results (lakehouse eval branch) -------------------
+
+
+class TestEvalParts:
+    """Authored ground truth (``datasets``) and machine output (``results``)
+    share the partition stack but never a prefix."""
+
+    @pytest.mark.parametrize(
+        ("builder", "sub_branch", "eval_type"),
+        [
+            (keys.eval_dataset, "datasets", EVAL_TYPE_GOLDEN),
+            (keys.eval_result, "results", EVAL_TYPE_RESULT),
+        ],
+        ids=["dataset", "result"],
+    )
+    def test_full_shape(self, builder, sub_branch: str, eval_type: str) -> None:
+        assert (
+            builder(eval_type, EVAL_VARIANT, "v1", RUN_ID, 1)
+            == f"lake/eval/{sub_branch}/type={eval_type}/variant={EVAL_VARIANT}"
+            f"/version=v1/part-{RUN_ID}-00001.parquet"
+        )
+
+    @pytest.mark.parametrize("eval_type", ALL_EVAL_TYPES)
+    def test_each_allowlisted_type(self, eval_type: str) -> None:
+        assert keys.eval_dataset(eval_type, EVAL_VARIANT, "v1", RUN_ID, 1).startswith(
+            f"lake/eval/datasets/type={eval_type}/"
+        )
+        assert keys.eval_result(eval_type, EVAL_VARIANT, "v1", RUN_ID, 1).startswith(
+            f"lake/eval/results/type={eval_type}/"
+        )
+
+    def test_outputs_are_valid(self) -> None:
+        for builder in (keys.eval_dataset, keys.eval_result):
+            key = builder(EVAL_TYPE_RESULT, EVAL_VARIANT, "v2", RUN_ID, 3)
+            assert keys.validate_key(key) == key
+
+    def test_rejects_unknown_type(self) -> None:
+        for builder in (keys.eval_dataset, keys.eval_result):
+            with pytest.raises(ValueError):
+                builder("knowbs", EVAL_VARIANT, "v1", RUN_ID, 1)
+
+    def test_rejects_bad_run_id_or_seq(self) -> None:
+        for builder in (keys.eval_dataset, keys.eval_result):
+            with pytest.raises(ValueError):
+                builder(EVAL_TYPE_RESULT, EVAL_VARIANT, "v1", "not-a-uuid", 1)
+            with pytest.raises(ValueError):
+                builder(EVAL_TYPE_RESULT, EVAL_VARIANT, "v1", RUN_ID, 0)
+
+
+class TestValidateLakeEval:
+    """``validate_key`` pins the semantic shape of ``lake/eval/<datasets|results>``."""
+
+    def _key(self, sub_branch: str = "results", **overrides: str) -> str:
+        parts = {
+            "type": EVAL_TYPE_RESULT,
+            "variant": EVAL_VARIANT,
+            "version": "v1",
+            "run_id": RUN_ID,
+            "seq": "00001",
+        }
+        parts.update(overrides)
+        return (
+            f"lake/eval/{sub_branch}/type={parts['type']}"
+            f"/variant={parts['variant']}/version={parts['version']}"
+            f"/part-{parts['run_id']}-{parts['seq']}.parquet"
+        )
+
+    def test_valid_keys_round_trip(self) -> None:
+        assert keys.validate_key(self._key("datasets")) == self._key("datasets")
+        assert keys.validate_key(self._key("results")) == self._key("results")
+
+    def test_rejects_wrong_segment_count(self) -> None:
+        for key in (
+            "lake/eval",
+            "lake/eval/datasets",
+            "lake/eval/results/type=x",
+            self._key() + "/extra",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_rejects_unknown_sub_branch(self) -> None:
+        for sub_branch in ("data", "dashboards", "datasets/extra"):
+            with pytest.raises(ValueError):
+                keys.validate_key(self._key(sub_branch))
+
+    def test_rejects_wrong_partition_names_or_order(self) -> None:
+        long_run_part = f"part-{RUN_ID}-00001.parquet"
+        reordered = (
+            f"type={EVAL_TYPE_RESULT}/version=v1/variant={EVAL_VARIANT}/{long_run_part}"
+        )
+        no_version = f"type={EVAL_TYPE_RESULT}/variant={EVAL_VARIANT}/{long_run_part}"
+        for wrong_tail in (reordered, no_version):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/eval/results/{wrong_tail}")
+
+    def test_rejects_unknown_type(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(self._key(type="knowbs"))
+
+    def test_rejects_bad_version(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(self._key(version="v0"))
+
+
+# --- 1e. Dataset manifests (lakehouse manifests/datasets branch) --------------
+
+
+class TestManifestDataset:
+    """The addressed ``lake/manifests/datasets/<dataset-id>.json`` builder.
+
+    The dataset id is the leaf address, never a partition (data.md §2.3), so
+    plain names without ``=`` are enforced.
+    """
+
+    def test_full_shape(self) -> None:
+        assert keys.manifest_dataset(DATASET_ID) == (
+            f"lake/manifests/datasets/{DATASET_ID}.json"
+        )
+
+    def test_output_is_valid(self) -> None:
+        key = keys.manifest_dataset(DATASET_ID)
+        assert keys.validate_key(key) == key
+
+    def test_is_deterministic(self) -> None:
+        assert keys.manifest_dataset(DATASET_ID) == keys.manifest_dataset(DATASET_ID)
+
+    @pytest.mark.parametrize(
+        "bad",
+        ["", "type=knowbs", "Cleaned Text", "cleaned/text", "a=b"],
+        ids=["empty", "reads-as-partition", "uppercase", "slash", "equals"],
+    )
+    def test_rejects_non_plain_names(self, bad: str) -> None:
+        with pytest.raises(ValueError):
+            keys.manifest_dataset(bad)
+
+    def test_validate_rejects_bad_leaf(self) -> None:
+        for wrong_leaf in (
+            f"{DATASET_ID}.parquet",  # wrong extension
+            f"{DATASET_ID}.yaml",  # wrong extension
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(f"lake/manifests/datasets/{wrong_leaf}")
+
+    def test_validate_rejects_nested_leaf(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(f"lake/manifests/datasets/{DATASET_ID}.json/extra")
+
+    def test_validate_accepts_plain_json_leaf(self) -> None:
+        key = "lake/manifests/datasets/dataset.json"
+        assert keys.validate_key(key) == key
+
+
+class TestManifestRuns:
+    """The grouped ``lake/manifests/runs/run_id=<run-id>/`` builders: the
+    aggregated run record (``run.json``) and per-flush checkpoints
+    (``flush=<seq>.json``)."""
+
+    def test_run_record_shape(self) -> None:
+        assert keys.manifest_run(RUN_ID) == (
+            f"lake/manifests/runs/run_id={RUN_ID}/run.json"
+        )
+
+    def test_checkpoint_shape(self) -> None:
+        assert keys.manifest_run_checkpoint(RUN_ID, 1) == (
+            f"lake/manifests/runs/run_id={RUN_ID}/flush=00001.json"
+        )
+
+    def test_checkpoint_seq_is_zero_padded_by_five(self) -> None:
+        key = keys.manifest_run_checkpoint(RUN_ID, 42)
+        assert key.endswith("flush=00042.json")
+
+    def test_outputs_are_valid(self) -> None:
+        for key in (keys.manifest_run(RUN_ID), keys.manifest_run_checkpoint(RUN_ID, 1)):
+            assert keys.validate_key(key) == key
+
+    def test_are_deterministic(self) -> None:
+        assert keys.manifest_run(RUN_ID) == keys.manifest_run(RUN_ID)
+        assert keys.manifest_run_checkpoint(RUN_ID, 2) == keys.manifest_run_checkpoint(
+            RUN_ID, 2
+        )
+
+    def test_rejects_bad_run_id(self) -> None:
+        for build in (
+            keys.manifest_run,
+            lambda rid: keys.manifest_run_checkpoint(rid, 1),
+        ):
+            with pytest.raises(ValueError):
+                build("not-a-uuid")
+
+    def test_rejects_bad_seq(self) -> None:
+        for seq in (0, -3):
+            with pytest.raises(ValueError):
+                keys.manifest_run_checkpoint(RUN_ID, seq)
+
+
+class TestValidateLakeManifestRuns:
+    """``validate_key`` pins the semantic shape of ``lake/manifests/runs``."""
+
+    def _run_key(self, **overrides: str) -> str:
+        parts = {"run_id": RUN_ID, "leaf": "run.json"}
+        parts.update(overrides)
+        return f"lake/manifests/runs/run_id={parts['run_id']}/{parts['leaf']}"
+
+    def test_valid_keys_round_trip(self) -> None:
+        assert keys.validate_key(self._run_key()) == self._run_key()
+        assert keys.validate_key(self._run_key(leaf="flush=00001.json")) == (
+            self._run_key(leaf="flush=00001.json")
+        )
+
+    def test_rejects_wrong_segment_count(self) -> None:
+        for key in (
+            "lake/manifests/runs",
+            f"lake/manifests/runs/run_id={RUN_ID}",
+            f"lake/manifests/runs/run_id={RUN_ID}/run.json/extra",
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_rejects_wrong_grouping_name(self) -> None:
+        for wrong in (
+            f"id={RUN_ID}/run.json",
+            f"listing_run={RUN_ID}/run.json",
+            f"run-{RUN_ID}/run.json",
+        ):
+            key = f"lake/manifests/runs/{wrong}"
+            with pytest.raises(ValueError):
+                keys.validate_key(key)
+
+    def test_rejects_bad_run_id_partition_value(self) -> None:
+        with pytest.raises(ValueError):
+            keys.validate_key(
+                self._run_key(run_id="0190f3a2-7b41-4c9e-8a3d-5f6e1b2c4d70")
+            )  # uuid7 version nibble
+
+    def test_rejects_bad_leaf(self) -> None:
+        for wrong_leaf in (
+            "flush.json",
+            "flush=abc.json",
+            "flush=00000.json",  # not 1-based
+            "flush=00001",  # missing extension
+            "run.md",  # wrong extension
+            "run",  # no extension
+            "ray=00001.json",  # unknown leaf family
+        ):
+            with pytest.raises(ValueError):
+                keys.validate_key(self._run_key(leaf=wrong_leaf))
 
 
 # --- 2. Concept placement ----------------------------------------------------
@@ -465,6 +853,20 @@ class TestDeterminism:
         assert keys.manifest_ingestion("2026-10-06", ID) == keys.manifest_ingestion(
             "2026-10-06", ID
         )
+        assert keys.artifact_part(
+            ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", RUN_ID, 1
+        ) == keys.artifact_part(ARTIFACT_TYPE, ARTIFACT_VARIANT, "v1", RUN_ID, 1)
+        assert keys.eval_dataset(
+            EVAL_TYPE_GOLDEN, EVAL_VARIANT, "v1", RUN_ID, 1
+        ) == keys.eval_dataset(EVAL_TYPE_GOLDEN, EVAL_VARIANT, "v1", RUN_ID, 1)
+        assert keys.eval_result(
+            EVAL_TYPE_RESULT, EVAL_VARIANT, "v1", RUN_ID, 1
+        ) == keys.eval_result(EVAL_TYPE_RESULT, EVAL_VARIANT, "v1", RUN_ID, 1)
+        assert keys.manifest_dataset(DATASET_ID) == keys.manifest_dataset(DATASET_ID)
+        assert keys.manifest_run(RUN_ID) == keys.manifest_run(RUN_ID)
+        assert keys.manifest_run_checkpoint(RUN_ID, 1) == keys.manifest_run_checkpoint(
+            RUN_ID, 1
+        )
 
 
 # --- 8. Builder outputs are valid --------------------------------------------
@@ -506,3 +908,26 @@ class TestBuilderOutputsAreValid:
     def test_manifest_ingestion_output_is_valid(self) -> None:
         key = keys.manifest_ingestion("2026-10-06", ID)
         assert keys.validate_key(key) == key
+
+    @pytest.mark.parametrize("artifact_type", ALL_ARTIFACT_TYPES)
+    @pytest.mark.parametrize("version", ALL_VERSIONS)
+    def test_artifact_part_output_is_valid(
+        self, artifact_type: str, version: str
+    ) -> None:
+        key = keys.artifact_part(artifact_type, ARTIFACT_VARIANT, version, RUN_ID, 1)
+        assert keys.validate_key(key) == key
+
+    @pytest.mark.parametrize("eval_type", ALL_EVAL_TYPES)
+    @pytest.mark.parametrize("version", ALL_VERSIONS)
+    def test_eval_outputs_are_valid(self, eval_type: str, version: str) -> None:
+        for builder in (keys.eval_dataset, keys.eval_result):
+            key = builder(eval_type, EVAL_VARIANT, version, RUN_ID, 2)
+            assert keys.validate_key(key) == key
+
+    def test_manifest_dataset_output_is_valid(self) -> None:
+        key = keys.manifest_dataset(DATASET_ID)
+        assert keys.validate_key(key) == key
+
+    def test_manifest_run_outputs_are_valid(self) -> None:
+        for key in (keys.manifest_run(RUN_ID), keys.manifest_run_checkpoint(RUN_ID, 1)):
+            assert keys.validate_key(key) == key

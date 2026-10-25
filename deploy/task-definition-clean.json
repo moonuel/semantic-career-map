@@ -1,0 +1,36 @@
+{
+  "family": "pipeline-clean",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/<PIPELINE_ROLE_NAME>",
+  "containerDefinitions": [
+    {
+      "name": "pipeline-clean",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/pipeline-images:clean",
+      "essential": true,
+      "environment": [
+        {"name": "STORE_S3_BUCKET", "value": "<STORE_S3_BUCKET>"},
+        {"name": "STORE_S3_REGION", "value": "<REGION>"},
+        {"name": "PIPELINE_VERSION", "value": "clean"},
+        {"name": "CLEAN_MODEL", "value": "google/gemini-2.5-flash-lite"},
+        {"name": "CLEAN_WORKERS", "value": "8"},
+        {"name": "MAX_RUN_HOURS", "value": "2"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/pipeline/clean",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "clean"
+        }
+      }
+    }
+  ]
+}

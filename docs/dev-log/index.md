@@ -6,8 +6,8 @@ A live view of the mental work, the reasoning in the moment, ideas not yet exper
 
 -   [**2026**](2026.md){ .md-button }
 
-    **July 23 – September 16, 2026** · 8 entries
+    **July 23 – October 23, 2026** · 9 entries
 
-    From the first pipeline plans and the role-taxonomy validation idea, through the resume-variation demo idea and counterfactual skill-gap analysis, to the design reflections that re-framed the pipeline unit and the return to work after graduating.
+    From the first pipeline plans and the role-taxonomy validation idea, through the resume-variation demo idea and counterfactual skill-gap analysis, the object-store sprint, to the cleaning-and-eval layer landing on the lake (D1–D12 decisions, D11 rejected).
 
 </div>

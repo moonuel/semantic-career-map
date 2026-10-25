@@ -1,0 +1,34 @@
+{
+  "family": "pipeline-scrape-curator",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/<PIPELINE_ROLE_NAME>",
+  "containerDefinitions": [
+    {
+      "name": "pipeline-scrape",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/pipeline-images:scrape",
+      "essential": true,
+      "entryPoint": ["python", "scripts/scrape.py"],
+      "command": ["--source", "dataroles"],
+      "environment": [
+        {"name": "STORE_S3_BUCKET", "value": "<STORE_S3_BUCKET>"},
+        {"name": "STORE_S3_REGION", "value": "<REGION>"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/pipeline/scrape-curator",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "curator"
+        }
+      }
+    }
+  ]
+}

@@ -1,19 +1,19 @@
 """Unit tests for :mod:`backend.ingestion.raw` (the raw-layer write path).
 
-Scope: canonicalization, content-hash dedup at the sink boundary, the
-FileSink mirror layout, and the per-board intake policy. Live fetch is
-``backend/ingestion/scrapers.py``'s concern (its own tests); storage-level
-behaviour beyond put/exists is :mod:`backend.storage.store`'s.
+Scope: canonicalization, content-hash dedup at the sink boundary, and the
+per-board intake policy, over the in-process ``MemorySink`` storage double
+(``tests/conftest.py``). Live fetch is ``backend/ingestion/scrapers.py``'s
+concern (its own tests); storage-level behaviour beyond put/exists is
+:mod:`backend.storage.store`'s.
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import pytest
 
 from backend.ingestion import raw
 from backend.ingestion.scrapers import ScrapedJob
+from tests.conftest import MemorySink
 
 # --- Fixtures ----------------------------------------------------------------
 
@@ -41,11 +41,11 @@ def _job(
     )
 
 
-class CountingSink(raw.FileSink):
-    """A FileSink that also counts puts, to observe skip-before-write."""
+class CountingSink(MemorySink):
+    """A MemorySink that also counts puts, to observe skip-before-write."""
 
-    def __init__(self, root: Path) -> None:
-        super().__init__(root)
+    def __init__(self) -> None:
+        super().__init__()
         self.puts = 0
 
     def put(self, key: str, data: bytes) -> None:
@@ -64,7 +64,7 @@ class TestCanonicalJson:
         payload = {"x": [1, 2], "y": {"k": None}}
         assert raw.canonical_json(payload) == raw.canonical_json(dict(**payload))
 
-    def test_job_payload_hashes_stably(self, tmp_path: Path) -> None:
+    def test_job_payload_hashes_stably(self) -> None:
         payload = raw.job_payload(_job("ashby:acme:1"))
         assert payload == raw.job_payload(_job("ashby:acme:1"))
 
@@ -73,11 +73,11 @@ class TestCanonicalJson:
 
 
 class TestIngestPayload:
-    def test_first_write_stored_at_content_address(self, tmp_path: Path) -> None:
+    def test_first_write_stored_at_content_address(self) -> None:
         event = raw.ingest_payload(
             "ashby",
             raw.canonical_json({"k": "v"}),
-            sink=CountingSink(tmp_path),
+            sink=CountingSink(),
             existing_hashes=set(),
         )
         assert event.event == "stored"
@@ -85,26 +85,27 @@ class TestIngestPayload:
 
         assert event.raw_key == keys.raw_payload("ashby", event.content_sha256)
 
-    def test_written_key_holds_payload_bytes(self, tmp_path: Path) -> None:
-        sink: raw.FileSink = raw.FileSink(tmp_path)
+    def test_written_key_holds_payload_bytes(self, memory_sink: MemorySink) -> None:
         payload = raw.canonical_json({"k": "v"})
-        event = raw.ingest_payload("ashby", payload, sink=sink, existing_hashes=set())
-        assert (tmp_path / event.raw_key).read_bytes() == payload
+        event = raw.ingest_payload(
+            "ashby", payload, sink=memory_sink, existing_hashes=set()
+        )
+        assert memory_sink.get(event.raw_key) == payload
 
-    def test_repeat_run_skips_via_sink_exists(self, tmp_path: Path) -> None:
+    def test_repeat_run_skips_via_sink_exists(self, memory_sink: MemorySink) -> None:
         payload = raw.canonical_json({"k": "v"})
         first = raw.ingest_payload(
-            "ashby", payload, sink=raw.FileSink(tmp_path), existing_hashes=set()
+            "ashby", payload, sink=memory_sink, existing_hashes=set()
         )
         second = raw.ingest_payload(
-            "ashby", payload, sink=raw.FileSink(tmp_path), existing_hashes=set()
+            "ashby", payload, sink=memory_sink, existing_hashes=set()
         )
         assert first.event == "stored"
         assert second.event == "duplicate"
         assert second.raw_key == ""
 
-    def test_in_run_set_skips_before_write(self, tmp_path: Path) -> None:
-        sink = CountingSink(tmp_path)
+    def test_in_run_set_skips_before_write(self) -> None:
+        sink = CountingSink()
         hashes: set[str] = set()
         payload = raw.canonical_json({"k": "v"})
         raw.ingest_payload("ashby", payload, sink=sink, existing_hashes=hashes)
@@ -144,8 +145,8 @@ class TestUsableJobs:
 
 
 class TestIngestBoard:
-    def test_every_usable_posting_ingests(self, tmp_path: Path) -> None:
-        sink = raw.FileSink(tmp_path)
+    def test_every_usable_posting_ingests(self, memory_sink: MemorySink) -> None:
+        sink = memory_sink
         hashes: set[str] = set()
         events = raw.ingest_board(
             [_job("ashby:a:1"), _job("ashby:a:2")],
@@ -157,8 +158,8 @@ class TestIngestBoard:
         assert [e.event for e in events] == ["stored", "stored"]
         assert {e.content_sha256 for e in events} == hashes
 
-    def test_limit_bounds_intake(self, tmp_path: Path) -> None:
-        sink = raw.FileSink(tmp_path)
+    def test_limit_bounds_intake(self, memory_sink: MemorySink) -> None:
+        sink = memory_sink
         events = raw.ingest_board(
             [_job(f"ashby:a:{i}") for i in range(5)],
             source="ashby",
@@ -169,8 +170,10 @@ class TestIngestBoard:
         )
         assert len(events) == 2
 
-    def test_cross_board_duplicates_share_source_hashes(self, tmp_path: Path) -> None:
-        sink = raw.FileSink(tmp_path)
+    def test_cross_board_duplicates_share_source_hashes(
+        self, memory_sink: MemorySink
+    ) -> None:
+        sink = memory_sink
         hashes: set[str] = set()
         first = raw.ingest_board(
             [_job("ashby:a:1")],
@@ -216,30 +219,49 @@ class TestBoardFetch:
         assert set(raw._FETCHERS) == set(sources.SOURCE_BOARDS)
 
 
-# --- 4. FileSink mirror ------------------------------------------------------
+# --- 4. Storage-double semantics ----------------------------------------------
 
 
-class TestFileSink:
-    def test_mirror_file_at_validated_key(self, tmp_path: Path) -> None:
+class TestMemorySink:
+    def test_get_returns_put_bytes(self, memory_sink: MemorySink) -> None:
         from backend.storage import ids, keys
 
         key = keys.raw_payload("ashby", ids.content_sha256(b"x"))
-        sink = raw.FileSink(tmp_path)
-        sink.put(key, b"x")
-        assert (tmp_path / key).read_bytes() == b"x"
+        memory_sink.put(key, b"x")
+        assert memory_sink.get(key) == b"x"
 
-    def test_exists_reflects_put(self, tmp_path: Path) -> None:
+    def test_get_missing_key_raises(self, memory_sink: MemorySink) -> None:
         from backend.storage import ids, keys
 
         key = keys.raw_payload("ashby", ids.content_sha256(b"x"))
-        sink = raw.FileSink(tmp_path)
-        assert not sink.exists(key)
-        sink.put(key, b"x")
-        assert sink.exists(key)
+        with pytest.raises(FileNotFoundError):
+            memory_sink.get(key)
 
-    def test_rejects_invalid_key(self, tmp_path: Path) -> None:
-        sink = raw.FileSink(tmp_path)
+    def test_exists_reflects_put(self, memory_sink: MemorySink) -> None:
+        from backend.storage import ids, keys
+
+        key = keys.raw_payload("ashby", ids.content_sha256(b"x"))
+        assert not memory_sink.exists(key)
+        memory_sink.put(key, b"x")
+        assert memory_sink.exists(key)
+
+    def test_list_keys_returns_sorted_prefix_matches(
+        self, memory_sink: MemorySink
+    ) -> None:
+        from backend.storage import ids, keys
+
+        for tag in ("b", "a"):
+            memory_sink.put(
+                keys.raw_payload("ashby", ids.content_sha256(tag.encode())),
+                tag.encode(),
+            )
+        listed = list(memory_sink.list_keys("lake/raw/source=ashby/"))
+        assert listed == sorted(listed)
+        assert len(listed) == 2
+        assert list(memory_sink.list_keys("lake/raw/source=lever/")) == []
+
+    def test_rejects_invalid_key(self, memory_sink: MemorySink) -> None:
         with pytest.raises(ValueError):
-            sink.put("lake/raw/source=nope/sha256=bad.json", b"x")
+            memory_sink.put("lake/raw/source=nope/sha256=bad.json", b"x")
         with pytest.raises(ValueError):
-            sink.exists("../escape")
+            memory_sink.exists("../escape")

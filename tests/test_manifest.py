@@ -19,6 +19,7 @@ from backend.ingestion.manifest import (
     SCHEMA_VERSION,
     BatchObservation,
     build_ingestion_manifest,
+    pipeline_version,
 )
 
 ID = "0190f3a2-7b41-7c9e-8a3d-5f6e1b2c4d70"
@@ -239,3 +240,17 @@ class TestRejectsBadInput:
         )
         with pytest.raises(ValueError):
             build_ingestion_manifest([obs], **HEADER)  # type: ignore[arg-type]
+
+
+def test_pipeline_version_env_override_wins(monkeypatch) -> None:
+    """Containers carry no git; the PIPELINE_VERSION env is the override."""
+    monkeypatch.setenv("PIPELINE_VERSION", "clean-def5678")
+    assert pipeline_version() == "clean-def5678"
+
+
+def test_pipeline_version_env_empty_falls_through(monkeypatch) -> None:
+    """An empty override is ignored (non-empty contract); git fallback runs."""
+    monkeypatch.setenv("PIPELINE_VERSION", "")
+    version = pipeline_version()
+    assert isinstance(version, str) and version
+    assert version == "unknown" or len(version) == 7

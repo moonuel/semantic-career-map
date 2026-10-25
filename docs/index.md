@@ -94,8 +94,8 @@ E --> F[Ranked Results]
 
 | Phase | Description | Status |
 |---|---|---|
-| 1 | Preprocessing & Embedding Optimization | :material-progress-check: Baseline embedding + visualization complete (27 postings). Experiment loop next. |
-| 2 | Data Collection & Ingestion | :material-progress-check: 27 postings collected. Non-ML postings planned for contrast. |
+| 1 | Preprocessing & Embedding Optimization | :material-progress-check: Baseline embedding + visualization complete (27-posting curated corpus). Experiment loop (001–008) complete — deploy-ready cleaning + eval layers landed on the lake. |
+| 2 | Data Collection & Ingestion | :material-progress-check: Lake live — 9.2k raw postings content-addressed on the dev store; manifests (runs/datasets/ingestion) live. |
 | 3 | Embedding Pipeline & Similarity Engine | :material-close: Not started |
 | 4 | FastAPI Backend | :material-close: Not started |
 | 5 | Docker Containerization | :material-close: Not started |
@@ -107,6 +107,6 @@ E --> F[Ranked Results]
 ### Phase 1 Progress
 
 - ✅ Steps 1.0–1.2: Parsed → embedded (all-MiniLM-L6-v2, L2-normalized) → PCA + UMAP visualized
-- ✅ Steps 1.4–1.7: Experiment loop — baseline, boilerplate removal, LLM extraction complete
+- ✅ Steps 1.4–1.7: Experiment loop — baseline, boilerplate removal, LLM extraction, latency benchmark (007) + 8-arm cleaning benchmark (008) complete; cleaning + eval LAYER landed (see [data.md](architecture/data.md) migration table)
 - 🔜 Step 1.3: Proxy metrics formalization, nearest-neighbor audit
 - 🔜 Steps 1.6–1.7: Skill extraction, weighted concatenation experiments -->

@@ -14,6 +14,23 @@ As of July 27, 2026:
 - LLM-extracted job-context improves separation gap by 5.6× over raw text, but LLM-extracted role-context shows a negative separation gap (-0.0074), suggesting this dimension is harder to extract cleanly.
 - LLM-driven taxonomy labeling (13 categories) produces 22 unique tag sets across 27 postings with 80% golden recall. `deep-learning` + `mlops-production` is the dominant co-occurrence pair (10/27 postings). Tag-set-colored UMAP visualization confirms that function-based clusters align with embedding similarity, enabling honest clustering evaluation beyond noisy title labels.
 
+As of October 19, 2026:
+
+- A two-track benchmark of 20 cheap instruct models ([Experiment 007](./experiments/007-llm-latency-benchmark.md)) splits latency measurement into streaming TTFT and a non-streaming fixed-length copy task. The round-1 `empty response` failure class is streaming-only — every affected model completes non-streaming calls cleanly (openai/gpt-5-nano 0/10 streaming vs 3/3 non-streaming).
+- `nemotron-3-nano-30b-a3b` (best E2E, 2.45s median) and `gemini-2.5-flash-lite` (best consistency) lead on speed; `gemma-3-4b-it` and `llama-3.1-8b-instruct` are the budget lane (~$5-6e-5/request). Cost varies ~14× across the "cheap" tier.
+- No model reproduced the 398-word reference exactly (deviations +222 to +6,988 output tokens), so Track B resolution stays speed/cost-only; deviation is reported per model rather than fetishized.
+
+As of October 20, 2026:
+
+- [Experiment 008](./experiments/008-boilerplate-only-cleaning.md) confirms the 003 diagnosis on a hand-curated 39-posting golden set: the extractive prompt over-deletes (22.8% mean, 32/39 flagged), and the corrected boilerplate-only prompt fixes it (2.3%) at zero hallucination cost.
+- The v3 prompt — distilled from the golden curation's actual human strip taxonomy — improves gpt-5.4-nano Jaccard 0.826 → 0.858 with moderate over-deletion (5.2%). Prompt iteration should be feedback-driven, not composed from intuition.
+- Golden separation gap reaches +0.0657 (11× raw) on the expanded corpus; aggressive-but-faulty arms (ling, gemini-flash-lite) exceed golden separation itself, so separation gap and text fidelity must be read jointly.
+- Deploy recommendation: `gemini-2.5-flash-lite` + corrected prompt (Jaccard 0.894, $0.00036/posting); `nemotron-3-nano-30b-a3b` as the cheap lane. `ling-3.0-flash` is not deployable as-is (persistently empty responses on 3 postings, 2048-token ceiling saturation).
+
+As of October 23, 2026:
+
+- The 008 recommendation is **in production**: the lake's cleaning stage (`backend/pipeline/cleaning`) runs it with flush-watermark durability, the artifact-cache done-index, and per-posting fail-fast (65-row `cleaned_text/variant=llm/version=v1` on the dev store), and the eval loop (`backend/pipeline/eval`, exp-003 metrics verbatim) is wired on golden `variant=author/version=v1` (39 references) + `cleaning_quality` results `v1/v2`. Live eval over the golden ∩ sample intersection: mean Jaccard 0.958, mean over-deletion 0.9% (one 6.1% flag — the organizational-context residue), zero hallucinations. Dataset layout + lineage: [data.md](./architecture/data.md).
+
 <!-- 
 ## Summary Dashboard
 
