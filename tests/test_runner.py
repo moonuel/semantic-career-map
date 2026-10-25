@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import pathlib
 import time
 from typing import Any
 
@@ -68,7 +69,9 @@ def _post(store: JournalSink, source: str, field: str, body: str) -> dict[str, A
     }
 
 
-def _make_manifest(store: JournalSink) -> tuple[str, dict[str, Any]]:
+def _make_manifest(
+    store: JournalSink, tmp_path: pathlib.Path
+) -> tuple[str, dict[str, Any]]:
     """Five postings across the three payload shapes; returns (path, dict)."""
     postings = [
         _post(store, "greenhouse", "description_html", "html gh1 <p>boiler</p>"),
@@ -78,10 +81,9 @@ def _make_manifest(store: JournalSink) -> tuple[str, dict[str, Any]]:
         _post(store, "lever", "description_html", "html lv5 <p>utc-5</p>"),
     ]
     manifest = {"params": {}, "postings": postings}
-    path = "/tmp/kilo/manifest-test-five.json"
-    with open(path, "wb") as f:
-        f.write(sampling.serialize_manifest(manifest))
-    return path, manifest
+    path = tmp_path / "manifest-test-five.json"
+    path.write_bytes(sampling.serialize_manifest(manifest))
+    return str(path), manifest
 
 
 def _run(
@@ -102,9 +104,9 @@ def _run(
     )
 
 
-def test_first_run_cleans_all_calls_recorded() -> None:
+def test_first_run_cleans_all_calls_recorded(tmp_path: pathlib.Path) -> None:
     store = JournalSink()
-    path, _ = _make_manifest(store)
+    path, _ = _make_manifest(store, tmp_path)
     client = StubClient()
     record = _run(store, path, client, flush_rows=2)
 
@@ -129,9 +131,9 @@ def test_first_run_cleans_all_calls_recorded() -> None:
     assert dataset["model"] == MODEL
 
 
-def test_second_run_performs_zero_client_calls() -> None:
+def test_second_run_performs_zero_client_calls(tmp_path: pathlib.Path) -> None:
     store = JournalSink()
-    path, _ = _make_manifest(store)
+    path, _ = _make_manifest(store, tmp_path)
     _run(store, path, StubClient(), flush_rows=2)
     second = StubClient()
     record = _run(store, path, second, flush_rows=2)
@@ -140,9 +142,11 @@ def test_second_run_performs_zero_client_calls() -> None:
     assert record["flush_refs"] == []
 
 
-def test_fail_fast_counts_and_identifies_failing_posting() -> None:
+def test_fail_fast_counts_and_identifies_failing_posting(
+    tmp_path: pathlib.Path,
+) -> None:
     store = JournalSink()
-    path, manifest = _make_manifest(store)
+    path, manifest = _make_manifest(store, tmp_path)
     bad_hash = manifest["postings"][2]["source_hash"]  # hiringcafe posting
     client = StubClient(fail_on={"hc3": RuntimeError("stub boom")})
     record = _run(store, path, client, flush_rows=2)
@@ -165,9 +169,11 @@ def _part_hashes(store: JournalSink, part_key: str) -> set[str]:
     )
 
 
-def test_interrupted_run_keeps_flushes_durable_and_rerun_skips() -> None:
+def test_interrupted_run_keeps_flushes_durable_and_rerun_skips(
+    tmp_path: pathlib.Path,
+) -> None:
     store = JournalSink()
-    path, manifest = _make_manifest(store)
+    path, manifest = _make_manifest(store, tmp_path)
     # SIGINT arrives during the 3rd posting's call; the two remaining
     # postings interrupt too, so nothing can buffer after the abort
     client = StubClient(
@@ -201,9 +207,9 @@ def test_interrupted_run_keeps_flushes_durable_and_rerun_skips() -> None:
         assert not any(tag in c["user_message"] for c in second.calls)
 
 
-def test_rerun_after_failure_retries_failed_posting() -> None:
+def test_rerun_after_failure_retries_failed_posting(tmp_path: pathlib.Path) -> None:
     store = JournalSink()
-    path, _ = _make_manifest(store)
+    path, _ = _make_manifest(store, tmp_path)
     first = _run(
         store, path, StubClient(fail_on={"hc3": RuntimeError("boom")}), flush_rows=2
     )
