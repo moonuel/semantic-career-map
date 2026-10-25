@@ -45,6 +45,7 @@ def handler(event: dict, context: typing.Any) -> dict:
             failure semantics (retry, then DLQ) require it.
     """
     argv = [flag for source in ATS_SOURCES for flag in ("--source", source)]
+    argv.append("--limit-all")
     rc = scrape_main(argv)
     if rc != 0:
         raise RuntimeError(f"ATS scrape failed with exit code {rc}")
