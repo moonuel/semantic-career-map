@@ -9,7 +9,7 @@
 
 1. [HiringCafe in One Page](#1-hiringcafe-in-one-page)
 2. [Why MCP Matters Here](#2-why-mcp-matters-here)
-3. [Official MCP Server (ChatGPT App) — Verified Live](#3-official-mcp-server-chatgpt-app--verified-live)
+3. [Official MCP Server (ChatGPT App) — Verified Live](#3-official-mcp-server-chatgpt-app-verified-live)
 4. [The Filter Taxonomy (AI-Structured Schema)](#4-the-filter-taxonomy-ai-structured-schema)
 5. [Official Claude Connector](#5-official-claude-connector)
 6. [Third-Party MCP Surfaces](#6-third-party-mcp-surfaces)

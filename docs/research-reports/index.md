@@ -112,4 +112,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-22**
 
     Survey of spaCy 3.8.16 (already a dependency: PhraseMatcher/EntityRuler skill extraction, tokenizer-only CPU posture, Pydantic v2 + Python 3.14 story) and spacy-llm 0.7.4 (task/model architecture, CoT SpanCat, ESCO-ready EntityLinker KB) — with an honest maintenance verdict, a keep-our-Layer-LLM recommendation for the productionized cleaning stage, and an experiment sketch for span extraction.
+
+-   [**019 — AWS S3 Vectors**](019-s3-vectors.md){ .md-button }
+
+    **2026-10-26**
+
+    Survey of S3 Vectors (GA 2025-12): vector buckets, indexes, immutable geometry, strong consistency, ENHANCED pre-filtering, and the three-axis pricing model — evaluated against the lakehouse embedding model (data.md §7) and the baseline-embedding lineage. Verdict: not adopted now; registered as the serverless rung of the retrieval graduation ladder with Parquet staying source of truth and `key = source_hash` sync.
 </div>

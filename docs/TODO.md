@@ -8,6 +8,12 @@ Items I'm still working on.
 - "An architecture document to accommodate modularity and future expansion would be good." — [2026-07-23](dev-log/2026.md#july-23-2026)
 - ~~"Boilerplate removal should probably be its own pipeline step." — [2026-07-27](dev-log/2026.md#july-27-2026)~~ **landed as the production cleaning stage** — [2026-10-23](dev-log/2026.md#october-23-2026)
 - "It would fall under pre-processing - the boilerplate-cleaned text minus the raw text should always be empty (no hallucination)" — [2026-07-27](dev-log/2026.md#july-27-2026)
+- "wire in the remaining evaluation jobs" — [2026-10-25](dev-log/2026.md#october-25-2026)
+
+## Deployment & Ops
+
+- "consider automatic redeploy on git tag push, or keeping it manual" — [2026-10-25](dev-log/2026.md#october-25-2026)
+- "push the embedding vector job to production and schedule it in a batch job as well" — [2026-10-25](dev-log/2026.md#october-25-2026)
 
 ## Data & Versioning
 
@@ -18,6 +24,8 @@ Items I'm still working on.
 - Scheduled data scraping
 - ~~MLflow-style run lineage: dataset versions + run manifests~~ — **landed for the cleaning+eval branch** [2026-10-23](dev-log/2026.md#october-23-2026): `manifests/runs|datasets` live with `pipeline_version` (git sha) + `configuration_hash`, per-run flush checkpoints, per-dataset manifests for artifacts/golden/results. Still open from the original thread: no **environment snapshot** (runtime-dependency digest — two runs on the same commit aren't provably the same code), and the hard-kill window the 5.1 lineage verify caught live (a SIGKILLed run leaves part + checkpoint but no run record — reconstrucible, not complete). The sha pins the checked-out commit, not the working tree — `git describe --dirty` is the cheap fix if it ever matters.
 - Next cleaning variant: the **organizational-context field** — split company-context lines off the cleaned text as a second artifact column so over-deletion has a measured home instead of a 5% flag — and a fuller golden set beyond the 39 references. — [2026-10-23](dev-log/2026.md#october-23-2026)
+- Clean-tier promotion gate — the eval-before-promote rule is runbook prose only; no enforced check ties a `:clean` push to an eval run or pinned-tag promotion. Filed as moonuel/semantic-career-map#15, 2026-10-25; sibling lineage gap (moving-tag runs record tag names, ATS Lambda records `dev`) filed as #16; the active-pipeline-version pointer (switch scheduled tiers between experimental variant/version branches) filed as #17.
+- The four residual AWS-push risks each filed: egress/security reconsideration path (#18), host-scoped flock → co-run decision (#19), LLM fallback posture ratification (#20), backlog daily metric without orchestrator (#21). — 2026-10-26
 
 ## Taxonomy & Clustering Validation
 
@@ -36,11 +44,13 @@ Items I'm still working on.
 - "One goal is to compare clustering results between
     - Cleaned postings, with/without the contextual information about the role within the organization (stored as a separate field)
     - Engineered features, maybe based on the role taxonomies, maybe something like generated description strings based on the cleaned data" — [2026-07-25](dev-log/2026.md#july-25-2026) *(Exp 005)*
+- "build embedding vector key builder and pipeline code" — [2026-10-25](dev-log/2026.md#october-25-2026)
 
 ## Features & Demo
 
 - "Ohhh you know what would be fire. Have the demo use some variations of my resume, embed them all, and see how different variations map to different job groups." — [2026-07-26](dev-log/2026.md#july-26-2026)
 - "I've done so much more than what can fit on a single resume sheet, this would be such a flex to also demonstrate my breadth" — [2026-07-26](dev-log/2026.md#july-26-2026)
+- "map out potential live interactive visualization tools" — [2026-10-25](dev-log/2026.md#october-25-2026)
 
 ## Ideas & Future Directions
 

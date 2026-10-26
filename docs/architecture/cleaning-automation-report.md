@@ -1,6 +1,6 @@
 # Automating Ingestion & Cleaning on AWS — Gap Report
 
-> Status: **report — 2026-10-23.** Answers: what is needed to (a) run the cleaning pipeline on AWS compute, and (b) make continual ingestion + cleaning fully automated. Basis: git history through `d09cd1f`, the [AWS Migration Roadmap](aws-migration-roadmap.md), the archived `add-cleaning-and-eval-layer` change (D1–D12), and the [Data Architecture](data.md) layout.
+> Status: **implemented — 2026-10-23.** Answers: what is needed to (a) run the cleaning pipeline on AWS compute, and (b) make continual ingestion + cleaning fully automated. Basis: git history through `d09cd1f`, the [AWS Migration Roadmap](aws-migration-roadmap.md), the archived `add-cleaning-and-eval-layer` change (D1–D12), and the [Data Architecture](data.md) layout. The §3–8 plan landed 2026-10-23/24 (PRs #13/#14).
 
 ---
 

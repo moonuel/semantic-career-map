@@ -174,7 +174,7 @@ source_hash, embedding, model, model_version,
 input_artifact, input_version, embedding_dimension, normalization, created_at
 ```
 
-The dataset is the authoritative representation of the vectors. Any vector index (FAISS, or whatever scale eventually demands) is a rebuildable acceleration structure derived from it -- never the source of truth. One `<id>.npy` per posting exits with the legacy layout.
+The dataset is the authoritative representation of the vectors. Any vector index (FAISS, or whatever scale eventually demands) is a rebuildable acceleration structure derived from it -- never the source of truth. One `<id>.npy` per posting exits with the legacy layout. (One AWS-native candidate for that acceleration-structure slot -- S3 Vectors' vector buckets, GA 2025-12 -- is evaluated in [research report 019](../research-reports/019-s3-vectors.md): not adopted now; its decision log fixes the Parquet-to-index sync contract should it ever graduate.)
 
 ## 8. Evaluation Data
 

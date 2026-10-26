@@ -121,7 +121,7 @@ Five deployment shapes, ordered by operational weight:
 
 ### 4.5 Hosted embedding platforms and curators
 
-Marqo (self-hosted with built-in embedding), Turbopuffer (object-store-backed, cold-workload pricing), MongoDB Atlas / Redis / Couchbase vector slots ("finish it inside the DB you already have"). Useful as pattern references, not priorities for this project.
+Marqo (self-hosted with built-in embedding), Turbopuffer (object-store-backed, cold-workload pricing), MongoDB Atlas / Redis / Couchbase vector slots ("finish it inside the DB you already have"). Useful as pattern references, not priorities for this project. For the AWS-native variant of the object-store-backed pattern — S3 Vectors (vector buckets, GA 2025-12) — see [Report 019](019-s3-vectors.md), which slots it into §9's graduation ladder as the serverless rung.
 
 ---
 
@@ -241,6 +241,7 @@ Mature-decision heuristic that grew from all of this (*pick the architecture bef
 |---|---|
 | > ~500K vectors, still one process | **sqlite-vec / Chroma** for persistence + filtered search, or **FAISS IndexFlatIP → HNSW** only if query latency under load actually becomes the bottleneck |
 | Cluster-scale ingestion pipeline or incremental updates with concurrency | **Qdrant** (operator budget matches ops footprint; pre-filter payload indexes fit role-category/post-validation filtering) |
+| Corpus outgrows in-process brute force *while serving from the Lambda/Fargate tier* and query volume stays low | **S3 Vectors** — serverless ANN (~100 ms warm, 90%+ recall), vector bucket with `source_hash` keys; adoption triggers and the Parquet→index sync contract in [Report 019](019-s3-vectors.md) |
 | PostgreSQL adopted as the relational system of record (e.g., for live/ datasets, application metadata, or jobs/labels tables) | **pgvector** — one store for both; JOINs give ranked results + metadata in one query |
 | Mixed corpus with structured signals needed as *filters* at query time (role taxonomy, seniority, location, remote-ness) | prefer pre-filter-capable engines; never filter after rerank |
 | Hybrid search activation | only if precision@k analysis on the golden set shows exact-skill misses; simplest first cut is `sklearn TfidfVectorizer`-based sparse list fused with RRF inside the same process — no second service until proven necessary |

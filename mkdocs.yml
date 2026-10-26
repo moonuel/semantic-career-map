@@ -84,6 +84,7 @@ nav:
     - "016 - ESCO EU Jobs Taxonomy": research-reports/016-esco-eu-jobs-taxonomy.md
     - "017 - Near-Duplicate Text Detection": research-reports/017-near-duplicate-text-detection.md
     - "018 - spaCy & spaCy-LLM": research-reports/018-spacy-and-spacy-llm.md
+    - "019 - AWS S3 Vectors": research-reports/019-s3-vectors.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md
