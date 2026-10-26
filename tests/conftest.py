@@ -53,6 +53,12 @@ def memory_sink() -> MemorySink:
     return MemorySink()
 
 
+@pytest.fixture
+def journal() -> JournalSink:
+    """A fresh put-order-recording sink per test."""
+    return JournalSink()
+
+
 class JournalSink(MemorySink):
     """``MemorySink`` recording put order for write-protocol assertions."""
 

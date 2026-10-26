@@ -1,19 +1,23 @@
-"""Embedding driver: delta selection → CPU encode → lake parts + manifest.
+"""Embedding driver: delta selection → CPU encode → buffered lake writes.
 
 The embedding tier's orchestration: store the run's config object
 content-addressed, bind its configuration hash into the ``select_unembedded``
 anti-join, stream ``(source_hash, text)`` rows through the shared Athena
-runner, encode the delta in batch windows, and commit one Parquet part per
-batch under the run's version prefix — each row carrying the full
-provenance tuple (data.md §7 columns + ``configuration_hash`` + ``run_id``)
-so the anti-join's cache identity lives in the data itself. One dataset
-manifest per run records the lineage (query execution id, SQL hash,
-pipeline version, model revision, record count). A zero-row delta lands no
-parts and no manifest — the run summary reports the healthy no-op; the
-run record (Layer 4) documents it.
+runner, encode the delta in batch windows, and hand each batch to the
+run's :class:`~backend.pipeline.embedding.writer.FlushWriter` — buffer
+thresholds (rows/bytes/dwell/drained/stop) commit one Parquet part per
+flush under the run's version prefix, each part immediately followed by its
+flush checkpoint. Rows carry the full provenance tuple (data.md §7 columns
++ ``configuration_hash`` + ``run_id``) so the anti-join's cache identity
+lives in the data itself. One dataset manifest per run records the lineage
+(query execution id, SQL hash, pipeline version, model revision, record
+count). A zero-row delta lands no parts and no manifest — the run summary
+reports the healthy no-op; the run record (Layer 4) documents it.
 
 Everything durable is idempotent by construction: the anti-join only
-selects un-embedded postings, so replays re-embed nothing committed.
+selects un-embedded postings, so replays re-embed nothing committed; before
+any selection the run heals its configuration's slice (duplicate-row
+reconcile, then orphan-checkpoint back-fill).
 """
 
 from __future__ import annotations
@@ -21,11 +25,9 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-
-import pyarrow as pa
-import pyarrow.parquet as pq
+from typing import Any
 
 from backend.pipeline.athena import (
     iter_query_results,
@@ -44,8 +46,10 @@ from backend.pipeline.embedding.config import (
 from backend.pipeline.embedding.encoder import EmbeddingEncoder
 from backend.pipeline.embedding.reconcile import (
     ReconcileReport,
+    heal_orphan_checkpoints,
     reconcile_configuration,
 )
+from backend.pipeline.embedding.writer import FlushWriter
 from backend.storage import ids, keys
 
 DATABASE_DEFAULT = "semantic_career_map"
@@ -54,7 +58,23 @@ WORKGROUP_DEFAULT = "semantic_career_map"
 
 @dataclass(frozen=True)
 class RunSummary:
-    """The run's observable outcome (the Layer-4 run record's source)."""
+    """The run's observable outcome (the Layer-4 run record's source).
+
+    Attributes:
+        run_id: The minted run id.
+        configuration_hash: The run's configuration digest.
+        execution_id: The selection's Athena query execution id.
+        selected: Rows the anti-join selected (embedded + empty-text).
+        embedded: Rows committed to parts.
+        empty: Selected rows with no usable text (counted, never dropped).
+        zero_delta: Healthy no-op marker (nothing selected).
+        part_keys: Committed part keys in flush order.
+        dataset_manifest_key: The lineage manifest, ``None`` on no-op.
+        reconcile: The pre-selection duplicate-row reconciliation report
+            (``None`` when the pass was disabled).
+        flushes: This run's flush checkpoints (part → checkpoint books).
+        recovered: Orphan-checkpoint back-fills this run performed.
+    """
 
     run_id: str
     configuration_hash: str
@@ -66,6 +86,8 @@ class RunSummary:
     part_keys: list[str]
     dataset_manifest_key: str | None
     reconcile: ReconcileReport | None = None
+    flushes: list[dict[str, Any]] = field(default_factory=list)
+    recovered: list[dict[str, Any]] = field(default_factory=list)
 
 
 def ensure_config_object(store, config: EmbeddingConfig) -> str:
@@ -88,65 +110,6 @@ def ensure_config_object(store, config: EmbeddingConfig) -> str:
     if not store.exists(key):
         store.put(key, config_document(config))
     return digest
-
-
-def _part_bytes(
-    source_hashes: list[str],
-    vectors,  # numpy (N, D) float32
-    config: EmbeddingConfig,
-    run_id: str,
-    created_at: datetime,
-    configuration_hash: str,
-) -> bytes:
-    """Serialize one provenance-complete Parquet part (data.md §7 columns).
-
-    Args:
-        source_hashes: Row source hashes in encode order.
-        vectors: The ``(N, D)`` float32 matrix (order-aligned).
-        config: The run's configuration.
-        run_id: The minted run id.
-        created_at: The run's wall-clock commit time.
-        configuration_hash: The run's configuration hash (row column).
-
-    Returns:
-        The Parquet part bytes.
-    """
-    dimension = int(vectors.shape[1])
-    table = pa.table(
-        {
-            "source_hash": pa.array(source_hashes, type=pa.string()),
-            "embedding": pa.array(vectors.tolist(), type=pa.list_(pa.float32())),
-            "model": pa.array(
-                [config.model_name] * len(source_hashes), type=pa.string()
-            ),
-            "model_version": pa.array(
-                [config.model_revision] * len(source_hashes), type=pa.string()
-            ),
-            "input_artifact": pa.array(
-                [config.input_artifact] * len(source_hashes), type=pa.string()
-            ),
-            "input_version": pa.array(
-                [config.input_version] * len(source_hashes), type=pa.string()
-            ),
-            "embedding_dimension": pa.array(
-                [dimension] * len(source_hashes), type=pa.int64()
-            ),
-            "normalization": pa.array(
-                ["l2" if config.normalize else "none"] * len(source_hashes),
-                type=pa.string(),
-            ),
-            "created_at": pa.array(
-                [created_at] * len(source_hashes), type=pa.timestamp("us")
-            ),
-            "configuration_hash": pa.array(
-                [configuration_hash] * len(source_hashes), type=pa.string()
-            ),
-            "run_id": pa.array([run_id] * len(source_hashes), type=pa.string()),
-        }
-    )
-    sink = pa.BufferOutputStream()
-    pq.write_table(table, sink)
-    return sink.getvalue().to_pybytes()
 
 
 def _manifest_bytes(
@@ -259,8 +222,10 @@ def run_embedding(
     now_fn = now if now is not None else (lambda: datetime.now(UTC))
     digest = ensure_config_object(store, config)
     report: ReconcileReport | None = None
+    recovered: list[dict[str, Any]] = []
     if reconcile:
         report = reconcile_configuration(store, config, as_of=now_fn())
+        recovered = heal_orphan_checkpoints(store, config, as_of=now_fn())
     run_id = ids.new_id()
     created_at = now_fn()
     pipeline_version = pipeline_version or resolve_pipeline_version()
@@ -294,11 +259,17 @@ def run_embedding(
             part_keys=[],
             dataset_manifest_key=None,
             reconcile=report,
+            recovered=recovered,
         )
 
     batch_size = max(1, config.batch_size)
-    part_keys: list[str] = []
-    embedded_total = 0
+    writer = FlushWriter(
+        store,
+        run_id=run_id,
+        config=config,
+        configuration_hash=digest,
+        created_at=created_at,
+    )
     for index, start in enumerate(range(0, len(usable), batch_size), start=1):
         chunk = usable[start : start + batch_size]
         source_hashes = [pair[0] for pair in chunk]
@@ -308,22 +279,17 @@ def run_embedding(
             raise RuntimeError(
                 f"encoder returned {vectors.shape[0]} rows for {len(chunk)} texts"
             )
-        key = keys.embedding_part(
-            config.model_segment, config.variant, config.version, run_id, index
+        writer.add_batch(
+            batch_id=f"encode-{index:04d}",
+            source_hashes=source_hashes,
+            vectors=vectors,
         )
-        store.put(
-            key,
-            _part_bytes(
-                source_hashes,
-                vectors,
-                config,
-                run_id,
-                created_at,
-                digest,
-            ),
-        )
-        part_keys.append(key)
-        embedded_total += len(chunk)
+        writer.maybe_flush()  # dwell across CPU encode windows
+    writer.maybe_flush(queue_empty=True)  # drained: run input exhausted
+    writer.flush_final()  # stop: remainder, interrupt-safe
+    flushes = writer.results
+    part_keys = [checkpoint["part_key"] for checkpoint in flushes]
+    embedded_total = sum(checkpoint["row_count"] for checkpoint in flushes)
 
     manifest = keys.manifest_dataset(dataset_id(config))
     store.put(
@@ -351,4 +317,6 @@ def run_embedding(
         part_keys=part_keys,
         dataset_manifest_key=manifest,
         reconcile=report,
+        flushes=flushes,
+        recovered=recovered,
     )

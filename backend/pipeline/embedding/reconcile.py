@@ -35,13 +35,16 @@ design's surface (the change's later tasks).
 from __future__ import annotations
 
 import io
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from backend.pipeline.embedding.config import EmbeddingConfig, configuration_hash
+from backend.pipeline.embedding.writer import build_flush_checkpoint
 from backend.storage import keys
 
 # Runs younger than this are treated as possibly in-flight and never pruned.
@@ -196,6 +199,7 @@ def reconcile_configuration(
         if scan.run_id not in eligible:
             continue
         hashes = scan.table.column("source_hash").to_pylist()
+        checkpoint_key = keys.manifest_run_checkpoint(scan.run_id, scan.seq)
         keep = [
             position
             for position in scan.ours
@@ -208,8 +212,27 @@ def reconcile_configuration(
         if keep:
             store.put(scan.key, _take_bytes(scan.table, keep))
             rewritten.append(scan.key)
+            # the part's checkpoint book follows its content — rebuilt from
+            # the surviving rows so books never reference rows that a part
+            # no longer carries
+            checkpoint = build_flush_checkpoint(
+                run_id=scan.run_id,
+                seq=scan.seq,
+                trigger="reconciled",
+                part_key=scan.key,
+                source_hashes=[hashes[position] for position in keep],
+                configuration_hash=digest,
+                batch_range=None,
+                written_at=as_of.isoformat(),
+            )
+            checkpoint["reconciled"] = True
+            store.put(
+                checkpoint_key,
+                json.dumps(checkpoint, indent=2, ensure_ascii=False).encode("utf-8"),
+            )
         else:
             store.delete(scan.key)
+            store.delete(checkpoint_key)  # books follow the part into the void
             deleted.append(scan.key)
 
     canonical_run_id = min(eligible) if eligible else None
@@ -224,6 +247,109 @@ def reconcile_configuration(
         rewritten_parts=rewritten,
         deleted_parts=deleted,
     )
+
+
+def heal_orphan_checkpoints(
+    store,
+    config: EmbeddingConfig,
+    *,
+    as_of: datetime | None = None,
+    min_run_age: timedelta | None = None,
+) -> list[dict[str, Any]]:
+    """Back-fill checkpoints for parts whose checkpoint never landed.
+
+    A part without its checkpoint is the crash-between-puts orphan (the
+    part → checkpoint gap is the only place books can lag rows); its rows
+    are durable either way, so healing restates the books from the part's
+    contents as ``trigger=recovered`` checkpoints with
+    ``recovered: true`` and no batch telemetry — exactly the cleaning
+    stage's recovery shape
+    (:func:`backend.pipeline.cleaning.runs.heal_orphan_checkpoints`),
+    stage-native builder. Runs younger than the guard are deferred as
+    possibly in-flight: racing a live writer's bookkeeping could overwrite
+    its real checkpoint with a ``recovered`` mislabel, and the deferral
+    costs nothing (the next run heals them then).
+
+    Args:
+        store: The object store (real or testing double).
+        config: The healing configuration (its version prefix is scanned).
+        as_of: Reference wall clock; ``None`` uses now (UTC).
+        min_run_age: Orphan parts younger than this (by their rows'
+            ``created_at``) are left for a later run; ``None`` uses
+            :attr:`DEFAULT_MIN_RUN_AGE`, ``timedelta(0)`` disables the guard.
+
+    Returns:
+        The recovery checkpoints written this call (empty when nothing
+        was orphaned).
+
+    Raises:
+        ValueError: on a part whose schema drifts or whose leaf is not
+            run-minted.
+    """
+    if as_of is None:
+        as_of = datetime.now(UTC)
+    if min_run_age is None:
+        min_run_age = DEFAULT_MIN_RUN_AGE
+    prefix = version_prefix(config)
+    existing = _existing_checkpoints(store)
+    recovered: list[dict[str, Any]] = []
+    for part_key in store.list_keys(prefix):
+        if not part_key.endswith(".parquet"):
+            raise ValueError(f"unexpected non-Parquet object in {prefix}: {part_key!r}")
+        run_id, seq = keys.parse_part_leaf(part_key.rsplit("/", 1)[-1])
+        if (run_id, seq) in existing:
+            continue
+        table = pq.read_table(io.BytesIO(store.get(part_key)))
+        for column in ("source_hash", "configuration_hash", "created_at"):
+            if column not in table.column_names:
+                raise ValueError(f"part {part_key!r} is missing column {column!r}")
+        if table.num_rows == 0:
+            raise ValueError(f"part {part_key!r} carries no rows to heal from")
+        max_created = max(
+            _utc(value) for value in table.column("created_at").to_pylist()
+        )
+        if max_created > as_of - min_run_age:
+            continue  # possibly in-flight; never contest a live writer's books
+        checkpoint = build_flush_checkpoint(
+            run_id=run_id,
+            seq=seq,
+            trigger="recovered",
+            part_key=part_key,
+            source_hashes=table.column("source_hash").to_pylist(),
+            configuration_hash=table.column("configuration_hash")[0].as_py(),
+            batch_range=None,
+            written_at=as_of.isoformat(),
+        )
+        checkpoint["recovered"] = True
+        store.put(
+            keys.manifest_run_checkpoint(run_id, seq),
+            json.dumps(checkpoint, indent=2, ensure_ascii=False).encode("utf-8"),
+        )
+        recovered.append(checkpoint)
+    return recovered
+
+
+def _existing_checkpoints(store) -> set[tuple[str, int]]:
+    """Collect all ``(run_id, seq)`` checkpoint pairs under the run root.
+
+    One listing instead of one probe per part — the set covers every
+    historical run, and malformed leaves contribute nothing rather than
+    failing a healing pass (same walk as the cleaning stage's runs module).
+    """
+    existing: set[tuple[str, int]] = set()
+    for key in store.list_keys("lake/manifests/runs/"):
+        parent, leaf = key.rstrip("/").rsplit("/", 1)
+        if not leaf.startswith("flush=") or not leaf.endswith(".json"):
+            continue
+        run_segment = parent.rsplit("/", 1)[-1]
+        if not run_segment.startswith("run_id="):
+            continue
+        try:
+            seq = int(leaf.removeprefix("flush=").removesuffix(".json"))
+        except ValueError:
+            continue
+        existing.add((run_segment.removeprefix("run_id="), seq))
+    return existing
 
 
 def _utc(value: datetime) -> datetime:

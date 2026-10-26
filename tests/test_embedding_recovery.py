@@ -16,6 +16,7 @@ import json
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 
+import numpy as np
 import pyarrow.parquet as pq
 import pytest
 
@@ -26,7 +27,11 @@ from backend.pipeline.embedding.config import (
     dataset_id,
 )
 from backend.pipeline.embedding.encoder import StubEncoder
-from backend.pipeline.embedding.reconcile import reconcile_configuration
+from backend.pipeline.embedding.reconcile import (
+    heal_orphan_checkpoints,
+    reconcile_configuration,
+)
+from backend.pipeline.embedding.writer import build_flush_checkpoint
 from backend.storage import keys
 from tests.conftest import MemorySink
 
@@ -51,6 +56,12 @@ ANTI_SQL = (
 
 # Backdated wall clock: older than the reconcile in-flight guard.
 PAST = datetime(2026, 1, 1, tzinfo=UTC)
+
+# Fixed run ids for synthetic lake states (run-minted part leaf pairing).
+RUN_YOUNG = "01020304-0000-7f7e-a000-0000000000aa"
+RUN_A = "01020304-0000-7f7e-a000-0000000000a1"
+RUN_B = "01020304-0000-7f7e-a000-0000000000b1"
+RUN_C = "01020304-0000-7f7e-a000-0000000000c1"
 
 
 def _config(**kw) -> EmbeddingConfig:
@@ -172,12 +183,16 @@ def _race(
     athena.thaw()
     second_parts = [key for key in _part_keys(store, config) if second.run_id in key]
     assert first.run_id != second.run_id
-    assert len(second_parts) == len(stems) // 2
+    assert len(second_parts) == 1  # buffered: one part per racing run
     return config, first, second, second_parts
 
 
 def _cleaned(*stems: int) -> list[tuple[str, str]]:
     return [(_h(stem), f"text {stem}") for stem in stems]
+
+
+def _vectors(n: int, fill: float) -> np.ndarray:
+    return np.full((n, 8), fill, dtype=np.float32)
 
 
 # --- 3.1 delta-selection idempotence, end to end -----------------------------
@@ -253,7 +268,7 @@ def test_concurrent_runs_duplicate_then_next_run_heals(memory_sink: MemorySink) 
     assert sorted(report.deleted_parts) == sorted(second_parts)
     assert all(first.run_id in key for key in _part_keys(memory_sink, config))
     for key in _part_keys(memory_sink, config):
-        assert _row_run_ids(memory_sink, key) == [first.run_id] * 2
+        assert _row_run_ids(memory_sink, key) == [first.run_id] * len(stems)
 
     counts = _hash_counts(memory_sink, config)
     assert len(counts) == len(stems) and all(count == 1 for count in counts.values())
@@ -291,6 +306,122 @@ def test_reconcile_is_noop_on_clean_lake(memory_sink: MemorySink) -> None:
 
     before = set(memory_sink.objects)
     report = reconcile_configuration(memory_sink, config, min_run_age=timedelta(0))
-    assert report.scanned_parts == 3 and report.duplicate_row_count == 0
+    assert report.scanned_parts == 1 and report.duplicate_row_count == 0
     assert report.rewritten_parts == [] and report.deleted_parts == []
     assert set(memory_sink.objects) == before  # zero writes on a clean lake
+
+
+# --- 3.3/3.4 flush checkpoints + orphan healing -------------------------------
+
+
+def test_orphan_part_back_fills_on_next_run(memory_sink: MemorySink) -> None:
+    config = _config()
+    athena = AntiJoinAthena(memory_sink, config, _cleaned(0, 1, 2))
+    encoder = StubEncoder(dimension=8)
+    crashed = driver.run_embedding(
+        memory_sink, athena, encoder, config, now=lambda: PAST
+    )  # part landed; pretend the crash hit between the two puts
+    orphan_book = keys.manifest_run_checkpoint(crashed.run_id, 1)
+    assert orphan_book in set(memory_sink.objects)
+    memory_sink.delete(orphan_book)
+
+    healed_run = driver.run_embedding(memory_sink, athena, encoder, config)
+    assert healed_run.zero_delta  # selection unaffected — rows were durable
+    assert len(healed_run.recovered) == 1
+    recovered = healed_run.recovered[0]
+    assert recovered["run_id"] == crashed.run_id
+    assert recovered["trigger"] == "recovered" and recovered["recovered"] is True
+    assert recovered["part_key"] == crashed.part_keys[0]
+    assert recovered["row_count"] == 3
+    assert recovered["batch_range"] is None  # rows carry no batch telemetry
+    back = json.loads(memory_sink.get(orphan_book))
+    assert back == recovered  # the book is back on disk
+    counts = _hash_counts(memory_sink, config)
+    assert len(counts) == 3 and all(count == 1 for count in counts.values())
+
+
+def test_heal_defers_young_orphan_parts(memory_sink: MemorySink) -> None:
+    from backend.pipeline.embedding.writer import part_bytes
+
+    config = _config()
+    digest = configuration_hash(config)
+    part_key = keys.embedding_part(
+        config.model_segment, config.variant, config.version, RUN_YOUNG, 1
+    )
+    memory_sink.put(
+        part_key,
+        part_bytes(
+            ["a" * 64],
+            np.array([[1.0] * 8], dtype=np.float32),
+            config,
+            RUN_YOUNG,
+            datetime.now(UTC),
+            digest,
+        ),
+    )  # fresh stamp, no checkpoint — a live-writer-shaped orphan
+
+    assert heal_orphan_checkpoints(memory_sink, config) == []  # deferred
+
+    recovered = heal_orphan_checkpoints(memory_sink, config, min_run_age=timedelta(0))
+    assert len(recovered) == 1 and recovered[0]["row_count"] == 1
+    assert keys.manifest_run_checkpoint(RUN_YOUNG, 1) in set(memory_sink.objects)
+
+
+def test_reconcile_keeps_books_consistent_with_parts(memory_sink: MemorySink) -> None:
+    from backend.pipeline.embedding.writer import part_bytes
+
+    config = _config()
+    digest = configuration_hash(config)
+    created = PAST
+
+    def _seed(run_id: str, hashes: list[str]) -> None:
+        part_key = keys.embedding_part(
+            config.model_segment, config.variant, config.version, run_id, 1
+        )
+        memory_sink.put(
+            part_key,
+            part_bytes(
+                hashes, _vectors(len(hashes), 1.0), config, run_id, created, digest
+            ),
+        )
+        checkpoint = build_flush_checkpoint(
+            run_id=run_id,
+            seq=1,
+            trigger="rows",
+            part_key=part_key,
+            source_hashes=hashes,
+            configuration_hash=digest,
+            batch_range=["encode-0001", "encode-0001"],
+            written_at="x",
+        )
+        memory_sink.put(
+            keys.manifest_run_checkpoint(run_id, 1),
+            json.dumps(checkpoint).encode("utf-8"),
+        )
+        return part_key
+
+    # run A: [h0, h1] canonical; run B: [h1, h2] → h1 dup, h2 unique;
+    # run C: [h0, h1] fully duplicate
+    _seed(RUN_A, ["0" * 64, "1" * 64])  # canonical run — untouched
+    part_b = _seed(RUN_B, ["1" * 64, "2" * 64])
+    part_c = _seed(RUN_C, ["0" * 64, "1" * 64])
+    book_a = keys.manifest_run_checkpoint(RUN_A, 1)
+    book_c = keys.manifest_run_checkpoint(RUN_C, 1)
+
+    report = reconcile_configuration(memory_sink, config, min_run_age=timedelta(0))
+    assert report.duplicate_row_count == 3  # h1 twice, h0+h1 once more
+    assert report.rewritten_parts == [part_b] and report.deleted_parts == [part_c]
+
+    # run C's part is gone AND its book with it — no dangling checkpoint
+    assert book_c not in set(memory_sink.objects)
+    assert part_c not in set(memory_sink.objects)
+    # run B's rewritten part holds only its unique row; its book retruths it
+    book_b = json.loads(memory_sink.get(keys.manifest_run_checkpoint(RUN_B, 1)))
+    assert book_b["trigger"] == "reconciled" and book_b["reconciled"] is True
+    assert book_b["row_count"] == 1 and book_b["source_hashes"] == ["2" * 64]
+    assert book_b["batch_range"] is None
+    assert part_b in set(memory_sink.objects)
+    # run A untouched, book intact (content-addressed survivor)
+    assert json.loads(memory_sink.get(book_a))["row_count"] == 2
+    counts = _hash_counts(memory_sink, config)
+    assert len(counts) == 3 and all(count == 1 for count in counts.values())

@@ -106,13 +106,16 @@ def test_round_trip_commits_parts_and_manifest(memory_sink: MemorySink) -> None:
 
     assert summary.selected == 3 and summary.embedded == 3 and summary.empty == 0
     assert not summary.zero_delta
-    assert len(summary.part_keys) == 2  # batch_size 2 -> parts seq 1,2
-    for seq, key in enumerate(summary.part_keys, start=1):
-        assert key == keys.embedding_part(
-            "all-minilm-l6-v2", "minilm", "v1", summary.run_id, seq
-        )
+    # the buffered writer decouples part size from the encode batch size:
+    # batch_size 2 bites in 2-row windows, but the default flush_rows=128
+    # keeps the part whole until the run drains — one part, seq 1
+    assert len(summary.part_keys) == 1
+    part_key = summary.part_keys[0]
+    assert part_key == keys.embedding_part(
+        "all-minilm-l6-v2", "minilm", "v1", summary.run_id, 1
+    )
     # parts are validated keys and readable parquet with the full schema
-    table = _read_part(memory_sink, summary.part_keys[0])
+    table = _read_part(memory_sink, part_key)
     expected_cols = {
         "source_hash",
         "embedding",
@@ -128,14 +131,24 @@ def test_round_trip_commits_parts_and_manifest(memory_sink: MemorySink) -> None:
     }
     assert set(table.column_names) == expected_cols
     vectors = np.stack(table["embedding"].to_pylist())
-    assert vectors.shape[0] == 2
-    assert table["embedding_dimension"].to_pylist() == [8, 8]
-    assert table["configuration_hash"].to_pylist() == [configuration_hash(config)] * 2
-    assert table["normalization"].to_pylist() == ["l2", "l2"]
-    # order preserved across batch windows
-    assert table["source_hash"].to_pylist() == [H1, H2]
-    table2 = _read_part(memory_sink, summary.part_keys[1])
-    assert table2["source_hash"].to_pylist() == [H3]
+    assert vectors.shape[0] == 3
+    assert table["embedding_dimension"].to_pylist() == [8, 8, 8]
+    assert table["configuration_hash"].to_pylist() == [configuration_hash(config)] * 3
+    assert table["normalization"].to_pylist() == ["l2", "l2", "l2"]
+    # order preserved across batch windows (whole-buffer flush order)
+    assert table["source_hash"].to_pylist() == [H1, H2, H3]
+
+    # flush books: one checkpoint, part first then checkpoint, run-scoped
+    assert len(summary.flushes) == 1
+    flush = summary.flushes[0]
+    assert flush["trigger"] == "drained"  # queue emptied at end of run
+    assert flush["part_key"] == part_key
+    assert flush["row_count"] == 3
+    assert flush["batch_range"] == ["encode-0001", "encode-0002"]
+    assert flush["counters"] == {"embedded": 3}
+    check_key = keys.manifest_run_checkpoint(summary.run_id, 1)
+    stored_flush = json.loads(memory_sink.get(check_key))
+    assert stored_flush == flush
 
     manifest = json.loads(memory_sink.get(summary.dataset_manifest_key))
     assert manifest["dataset_id"] == dataset_id(config)
@@ -194,12 +207,6 @@ def test_empty_sql_text_rejected(memory_sink: MemorySink) -> None:
         driver.run_embedding(
             memory_sink, FakeAthena([]), StubEncoder(8), _config(sql_text="")
         )
-
-
-@pytest.fixture
-def journal() -> JournalSink:
-    """A fresh put-order-recording sink per test."""
-    return JournalSink()
 
 
 def test_config_object_write_is_idempotent(journal: JournalSink) -> None:
