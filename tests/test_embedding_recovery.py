@@ -1,5 +1,5 @@
-"""Recovery tests — delta-selection idempotence end to end and
-concurrent-run reconciliation.
+"""Recovery tests — delta-selection idempotence end to end, concurrent-run
+reconciliation, and interrupt replay (only in-flight work lost).
 
 The selection double here is stronger than the roundtrip's static page: it
 recomputes the ``select_unembedded`` anti-join from the store's own part
@@ -7,6 +7,8 @@ contents (the cache identity lives in the data), so a run observes whatever
 the lake holds at selection time. ``freeze()`` pins a shared page — the
 race's shared invisible state — reproducing the concurrent-run duplicate
 harm that Layer 2 hit live (309 orphan parts) without real concurrency.
+The interrupt cases inject the two crash shapes (a killed encode window and
+a crash landing in the part→checkpoint commit gap) and replay them.
 """
 
 from __future__ import annotations
@@ -44,7 +46,7 @@ def lake_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _h(stem: int) -> str:
-    return f"{stem}" * 64
+    return f"{stem:064x}"  # 64 lowercase hex chars, valid source_hash
 
 
 ANTI_SQL = (
@@ -425,3 +427,157 @@ def test_reconcile_keeps_books_consistent_with_parts(memory_sink: MemorySink) ->
     assert json.loads(memory_sink.get(book_a))["row_count"] == 2
     counts = _hash_counts(memory_sink, config)
     assert len(counts) == 3 and all(count == 1 for count in counts.values())
+
+
+# --- 3.5/3.6 interrupt replay: only in-flight work lost ----------------------
+
+
+class _KilledEncoder(StubEncoder):
+    """Stub that dies before its Nth encode window (a mid-run kill).
+
+    The killed window never reaches ``calls`` — it was in flight when the
+    process died, which is exactly the work an interrupt is allowed to lose.
+    """
+
+    def __init__(self, dimension: int, kill_before_batch: int) -> None:
+        super().__init__(dimension)
+        self.kill_before_batch = kill_before_batch
+
+    def encode(self, texts: list[str]) -> np.ndarray:
+        if len(self.calls) + 1 >= self.kill_before_batch:
+            raise RuntimeError("simulated mid-run kill")
+        return super().encode(texts)
+
+
+def _row_multiset(
+    store: MemorySink, config: EmbeddingConfig
+) -> Counter[tuple[str, tuple[float, ...]]]:
+    """The configuration's full ``(source_hash, embedding)`` row multiset."""
+    digest = configuration_hash(config)
+    rows: list[tuple[str, tuple[float, ...]]] = []
+    for key in _part_keys(store, config):
+        table = pq.read_table(io.BytesIO(store.get(key)))
+        for src, cfg, vec in zip(
+            table.column("source_hash").to_pylist(),
+            table.column("configuration_hash").to_pylist(),
+            table.column("embedding").to_pylist(),
+        ):
+            if cfg == digest:
+                rows.append((src, tuple(vec)))
+    return Counter(rows)
+
+
+def _golden_run(
+    config: EmbeddingConfig, cleaned: list[tuple[str, str]]
+) -> Counter[tuple[str, tuple[float, ...]]]:
+    """The uninterrupted run's golden row multiset (its own lake)."""
+    golden_store = MemorySink()
+    driver.run_embedding(
+        golden_store,
+        AntiJoinAthena(golden_store, config, cleaned),
+        StubEncoder(dimension=8),
+        config,
+        now=lambda: PAST,
+    )
+    return _row_multiset(golden_store, config)
+
+
+def test_crash_between_part_and_checkpoint_keeps_rows_durable(
+    memory_sink: MemorySink,
+) -> None:
+    config = _config()
+    cleaned = _cleaned(*range(256))  # 2 row-threshold flushes (128 rows each)
+    athena = AntiJoinAthena(memory_sink, config, cleaned)
+    encoder = StubEncoder(dimension=8)
+    full = driver.run_embedding(memory_sink, athena, encoder, config, now=lambda: PAST)
+    assert len(full.part_keys) == 2
+    book1 = keys.manifest_run_checkpoint(full.run_id, 1)
+    book2 = keys.manifest_run_checkpoint(full.run_id, 2)
+    memory_sink.delete(book2)  # crash between part 2's put and its checkpoint
+
+    calls_before = len(encoder.calls)
+    healed = driver.run_embedding(memory_sink, athena, encoder, config)
+    assert healed.zero_delta  # rows were durable — nothing re-encodes
+    assert len(encoder.calls) == calls_before  # zero encode windows on rerun
+    assert [book["seq"] for book in healed.recovered] == [2]
+    recovered = healed.recovered[0]
+    assert recovered["trigger"] == "recovered"
+    assert recovered["part_key"] == full.part_keys[1]
+    assert recovered["row_count"] == 128
+    assert json.loads(memory_sink.get(book2)) == recovered
+    # the untouched flush's live book survives verbatim (not a rebuilt one)
+    assert json.loads(memory_sink.get(book1))["trigger"] == "rows"
+
+    counts = _hash_counts(memory_sink, config)
+    assert len(counts) == 256 and all(count == 1 for count in counts.values())
+    assert _row_multiset(memory_sink, config) == _golden_run(config, cleaned)
+
+
+def test_kill_mid_run_after_n_flushes_loses_only_inflight_batch(
+    memory_sink: MemorySink,
+) -> None:
+    config = _config()
+    cleaned = _cleaned(*range(320))
+    athena = AntiJoinAthena(memory_sink, config, cleaned)
+    encoder = _KilledEncoder(dimension=8, kill_before_batch=129)
+    # batch_size=2 flushes every 64 batches → the kill lands after N = 2
+    # completed flushes (256 committed rows), batch 129 in flight
+    with pytest.raises(RuntimeError, match="simulated mid-run kill"):
+        driver.run_embedding(memory_sink, athena, encoder, config, now=lambda: PAST)
+    assert len(encoder.calls) == 128  # windows completed before the kill
+
+    ordered = sorted(cleaned, key=lambda pair: pair[0])  # the anti-join's order
+    committed = {hash_ for hash_, _text in ordered[:256]}
+    in_flight = {hash_ for hash_, _text in ordered[256:]}
+
+    parts = _part_keys(memory_sink, config)
+    assert len(parts) == 2  # exactly the two flushes' parts survived
+    counts = _hash_counts(memory_sink, config)
+    assert len(counts) == 256 and set(counts) == committed
+    assert not (committed & in_flight)  # the in-flight batch never landed
+
+    # the kill missed the commit gap: part and checkpoint pairs are intact
+    run_ids = {keys.parse_part_leaf(key.rsplit("/", 1)[-1])[0] for key in parts}
+    assert len(run_ids) == 1
+    for key in parts:
+        _run_id, seq = keys.parse_part_leaf(key.rsplit("/", 1)[-1])
+        assert keys.manifest_run_checkpoint(_run_id, seq) in set(memory_sink.objects)
+    # the killed run wrote no dataset manifest (the put happens after the loop)
+    assert keys.manifest_dataset(dataset_id(config)) not in set(memory_sink.objects)
+
+
+def test_rerun_after_kill_reconciles_to_golden_multiset(
+    memory_sink: MemorySink,
+) -> None:
+    config = _config()
+    cleaned = _cleaned(*range(320))
+    athena = AntiJoinAthena(memory_sink, config, cleaned)
+    with pytest.raises(RuntimeError, match="simulated mid-run kill"):
+        driver.run_embedding(
+            memory_sink,
+            athena,
+            _KilledEncoder(dimension=8, kill_before_batch=129),
+            config,
+            now=lambda: PAST,
+        )
+
+    ordered = sorted(cleaned, key=lambda pair: pair[0])
+    missing = [pair for pair in ordered[256:]]  # the in-flight batch + tail
+    rerun_encoder = StubEncoder(dimension=8)
+    rerun = driver.run_embedding(memory_sink, athena, rerun_encoder, config)
+
+    assert not rerun.zero_delta and (rerun.selected, rerun.embedded) == (64, 64)
+    assert rerun.recovered == []  # books intact — no commit gap to heal
+    # only the in-flight rows re-encode: each missing row exactly once,
+    # every committed row never again
+    rerun_texts = [text for call in rerun_encoder.calls for text in call]
+    assert Counter(rerun_texts) == Counter(text for _hash, text in missing)
+
+    counts = _hash_counts(memory_sink, config)
+    assert len(counts) == 320 and all(count == 1 for count in counts.values())
+    assert _row_multiset(memory_sink, config) == _golden_run(config, cleaned)
+
+    # and the steady state holds: a third run is the zero-write no-op
+    before = set(memory_sink.objects)
+    steady = driver.run_embedding(memory_sink, athena, rerun_encoder, config)
+    assert steady.zero_delta and set(memory_sink.objects) == before
