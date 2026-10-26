@@ -1,0 +1,160 @@
+"""Embedding-tier CLI: build the config, hash it, run the embedding driver.
+
+The entry point mirrors the cleaning tier's driver convention: local runs
+load ``.env`` via :func:`dotenv`, the shared Athena runner owns region rules
+and workgroups, and the summary JSON is the observable outcome (the
+Layer-4 run record will persist it). The run is delta-only: the
+``select_unembedded`` anti-join selects postings with no embedding row for
+the run's ``configuration_hash``, so re-runs land the healthy no-op
+(``embedded: 0``) and config changes re-embed under a new version prefix.
+
+Config identity: flags build the config object; ``--revision auto``
+resolves the current latest revision (printed once — provenance stays the
+pinned string in the config, and the encoder asserts it at load; ambient
+resolution never reaches provenance). ``--write-config-to`` dumps the exact
+resolved config JSON for reproducible re-runs (``--config-file``), since
+the hash is part of the identity and flags must not drift between runs.
+
+Usage::
+
+    python scripts/embed.py \\           # first module run (deterministic)
+        --model sentence-transformers/all-MiniLM-L6-v2 --variant minilm
+    python scripts/embed.py --config-file embedding-config.json   # re-runs
+    python scripts/embed.py ... --write-config-to embedding-config.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from dataclasses import asdict
+
+from dotenv import load_dotenv
+
+from backend.pipeline.athena import aws_region
+from backend.pipeline.embedding import selection
+from backend.pipeline.embedding.config import (
+    DEFAULT_INPUT_ARTIFACT,
+    EmbeddingConfig,
+    default_model_segment,
+)
+from backend.pipeline.embedding.driver import (
+    DATABASE_DEFAULT,
+    WORKGROUP_DEFAULT,
+    run_embedding,
+)
+from backend.pipeline.embedding.encoder import resolve_pinned_revision
+
+
+def build_config(args: argparse.Namespace) -> EmbeddingConfig:
+    """Resolve CLI flags (or a config file) into the run configuration.
+
+    Args:
+        args: The parsed CLI namespace.
+
+    Returns:
+        The embedding configuration.
+
+    Raises:
+        OSError: a missing config file or unreadable SQL file.
+        ValueError: a revision could not be resolved from ``auto``.
+    """
+    if args.config_file:
+        with open(args.config_file, encoding="utf-8") as handle:
+            return EmbeddingConfig(**json.load(handle))
+
+    model_name = args.model
+    revision = (
+        args.revision
+        if args.revision != "auto"
+        else resolve_pinned_revision(model_name)
+    )
+    if args.sql_file:
+        with open(args.sql_file, encoding="utf-8") as handle:
+            sql_text = handle.read().strip()
+    else:
+        sql_text = selection.select_unembedded_sql()
+    return EmbeddingConfig(
+        model_name=model_name,
+        model_revision=revision,
+        model_segment=args.model_segment or default_model_segment(model_name),
+        variant=args.variant,
+        text_variant=args.text_variant,
+        fallback_text_variant=args.fallback_text_variant,
+        batch_size=args.batch_size,
+        max_length=args.max_length,
+        normalize=True,
+        input_artifact=args.input_artifact,
+        input_version=args.input_version,
+        version=args.version,
+        sql_text=sql_text,
+    )
+
+
+def main() -> None:
+    """CLI flow: resolve settings → one embedding run → summary JSON."""
+    load_dotenv()  # local convention; containers rely on task-def env
+    parser = argparse.ArgumentParser(
+        prog="python scripts/embed.py",
+        description="Embedding tier: anti-join delta selection → CPU encode "
+        "→ lake parts + dataset manifest, with configuration-hash provenance.",
+    )
+    parser.add_argument("--config-file", default=None)
+    parser.add_argument("--model", default="sentence-transformers/all-MiniLM-L6-v2")
+    parser.add_argument(
+        "--revision",
+        default="auto",
+        help='pinned model revision; "auto" resolves the current latest (printed)',
+    )
+    parser.add_argument("--model-segment", default=None)
+    parser.add_argument("--variant", default="minilm")
+    parser.add_argument("--text-variant", default="variant_text")
+    parser.add_argument("--fallback-text-variant", default=None)
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument("--input-artifact", default=DEFAULT_INPUT_ARTIFACT)
+    parser.add_argument("--input-version", default="v1")
+    parser.add_argument("--version", default="v1")
+    parser.add_argument("--sql-file", default=None)
+    parser.add_argument("--database", default=DATABASE_DEFAULT)
+    parser.add_argument("--workgroup", default=WORKGROUP_DEFAULT)
+    parser.add_argument(
+        "--write-config-to",
+        default=None,
+        help="dump the resolved config JSON for deterministic re-runs",
+    )
+    args = parser.parse_args()
+
+    config = build_config(args)
+    if args.write_config_to:
+        with open(args.write_config_to, "w", encoding="utf-8") as handle:
+            json.dump(asdict(config), handle, indent=2, sort_keys=True)
+
+    import boto3
+
+    from backend.storage.store import ObjectStore
+
+    athena = boto3.Session().client("athena", region_name=aws_region())
+    summary = run_embedding(
+        ObjectStore.from_env(),
+        athena,
+        _encoder_for(config),
+        config,
+        database=args.database,
+        workgroup=args.workgroup,
+    )
+    print(summary_json(summary))
+
+
+def _encoder_for(config: EmbeddingConfig):
+    from backend.pipeline.embedding.encoder import SentenceEncoder
+
+    return SentenceEncoder(config)
+
+
+def summary_json(summary) -> str:
+    return json.dumps(asdict(summary), indent=2)
+
+
+if __name__ == "__main__":
+    main()

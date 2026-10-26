@@ -83,6 +83,28 @@ ARTIFACTS_COLUMNS: list[tuple[str, str]] = [
     ("created_at", "timestamp"),
 ]
 
+EMBEDDINGS_TABLE = "postings_embeddings"
+
+# The embedding row schema (driver.py _part_bytes, data.md §7 + provenance):
+# Parquet parts under lake/embeddings/<model-segment>/<variant>/<version>/.
+# select_unembedded.sql anti-joins this table on (source_hash,
+# configuration_hash); the location is pinned to the v1 minilm generation —
+# a model/variant/version bump updates this registration (additive,
+# idempotent, same discipline as the artifacts table).
+EMBEDDINGS_COLUMNS: list[tuple[str, str]] = [
+    ("source_hash", "string"),
+    ("embedding", "array<float>"),
+    ("model", "string"),
+    ("model_version", "string"),
+    ("input_artifact", "string"),
+    ("input_version", "string"),
+    ("embedding_dimension", "bigint"),
+    ("normalization", "string"),
+    ("created_at", "timestamp"),
+    ("configuration_hash", "string"),
+    ("run_id", "string"),
+]
+
 # Full ingestion-manifest row schema (header + observation, manifest.py).
 INGESTION_COLUMNS: list[tuple[str, str]] = [
     ("source", "string"),
@@ -279,6 +301,39 @@ def _create_artifacts_table(glue, database: str, bucket: str) -> None:
     _apply_managed_table(glue, database, ARTIFACTS_TABLE, table_input)
 
 
+def embeddings_location(bucket: str) -> str:
+    """The embeddings table's pinned location (the v1 minilm generation).
+
+    Args:
+        bucket: The lake bucket name.
+
+    Returns:
+        The ``s3://`` location string.
+    """
+    return (
+        f"s3://{bucket}/lake/embeddings/"
+        "model=all-minilm-l6-v2/variant=minilm/version=v1/"
+    )
+
+
+def _create_embeddings_table(glue, database: str, bucket: str) -> None:
+    """Register ``postings_embeddings`` over the v1 minilm vector parts."""
+    table_input = {
+        "Name": EMBEDDINGS_TABLE,
+        "TableType": "EXTERNAL_TABLE",
+        "StorageDescriptor": {
+            "Location": embeddings_location(bucket),
+            "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+            "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+            "SerdeInfo": {
+                "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
+            },
+            "Columns": [{"Name": c, "Type": t} for c, t in EMBEDDINGS_COLUMNS],
+        },
+    }
+    _apply_managed_table(glue, database, EMBEDDINGS_TABLE, table_input)
+
+
 def _create_workgroup(athena, name: str, bucket: str, max_bytes: int) -> None:
     try:
         athena.get_work_group(WorkGroup=name)
@@ -346,6 +401,10 @@ def provision(
             ),
             "columns": [c for c, _ in ARTIFACTS_COLUMNS],
         },
+        "postings_embeddings": {
+            "location": embeddings_location(bucket),
+            "columns": [c for c, _ in EMBEDDINGS_COLUMNS],
+        },
         "athena": {
             "workgroup": workgroup,
             "output_location": f"s3://{bucket}/athena-results/",
@@ -364,6 +423,7 @@ def provision(
         _create_raw_table(glue, database, bucket, table, source, columns)
     _create_ingestion_manifest_table(glue, database, bucket)
     _create_artifacts_table(glue, database, bucket)
+    _create_embeddings_table(glue, database, bucket)
     _create_workgroup(athena, workgroup, bucket, max_scan_bytes)
     print("provision complete")
     return plan

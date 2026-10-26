@@ -7,9 +7,8 @@ them rather than by string interpolation.
 
 This module implements the legacy ``live`` and ``configs`` branches plus the
 lakehouse ``lake`` branch. The lakehouse is being migrated branch-by-branch,
-key builders first; the ``raw``, ``artifacts``, ``eval``, and all ``manifests``
-builders have landed, while ``embeddings`` remains reserved by the layout and
-is added here when that phase arrives.
+key builders first; the ``raw``, ``artifacts``, ``eval``, ``embeddings``, and
+all ``manifests`` builders have now landed.
 
 Lakehouse ``raw`` objects are **content-addressed**: identity is the SHA-256 of
 the verbatim payload, not a posting id. ``raw_payload`` emits
@@ -28,7 +27,7 @@ content hashing live in :mod:`backend.storage.ids`; this module only validates
 and places id/hash tokens in keys. Because ids are ``[0-9a-f-]``, **every**
 segment in a key is lowercase; there is no uppercase exception.
 
-Public builders:
+    Public builders:
     - ``raw_payload(source, content_hash)`` -> ``lake/raw/source=<source>/sha256=<hash>.json``
     - ``manifest_ingestion(ingested_on, ingestion_id)`` ->
       ``lake/manifests/ingestion/ingested_on=<date>/ingestion_id=<uuid7>.parquet``
@@ -38,6 +37,8 @@ Public builders:
       ``lake/eval/datasets/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
     - ``eval_result(type, variant, version, run_id, seq)`` ->
       ``lake/eval/results/type=<type>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+    - ``embedding_part(model, variant, version, run_id, seq)`` ->
+      ``lake/embeddings/model=<model>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
     - ``manifest_dataset(dataset_id)``     -> ``lake/manifests/datasets/<dataset-id>.json``
     - ``manifest_run(run_id)``             -> ``lake/manifests/runs/run_id=<run-id>/run.json``
     - ``manifest_run_checkpoint(run_id, seq)`` ->
@@ -48,7 +49,7 @@ Public builders:
     - ``embedding(model, variant, v, id)`` -> ``live/embeddings/<model>/<variant>/v<v>/<id>.npy``
     - ``config(hash)``           -> ``configs/<hash>.json``
 
-Validators:
+    Validators:
     - ``validate_key(key)`` raises ``ValueError`` on a malformed key.
 """
 
@@ -407,6 +408,43 @@ def eval_result(
     )
 
 
+def embedding_part(
+    model: str, variant: str, version: str, run_id: str, seq: int
+) -> str:
+    """Key for one Parquet part of an embedding dataset version.
+
+    ``lake/embeddings/model=<model>/variant=<variant>/version=<version>/part-<run-id>-<seq>.parquet``
+
+    Embeddings are grouped model-first (data.md §7): a vector is a row in a
+    model's corpus space, so the ``model`` partition leads. ``model`` names the
+    model family segment (lowercased, slash-free; the full model id rides in
+    each row's ``model`` column) — ``variant`` names the producing method and
+    stays open. Like every dataset version, versions add and never overwrite:
+    a configuration change re-embeds into a new ``version`` prefix rather than
+    rewriting vector space. The run-minted part leaf names the producing run
+    and its 1-based flush sequence (see :func:`_part_leaf`).
+
+    Args:
+        model: Model family segment (e.g. ``all-minilm-l6-v2``).
+        variant: Producing method segment (e.g. ``minilm``).
+        version: Version token ``vN``.
+        run_id: Canonical UUIDv7 of the pipeline run that wrote this part.
+        seq: 1-based flush sequence within the run.
+
+    Returns:
+        The well-formed embedding part key.
+
+    Raises:
+        ValueError: if any segment is malformed.
+    """
+    return (
+        f"lake/embeddings/model={_check(model, name='model')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='embedding version')}/"
+        f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
 def manifest_dataset(dataset_id: str) -> str:
     """Key for a dataset manifest (one JSON object per dataset generation).
 
@@ -689,6 +727,26 @@ def _validate_lake_eval(key: str, rest: list[str]) -> None:
     _check_part_leaf(key, rest[-1])
 
 
+def _validate_lake_embeddings(key: str, rest: list[str]) -> None:
+    """Semantic checks for the ``lake/embeddings`` key shape.
+
+    ``lake/embeddings/model=<model>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
+
+    Pins the branch, the three Hive partitions in order (model-first per
+    data.md §7), the ``vN`` version token, and the run-minted part leaf —
+    the branch is no longer merely reserved; its positional layout is
+    enforced like the other dataset branches.
+    """
+    if len(rest) != 5 or rest[0] != "embeddings":
+        raise ValueError(
+            f"key {key!r} must be lake/embeddings/model=<model>"
+            f"/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet"
+        )
+    values = _validated_partitions(key, rest[1:4], ["model", "variant", "version"])
+    _check_version(values[2], name="embedding version")
+    _check_part_leaf(key, rest[-1])
+
+
 def _validate_dataset_manifest(key: str, rest: list[str]) -> None:
     """Semantic checks for the ``lake/manifests/datasets`` key shape.
 
@@ -792,18 +850,19 @@ def validate_key(key: str) -> str:
         lowercase;
       - ``lake/raw`` keys additionally pin the whole content-addressed shape
         (allowlisted ``source`` partition, ``sha256=<hash>.json`` leaf);
-      - ``lake/artifacts`` and ``lake/eval/<datasets|results>`` pin their
-        ``type``/``variant``/``version`` partition stack and the run-minted
-        ``part-<run-id>-<seq>.parquet`` leaf;
+      - ``lake/artifacts``, ``lake/eval/<datasets|results>``, and
+        ``lake/embeddings`` pin their ``type|model``/``variant``/``version``
+        partition stacks and the run-minted ``part-<run-id>-<seq>.parquet``
+        leaf;
       - ``lake/manifests`` pins each sub-branch's shape: batch ingestion
         manifests (``ingested_on`` partition, ``ingestion_id`` leaf), dataset
         manifests (addressed ``<dataset-id>.json`` leaf), and runs (grouped
         ``run_id`` segment with ``run.json`` / ``flush=<seq>.json`` leaves);
       - no trailing slash; no leading slash.
 
-    Reserved ``lake`` branches (``embeddings``) are not yet pinned to a shape:
-    they pass the general rules above but their positional layouts are only
-    enforced once their builders land.
+    The once-reserved ``lake/embeddings`` branch is now pinned the same way:
+    its builder (:func:`embedding_part`) and shape validator have landed with
+    the embedding-pipeline change.
     """
     if not key or key.startswith("/"):
         raise ValueError(f"key must not be empty or start with '/': {key!r}")
@@ -858,6 +917,9 @@ def validate_key(key: str) -> str:
 
     if bucket == "lake" and rest[:1] == ["eval"]:
         _validate_lake_eval(key, rest)
+
+    if bucket == "lake" and rest[:1] == ["embeddings"]:
+        _validate_lake_embeddings(key, rest)
 
     if bucket == "lake" and rest[:2] == ["manifests", "ingestion"]:
         _validate_lake_manifest(key, rest)

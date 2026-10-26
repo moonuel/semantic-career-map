@@ -28,6 +28,7 @@ The cleaned-artifacts pipeline (spec + landed code) already proved the pattern: 
 ## Impact
 
 - **Code:** new `backend/pipeline/embedding/` (`config.py`, `encoder.py`, `driver.py`); `backend/storage/keys.py` gains `embedding_part` + the `lake/embeddings` shape pinner; `scripts/embed.py` CLI; `scripts/inspect_embeddings.py` read-only. Existing `scripts/00N_*` untouched.
+- **Deploy:** `deploy/task-definition-embed.json` (clone of the clean task's contract) + an ECR image with the model baked in + an EventBridge schedule mirroring the clean cadence — the cleaning tier's batch shape, validated at the Layer 3 gate on the *final* reliability surface; SageMaker stays out of scope (design.md decision 5).
 - **Spike:** `scripts/embed_spike.py` is a tracked throwaway proving the seam; deleted in its own commit once Layer 2 extraction re-runs clean (feature-plan lifecycle).
 - **Data:** new `lake/embeddings/` version prefixes; each version is additive — never overwritten (data.md §5).
 - **Deps:** none added — sentence-transformers, numpy, pyarrow, pandas, boto3 already in `pyproject.toml`.

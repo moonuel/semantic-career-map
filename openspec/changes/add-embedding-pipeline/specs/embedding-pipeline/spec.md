@@ -70,7 +70,7 @@ The system SHALL encode selected rows in configured-size batch windows with orde
 - **THEN** it SHALL carry its `configuration_hash` and `run_id` in the data itself
 
 ### Requirement: Select un-embedded postings by anti-join
-The system SHALL select its input as an Athena anti-join — cleaned artifact rows for the pinned input version joined to produced embedding rows on `(source_hash, configuration_hash)` within the run's `model`/`variant`/`version` partitions — yielding exactly the postings with no embedding row under the run's configuration, mirroring the cleaning tier's `select_uncleaned` semantics.
+The system SHALL select its input as an Athena anti-join — cleaned artifact rows for the pinned input version joined to produced embedding rows on `(source_hash, configuration_hash)` — yielding exactly the postings with no embedding row under the run's configuration, mirroring the cleaning tier's `select_uncleaned` semantics. The run's model/variant/version generation scope comes from the registered table's pinned location, not the query.
 
 #### Scenario: Delta-only selection
 - **WHEN** a run selects its input
@@ -85,11 +85,11 @@ The system SHALL select its input as an Athena anti-join — cleaned artifact ro
 - **THEN** the anti-join SHALL resolve the new `configuration_hash`, so every posting is selected and re-embedded under a new `version=` prefix, with prior version prefixes unchanged
 
 ### Requirement: Embeddings table registered for query-side cache visibility
-The embeddings branch SHALL be registered as a Glue/Athena table over `lake/embeddings/` with `model`, `variant`, and `version` as partition columns, following the additive, idempotent registration pattern of `scripts/provision_query_layer` — otherwise the anti-join cannot see produced vectors, silently re-encoding them.
+The embeddings branch SHALL be registered as a Glue/Athena table following the additive, idempotent registration pattern of `scripts/provision_query_layer`, with its location pinned to one model/variant/version generation (the artifacts table's discipline — partition values live in the location, not the payload); a generation bump updates the registration. The anti-join joins payload columns `source_hash`/`configuration_hash` — without the registration it cannot see produced vectors and silently re-encodes them.
 
-#### Scenario: Registered table prunes to the run's partitions
+#### Scenario: Registration scopes the run's generation
 - **WHEN** the anti-join runs
-- **THEN** the embeddings side SHALL be prunable to the run's `model`/`variant`/`version` partitions and join on `source_hash`/`configuration_hash` columns
+- **THEN** the embeddings side SHALL read only parts under the registered generation's location, joined on the payload cache-identity columns
 
 #### Scenario: Registration verified like the artifacts gate
 - **WHEN** the table is provisioned

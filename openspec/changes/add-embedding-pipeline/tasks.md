@@ -4,28 +4,32 @@ Layered per the feature-plan structure. Verification command listed per task; ea
 
 ## 1. Layer 1 — Baseline spike (prove the seam)
 
-- [ ] 1.1 Write `scripts/embed_spike.py` (hardcoded SQL over `artifacts_cleaned` with LIMIT, hardcoded model/batch/version v1, no manifests/retries/error handling): Athena select → CPU encode (all-MiniLM-L6-v2) → L2 normalize → one Parquet part under `lake/embeddings/version=v1/` → read back → assert norms/dimension/count. Verification: `python scripts/embed_spike.py` runs clean and prints the reconcile summary.
-- [ ] 1.2 **Checkpoint (user gate):** spike output presented; go / kill / redirect.
+- [x] 1.1 Write `scripts/embed_spike.py` (hardcoded SQL over `artifacts_cleaned` with LIMIT, hardcoded model/batch/version v1, no manifests/retries/error handling): Athena select → CPU encode (all-MiniLM-L6-v2) → L2 normalize → one Parquet part under `lake/embeddings/version=v1/` → read back → assert norms/dimension/count. Verification: `python scripts/embed_spike.py` runs clean and prints the reconcile summary. DONE 2026-10-26: 25 rows, dim 384, norms within tolerance.
+- [x] 1.2 **Checkpoint (user gate):** spike output presented; go / kill / redirect. PASSED (user approved Layer 2).
 
 ## 2. Layer 2 — Extraction (harvest spike into modules)
 
-- [ ] 2.1 `backend/pipeline/embedding/config.py` — config dataclass + `configuration_hash()` (canonical, field-order-fixed, no runtime-affine values). Tests: `tests/test_embedding_config.py`. Verification: scoped pytest green.
-- [ ] 2.2 `backend/pipeline/embedding/encoder.py` — order-preserving `encode(texts) -> float32`, norm 1.0 ± 1e-5, `device="cpu"`, revision fail-fast, injectable encoder. Tests: `tests/test_embedding_encode.py` (stub encoder, no model download). Verification: scoped pytest green.
-- [ ] 2.3 `backend/storage/keys.py` — `embedding_part(...)` builder + `_validate_lake_embeddings` shape pinner in `validate_key`; docstring builder index updated. Tests: `tests/test_embedding_keys.py`. Verification: scoped pytest green + `pytest tests/test_keys.py` regression.
-- [ ] 2.4 `backend/pipeline/embedding/driver.py` — anti-join delta selection through the shared Athena runner (select only postings with no embedding row for the run's `configuration_hash`; zero-row delta → healthy no-op `completed` record, no store writes), variant fallback, loud empty accounting, pre-write abort → batch encode → per-batch Parquet part commits → one dataset manifest per run; `scripts/embed.py` CLI (config JSON, `--sql-file`, configurable output paths). Tests: `tests/test_embedding_pipeline_roundtrip.py` (fake Athena double + local Garage store). Verification: round-trip test green; full `pytest tests/ -v` green.
-- [ ] 2.5 Delta-selection SQL (`select_unembedded` anti-join, adapting `backend/pipeline/selection.py`'s adapter pattern) + Glue/Athena registration of `lake/embeddings/` (`model`/`variant`/`version` partition columns, additive registration mirroring `scripts/provision_query_layer/`) + a store↔table row-count parity gate query. Verification: gate query passes; anti-join against a seeded part returns only un-embedded rows.
-- [ ] 2.6 Mandatory re-run: spike logic reimplemented against the new modules, executed fresh; compare against the spine of the Layer 1 output. Verification: re-run reproduces spike behavior within documented (key/layout) parity; a second run re-selects zero rows (day-2 no-op).
+- [x] 2.1 `backend/pipeline/embedding/config.py` — config dataclass + `configuration_hash()` (canonical, field-order-fixed, no runtime-affine values). Tests: `tests/test_embedding_config.py`. Verified: cross-process hash stability (subprocess pair), single-field re-hash, dataset-id uniqueness.
+- [x] 2.2 `backend/pipeline/embedding/encoder.py` — order-preserving `encode(texts) -> float32`, norm 1.0 ± 1e-5, `device="cpu"`, revision fail-fast (`revision_of` best-effort chain), injectable encoder. Tests: `tests/test_embedding_encode.py` (stub models, no downloads).
+- [x] 2.3 `backend/storage/keys.py` — `embedding_part(...)` builder + `_validate_lake_embeddings` shape pinner in `validate_key`; docstring builder index updated. Tests: `tests/test_embedding_keys.py` + `tests/test_keys.py` regression green (241 scoped / 566 full).
+- [x] 2.4 `backend/pipeline/embedding/driver.py` — anti-join delta selection through the shared Athena runner (zero-row delta → healthy no-op summary, no store writes), variant fallback, loud empty accounting, pre-write abort → batch encode → per-batch Parquet part commits → one dataset manifest per run; `scripts/embed.py` CLI (config JSON, `--sql-file`, `--write-config-to` for deterministic re-runs). Tests: `tests/test_embedding_roundtrip.py` (fake Athena double + MemorySink store).
+- [x] 2.5 Delta-selection SQL (`backend/pipeline/sql/select_unembedded.sql` + selection adapter) + Glue/Athena registration of `postings_embeddings` (pinned-location discipline mirroring the artifacts table) + store-vs-table row-count parity gate 4 (`gate.py --embeddings`). Live correction: partition columns are not payload columns — the query filters `configuration_hash` only (revision recorded in this file's §server-side note and docs later). Gate 4 live: store 4442 == table 4442 OK.
+- [x] 2.6 Mandatory re-run: module-based run fresh vs spike — 10/25 spike postings shared, max vector drift 1.49e-8 (extraction lost nothing); second run day-2 no-op `selected 0`. Zombie-run incident (three tool-timeout orphan processes re-encoding the same delta → duplicate `(source_hash, configuration_hash)` rows across 309 parts) pruned; surviving v1 = canonical run only, 4442 rows == 4442 distinct, zero duplicates. Layer 3 gains the concurrent-run idempotence gap as a first-class hardening case.
 - [ ] 2.7 Remove `scripts/embed_spike.py` in its own commit (idea trail preserved in git history).
 - [ ] 2.8 **Checkpoint (user gate):** re-run evidence presented; go / change-order.
 
-## 3. Layer 3 — Hardening (spec-mandated reliability)
+## 3. Layer 3 — Hardening + deployment validation (spec-mandated reliability, then early AWS proof)
 
 - [ ] 3.1 Delta-selection idempotence end-to-end: seeded embeddings + new cleanings → anti-join selects only the new postings; rerun of a fully-selected-and-embedded delta selects zero rows and lands the no-op record. Tests: `tests/test_embedding_recovery.py`.
-- [ ] 3.2 Buffered writer + flush triggers; reuse/extract the cleaned-artifacts writer rather than duplicating (decision recorded in design.md).
-- [ ] 3.3 Flush checkpoints (`manifests/runs/.../flush=<seq>.json`) written strictly after their parts; orphan-part healing.
-- [ ] 3.4 Interrupt replay semantics (only in-flight batch lost; idempotent rerun).
-- [ ] 3.5 Fault-injection tests: crash between part and checkpoint; kill mid-run after N flushes; rerun reconciles to golden row multiset with zero re-encode and zero duplicates. Verification: `pytest tests/test_embedding_recovery.py -v` green (failing-then-passing per case); ruff + mypy clean.
-- [ ] 3.6 **Checkpoint (user gate):** recovery evidence presented; go / change-order.
+- [ ] 3.2 Concurrent-run idempotence (learned live — design.md risk note): two runs sharing a `configuration_hash` race the anti-join and duplicate `(source_hash, configuration_hash)` rows across parts; harden via part-level reconcile or a run-claim lease, with a replay test. Tests: `tests/test_embedding_recovery.py`.
+- [ ] 3.3 Buffered writer + flush triggers; reuse/extract the cleaned-artifacts writer rather than duplicating (decision recorded in design.md).
+- [ ] 3.4 Flush checkpoints (`manifests/runs/.../flush=<seq>.json`) written strictly after their parts; orphan-part healing.
+- [ ] 3.5 Interrupt replay semantics (only in-flight batch lost; idempotent rerun).
+- [ ] 3.6 Fault-injection tests: crash between part and checkpoint; kill mid-run after N flushes; rerun reconciles to golden row multiset with zero re-encode and zero duplicates. Verification: `pytest tests/test_embedding_recovery.py -v` green (failing-then-passing per case); ruff + mypy clean.
+- [ ] 3.7 Deployment validation — `deploy/task-definition-embed.json` (clone of the clean task's contract: entrypoint `scripts/embed.py`, config via pinned `--config-file` object/task env, `STORE_*`/`ATHENA_*` env) + ECR image build with the model baked in (cold-start-free; the decision surface in design.md) + one real `aws ecs run-task` against the real lake. Verification: RunSummary JSON in CloudWatch logs matches the run's local-mode behavior for the same configuration hash.
+- [ ] 3.8 EventBridge schedule (cadence mirroring the clean job's) creation only after 3.7 greens; second-day scheduled run proves the day-2 no-op (`selected: 0`) on real AWS as the deployment health artifact. Verification: next scheduled run's logs show the no-op summary; gate-4 parity remains OK.
+- [ ] 3.9 **Checkpoint (user gate):** local fault-injection evidence AND the deployed run/day-2 no-op presented; go / change-order.
+
 
 ## 4. Layer 4 — Observability + provenance
 
