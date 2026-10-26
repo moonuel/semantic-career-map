@@ -148,6 +148,20 @@ class ObjectStore:
                 return False
             raise
 
+    def delete(self, key: str) -> None:
+        """Remove the object at ``key`` (idempotent, S3 semantics).
+
+        S3's ``delete_object`` succeeds even when the object is absent, so a
+        double-delete race stays clean. Callers should delete only objects
+        they can prove are remediable state (a healing run's emptied
+        duplicate parts) — the lake is otherwise append-only.
+
+        Args:
+            key: The validated object key.
+        """
+        keys.validate_key(key)
+        self._client.delete_object(Bucket=self._bucket, Key=key)
+
     def list_keys(self, prefix: str) -> Iterator[str]:
         """Yield every key under ``prefix`` (paginated)."""
         paginator = self._client.get_paginator("list_objects_v2")

@@ -445,6 +445,39 @@ def embedding_part(
     )
 
 
+def parse_part_leaf(leaf: str) -> tuple[str, int]:
+    """Parse a run-minted part leaf back into ``(run_id, seq)``.
+
+    The complement of :func:`_part_leaf`: reconciliation and healing code
+    groups stored parts by producing run, and the run id lives in the leaf.
+    One parser keeps the round-trip in lockstep with the builder (and with
+    :func:`_check_part_leaf`'s own validation).
+
+    Args:
+        leaf: The ``part-<run-id>-<seq>.parquet`` leaf of a dataset part key.
+
+    Returns:
+        ``(run_id, seq)`` as minted.
+
+    Raises:
+        ValueError: if the leaf is not a run-minted part leaf.
+    """
+    if not leaf.endswith(".parquet"):
+        raise ValueError(f"part leaf must end in '.parquet', got {leaf!r}")
+    base = leaf.removesuffix(".parquet")
+    if not base.startswith("part-"):
+        raise ValueError(f"part leaf must start with 'part-', got {leaf!r}")
+    run_id, sep, seq_digits = base.removeprefix("part-").rpartition("-")
+    if not sep:
+        raise ValueError(f"part leaf must carry '-<seq>', got {leaf!r}")
+    _check_id(run_id, name="run id")
+    if not seq_digits.isdigit() or int(seq_digits) < 1:
+        raise ValueError(
+            f"part leaf sequence must be a positive integer, got {seq_digits!r}"
+        )
+    return run_id, int(seq_digits)
+
+
 def manifest_dataset(dataset_id: str) -> str:
     """Key for a dataset manifest (one JSON object per dataset generation).
 

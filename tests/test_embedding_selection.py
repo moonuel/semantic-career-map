@@ -30,7 +30,9 @@ def test_select_unembedded_sql_caps_deterministically() -> None:
 
 
 def test_bind_sql_params_binds_every_named_param() -> None:
-    bound = selection.bind_sql_params("x = :config AND y = :other", {"config": "c", "other": "v"})
+    bound = selection.bind_sql_params(
+        "x = :config AND y = :other", {"config": "c", "other": "v"}
+    )
     assert bound == "x = 'c' AND y = 'v'"
 
 

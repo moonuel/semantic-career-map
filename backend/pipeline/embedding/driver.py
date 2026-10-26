@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -41,6 +42,10 @@ from backend.pipeline.embedding.config import (
     dataset_id,
 )
 from backend.pipeline.embedding.encoder import EmbeddingEncoder
+from backend.pipeline.embedding.reconcile import (
+    ReconcileReport,
+    reconcile_configuration,
+)
 from backend.storage import ids, keys
 
 DATABASE_DEFAULT = "semantic_career_map"
@@ -60,6 +65,7 @@ class RunSummary:
     zero_delta: bool
     part_keys: list[str]
     dataset_manifest_key: str | None
+    reconcile: ReconcileReport | None = None
 
 
 def ensure_config_object(store, config: EmbeddingConfig) -> str:
@@ -205,6 +211,8 @@ def run_embedding(
     database: str = DATABASE_DEFAULT,
     workgroup: str = WORKGROUP_DEFAULT,
     pipeline_version: str | None = None,
+    reconcile: bool = True,
+    now: Callable[[], datetime] | None = None,
 ) -> RunSummary:
     """One embedding run over the real (or doubled) wiring.
 
@@ -213,7 +221,10 @@ def run_embedding(
     for the run's configuration; the encoder processes batch windows; one
     part commits per batch; the dataset manifest commits once. A zero-row
     selection is the healthy no-op: the summary reports ``zero_delta`` with
-    no parts and no manifest written.
+    no parts and no manifest written. Before selecting, the run reconciles
+    its configuration's lake slice — concurrent-run duplicate rows from
+    earlier runs heal (in-flight runs deferred); the report rides the
+    summary.
 
     Args:
         store: The object store (real or testing double).
@@ -225,6 +236,11 @@ def run_embedding(
         workgroup: Athena workgroup binding (cost cap + pinned output).
         pipeline_version: Producing-code version; ``None`` resolves via
             :func:`backend.pipeline.cleaning.daily.resolve_pipeline_version`.
+        reconcile: Run the pre-selection duplicate-row healing pass
+            (:func:`reconcile_configuration`).
+        now: Wall clock for the run's ``created_at`` and the reconcile's
+            reference time; ``None`` uses now (UTC). Identity-neutral — the
+            config hash never sees it — so tests pin deterministic stamps.
 
     Returns:
         The :class:`RunSummary`.
@@ -240,9 +256,13 @@ def run_embedding(
             "hashed identity (build the config through "
             "select_unembedded_sql … or pass --sql-file)"
         )
+    now_fn = now if now is not None else (lambda: datetime.now(UTC))
     digest = ensure_config_object(store, config)
+    report: ReconcileReport | None = None
+    if reconcile:
+        report = reconcile_configuration(store, config, as_of=now_fn())
     run_id = ids.new_id()
-    created_at = datetime.now(UTC)
+    created_at = now_fn()
     pipeline_version = pipeline_version or resolve_pipeline_version()
 
     sql = selection.bind_sql_params(config.sql_text, {"config": digest})
@@ -273,6 +293,7 @@ def run_embedding(
             zero_delta=True,
             part_keys=[],
             dataset_manifest_key=None,
+            reconcile=report,
         )
 
     batch_size = max(1, config.batch_size)
@@ -329,4 +350,5 @@ def run_embedding(
         zero_delta=False,
         part_keys=part_keys,
         dataset_manifest_key=manifest,
+        reconcile=report,
     )
