@@ -1,0 +1,31 @@
+FROM python:3.14-slim
+
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
+
+# CPU-only torch (ARM64 Graviton): the plain PyPI aarch64 wheel is the CPU
+# build; model weights are baked one layer down so a task start never waits
+# on a hub pull.
+RUN pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu \
+ && pip install sentence-transformers==6.1.0 transformers==5.18.* \
+      tokenizers==0.23.* huggingface-hub==1.33.* safetensors==0.8.* \
+      numpy==2.5.* boto3==1.43.* botocore==1.43.* python-dotenv==1.2.* \
+      pyarrow==25.*
+
+# Bake the exact weights the pinned config's `model_revision` names; the
+# loader still asserts the pin at run start (fail fast, now offline-safe).
+RUN python -c "from sentence_transformers import SentenceTransformer; \
+      SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', \
+                          device='cpu', \
+                          revision='1110a243fdf4706b3f48f1d95db1a4f5529b4d41')"
+ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+
+WORKDIR /app
+COPY backend/ backend/
+COPY scripts/embed.py scripts/embed.py
+# The validation generation: the pinned config's parameters with the
+# deployment bound capped to a 100-row sample (own configuration_hash).
+COPY deploy/embedding-config-sample.json embedding-config.json
+
+ENV STORE_S3_ENDPOINT=
+
+CMD ["python", "scripts/embed.py", "--config-file", "/app/embedding-config.json"]

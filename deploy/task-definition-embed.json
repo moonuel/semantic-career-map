@@ -1,0 +1,33 @@
+{
+  "family": "pipeline-embed",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "cpu": "2048",
+  "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/<PIPELINE_ROLE_NAME>",
+  "containerDefinitions": [
+    {
+      "name": "pipeline-embed",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/pipeline-images:embed",
+      "essential": true,
+      "environment": [
+        {"name": "STORE_S3_BUCKET", "value": "<STORE_S3_BUCKET>"},
+        {"name": "STORE_S3_REGION", "value": "<REGION>"},
+        {"name": "PIPELINE_VERSION", "value": "embed"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/pipeline/embed",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "embed"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "batch_size": 16,
+  "fallback_text_variant": null,
+  "input_artifact": "athena:semantic_career_map/artifacts_cleaned",
+  "input_version": "v1",
+  "max_length": 256,
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "model_segment": "all-minilm-l6-v2",
+  "normalize": true,
+  "sql_text": "SELECT s.source_hash, s.variant_text\nFROM (-- select_unembedded: the embedding tier's delta selection (the cache).\n--\n-- Anti-join semantics, the mirror of select_uncleaned.sql: cleaned artifact\n-- rows (the input side, artifacts_cleaned pinned to its registered version\n-- location) with NO embedding row for the run's configuration within the\n-- run's model/variant/version partitions. The continuously-ingesting lake\n-- embeds only deltas; a zero-row render is the healthy no-op.\n--\n-- Parameterization (Athena placeholders, bound by\n-- backend.pipeline.embedding.selection.bind_sql_params):\n--   :config   \u2014 the run's SHA-256 embedding configuration_hash\n--\n-- Partition scoping is the registration's job, not the query's: the\n-- `postings_embeddings` table pins its location to one model/variant/version\n-- generation (the artifacts table's discipline), so the query only filters\n-- payload columns. The join key `(source_hash, configuration_hash)` is the\n-- single cache identity every embedding row carries in its data.\n--\n-- The cost-bearing side is the small embeddings Parquet partition; the\n-- artifacts side is also Parquet-compact. The raw JSON lake is untouched.\n\nSELECT a.source_hash,\n       a.cleaned_text AS variant_text\nFROM artifacts_cleaned a\nLEFT JOIN postings_embeddings e\n  ON e.source_hash = a.source_hash\n AND e.configuration_hash = :config\nWHERE e.source_hash IS NULL) s\nORDER BY s.source_hash\nLIMIT 100",
+  "text_variant": "variant_text",
+  "variant": "minilm",
+  "version": "v1"
+}
