@@ -18,24 +18,36 @@ class GlueExceptions:
 
 
 class GlueDouble:
-    """Records create/update; `descriptor` plays the catalog's stored table."""
+    """Records create/update; `table` plays the catalog's stored table.
 
-    def __init__(self, descriptor: dict | None = None) -> None:
+    The stored table must be the WHOLE ``Table`` (descriptor plus
+    ``PartitionKeys``/``Parameters``): handing back only the descriptor is
+    the shape that let the manifests_ingestion partition drift go unseen.
+    """
+
+    def __init__(
+        self, descriptor: dict | None = None, table: dict | None = None
+    ) -> None:
         self.created: list[dict] = []
         self.updated: list[dict] = []
-        self._descriptor = descriptor
+        self._table = (
+            table
+            if table is not None
+            else ({"StorageDescriptor": descriptor} if descriptor is not None else None)
+        )
 
     def get_table(self, *, DatabaseName: str, Name: str):
-        if self._descriptor is None:
+        if self._table is None:
             raise GlueExceptions.EntityNotFoundException()
-        return {"Table": {"StorageDescriptor": self._descriptor}}
+        return {"Table": self._table}
 
     def create_table(self, *, DatabaseName: str, TableInput: dict) -> None:
         self.created.append(TableInput)
+        self._table = TableInput
 
     def update_table(self, *, DatabaseName: str, TableInput: dict) -> None:
         self.updated.append(TableInput)
-        self._descriptor = TableInput["StorageDescriptor"]
+        self._table = TableInput
 
     @property
     def exceptions(self):
