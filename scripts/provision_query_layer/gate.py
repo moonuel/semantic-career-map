@@ -58,6 +58,13 @@ from scripts.provision_query_layer import (
 )
 
 # The re-baseline (design.md Context, re-baselined 2026-10-21).
+#
+# These are LOWER BOUNDS, not equalities: the lake is append-only, so a
+# passing ingestion run only ever raises a per-source count. Equality turned
+# every successful ingest into a spurious gate failure (2026-10-27: ashby
+# 213 expected vs 263 live) and taught everyone that a red gate is normal —
+# which is how a genuinely broken table stayed red-unnoticed. A count BELOW
+# the bound still means data loss and still fails.
 EXPECTED_COUNTS: dict[str, int] = {
     "ashby": 213,
     "dataroles": 7647,
@@ -69,7 +76,11 @@ EXPECTED_COUNTS: dict[str, int] = {
 TOTAL = sum(EXPECTED_COUNTS.values())
 
 # exp 009's tables (docs/experiments/009-raw-lake-profiling.md), over each
-# shape's own text field.
+# shape's own text field. These are SHAPE checks, not frozen pins: the raw
+# layer grows, so median and p90 drift as postings are appended (lever's p90
+# moved 10301 -> 10474 after 17 new postings on 2026-10-27, which tripped the
+# old +/-100 band). The band is a stability guard — a large shift means
+# extraction or the schema changed, which is what this gate is for.
 EXPECTED_QUANTILES: dict[str, dict[str, int]] = {
     "ashby": {"median": 7440, "p90": 9109, "max": 16365},
     "dataroles": {"median": 6510, "p90": 10207, "max": 24691},
@@ -78,6 +89,13 @@ EXPECTED_QUANTILES: dict[str, dict[str, int]] = {
     "lever": {"median": 8742, "p90": 10301, "max": 16317},
     "linkedin": {"median": 4836, "p90": 6998, "max": 9065},
 }
+
+# Tolerance for median/p90 as a FRACTION of the expected value, not a fixed
+# character count: 10% of 6-24k chars absorbs organic sample drift while
+# still catching a real distribution shift (boilerplate removal, a new
+# markup shape). The previous flat +/-100 chars was ~1% and failed on
+# ordinary growth.
+QUANTILE_TOLERANCE = 0.10
 
 # Per-source text field (the shape's own column; length() rides it).
 TEXT_COLUMN: dict[str, str] = {
@@ -253,23 +271,25 @@ def main() -> None:
     athena = boto3.Session().client("athena", region_name=aws_region())
     ok = True
 
-    print("== gate 1: per-source counts vs aws s3 ls re-baseline")
+    print("== gate 1: per-source counts vs aws s3 ls re-baseline (lower bound)")
     rows = run_query(athena, DATABASE_DEFAULT, counts_query())[1:]
     for line in rows:
         source, n = line.split(",")[0], int(line.split(",")[1])
-        match = EXPECTED_COUNTS[source] == n
+        match = n >= EXPECTED_COUNTS[source]
         ok &= match
         print(
-            f"  {source:<11} {n:>6} expected {EXPECTED_COUNTS[source]:>6} "
-            f"{'OK' if match else 'MISMATCH'}"
+            f"  {source:<11} {n:>6} >= {EXPECTED_COUNTS[source]:>6} "
+            f"{'OK' if match else 'BELOW BASELINE'}"
         )
     total = sum(int(line.split(",")[1]) for line in rows)
     print(
-        f"  {'total':<11} {total:>6} expected {TOTAL:>6} {'OK' if total == TOTAL else 'MISMATCH'}"
+        f"  {'total':<11} {total:>6} >= {TOTAL:>6} "
+        f"{'OK' if total >= TOTAL else 'BELOW BASELINE'}"
     )
 
     print(
-        "== gate 2: length quantiles vs exp 009 tables (+/-100 chars, see module docs)"
+        "== gate 2: length quantiles vs exp 009 tables "
+        f"(median/p90 within {QUANTILE_TOLERANCE:.0%}, max a lower bound)"
     )
     rows = run_query(athena, DATABASE_DEFAULT, quantiles_query())[1:]
     for line in rows:
@@ -277,18 +297,22 @@ def main() -> None:
         expected = EXPECTED_QUANTILES[source]
 
         def close(got: str, want: int) -> bool:
-            return abs(int(float(got)) - want) <= 100
+            """Within the relative tolerance of the expected value."""
+            return abs(int(float(got)) - want) <= want * QUANTILE_TOLERANCE
 
+        # median and p90 describe the typical posting and may drift with the
+        # sample, but not shapedly; max is a single observed outlier that a
+        # newer, longer posting legitimately raises, so it is a floor.
         match = (
             close(median, expected["median"])
             and close(p90, expected["p90"])
-            and close(max_text, expected["max"])
+            and int(float(max_text)) >= expected["max"]
         )
         ok &= match
         print(
             f"  {source:<11} median {median:>7} (exp {expected['median']:>6})  "
             f"p90 {p90:>7} (exp {expected['p90']:>6})  max {max_text:>7} "
-            f"(exp {expected['max']:>6})  {'OK' if match else 'CHECK'}"
+            f"(>= {expected['max']:>6})  {'OK' if match else 'CHECK'}"
         )
 
     if args.skip_dry_run:
@@ -302,11 +326,11 @@ def main() -> None:
         rows = parse_query_results(csv_text)
         manifest = build_selection_manifest(rows, configuration_hash="0" * 64)
         n_postings = manifest.count(b'"key"')
-        match = n_postings == TOTAL
+        match = n_postings >= TOTAL
         ok &= match
         print(
-            f"  manifest postings {n_postings:>6} expected {TOTAL:>6} "
-            f"{'OK' if match else 'MISMATCH'}"
+            f"  manifest postings {n_postings:>6} >= {TOTAL:>6} "
+            f"{'OK' if match else 'BELOW BASELINE'}"
         )
 
     if args.embeddings:

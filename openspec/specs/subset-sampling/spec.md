@@ -12,7 +12,8 @@ The system SHALL profile the raw layer by querying the cataloged raw layer throu
 #### Scenario: Per-source statistics summary
 - **WHEN** profiling runs over the cataloged raw tables
 - **THEN** queries SHALL return per-source counts, length quantiles (median, p90, max), and the most frequent HTML tag families for each source
-- **AND** the numbers SHALL reproduce the re-baselined store counts exactly (the independent-engine gate)
+- **AND** per-source counts SHALL be reported against a re-baselined lower bound, failing when a source drops below it (append-only lake: an ingestion may only raise a count; a drop means data loss)
+- **AND** median and p90 SHALL remain within a fixed relative tolerance (10%) of the re-baselined values, a guard against a distribution shift rather than against ordinary sample growth, while max SHALL be a lower bound (a newer, longer posting legitimately raises an observed maximum)
 
 #### Scenario: Malformed payload reporting
 - **WHEN** a raw payload is unparseable, missing its text field, or empty

@@ -259,7 +259,7 @@ def _storage_descriptor_matches(
     # duplicate columns"), so it must count as drift even though the
     # additive rule would otherwise keep it. This is the exact defect that
     # made manifests_ingestion unqueryable.
-    return not any(name in partition_names for name, _ in stored_columns)
+    return not any(name in (partition_names or set()) for name, _ in stored_columns)
 
 
 def _table_matches(stored: dict, target: dict) -> bool:
