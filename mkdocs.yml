@@ -85,6 +85,7 @@ nav:
     - "017 - Near-Duplicate Text Detection": research-reports/017-near-duplicate-text-detection.md
     - "018 - spaCy & spaCy-LLM": research-reports/018-spacy-and-spacy-llm.md
     - "019 - AWS S3 Vectors": research-reports/019-s3-vectors.md
+    - "020 - Job Map Visualization Tools": research-reports/020-job-map-visualization-tools.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md

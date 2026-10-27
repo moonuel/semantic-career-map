@@ -24,10 +24,10 @@ from scripts.provision_compute_stack import (
 
 
 def _parse_image_tags(value: str | None) -> dict[str, str] | None:
-    """Parse ``--image-tags scrape:<tag>,curator:<tag>,clean:<tag>``.
+    """Parse ``--image-tags scrape:<tag>,curator:<tag>,clean:<tag>,embed:<tag>``.
 
     Keys follow the tier vocabulary: ``scrape`` is the Lambda image tag;
-    ``curator``/``clean`` override the two Fargate task definitions'
+    ``curator``/``clean``/``embed`` override the Fargate task definitions'
     image tags (the pinned-tag promotion path).
     """
     if not value:
@@ -35,9 +35,10 @@ def _parse_image_tags(value: str | None) -> dict[str, str] | None:
     tags: dict[str, str] = {}
     for pair in value.split(","):
         tier, _, tag = pair.strip().partition(":")
-        if not tier or not tag or tier not in {"scrape", "curator", "clean"}:
+        if not tier or not tag or tier not in {"scrape", "curator", "clean", "embed"}:
             raise SystemExit(
-                f"--image-tags entries are scrape|curator|clean:<tag> (got {pair!r})"
+                f"--image-tags entries are scrape|curator|clean|embed:<tag>"
+                f" (got {pair!r})"
             )
         tags[tier] = tag
     return tags
@@ -46,7 +47,7 @@ def _parse_image_tags(value: str | None) -> dict[str, str] | None:
 def main() -> None:
     """CLI flow: zero or more stages, in the documented order."""
     parser = argparse.ArgumentParser(
-        description="Provision the scrape/clean compute tiers + scheduler"
+        description="Provision the scrape/clean/embed compute tiers + scheduler"
         " (plans first; apply is explicit)",
     )
     parser.add_argument(
@@ -57,7 +58,7 @@ def main() -> None:
     parser.add_argument(
         "--schedule",
         action="store_true",
-        help="create the three daily schedules (SMOKE-FIRST: DISABLED state)",
+        help="create the four daily schedules (SMOKE-FIRST: DISABLED state)",
     )
     parser.add_argument(
         "--enable",
@@ -85,7 +86,7 @@ def main() -> None:
         action="store_true",
         help="with --create: register task defs as NEW revisions (applies"
         " JSON changes like runtimePlatform) and re-target the"
-        " curator/clean schedules at the new revisions",
+        " curator/clean/embed schedules at the new revisions",
     )
     parser.add_argument("--dry-run", action="store_true", help="print the plan only")
     parser.add_argument(

@@ -2,9 +2,9 @@
 
 ``MemorySink`` is the in-process stand-in for
 :class:`backend.storage.store.ObjectStore`: same protocol surface
-(``put``/``exists``/``get``/``list_keys``), zero I/O. The object store is the
-only storage backend — local dev runs Garage, CI and prod run dev/prod S3 —
-so tests never touch a filesystem mirror; they use this.
+(``put``/``exists``/``get``/``delete``/``list_keys``), zero I/O. The object
+store is the only storage backend — local dev runs Garage, CI and prod run
+dev/prod S3 — so tests never touch a filesystem mirror; they use this.
 """
 
 from __future__ import annotations
@@ -37,6 +37,11 @@ class MemorySink:
             raise FileNotFoundError(key)
         return self.objects[key]
 
+    def delete(self, key: str) -> None:
+        """Remove ``key`` (idempotent, mirrors the S3 ``delete_object`` contract)."""
+        keys.validate_key(key)
+        self.objects.pop(key, None)
+
     def list_keys(self, prefix: str) -> list[str]:
         """Return every stored key under ``prefix``, sorted."""
         return sorted(k for k in self.objects if k.startswith(prefix))
@@ -46,6 +51,12 @@ class MemorySink:
 def memory_sink() -> MemorySink:
     """A fresh empty ``MemorySink`` per test."""
     return MemorySink()
+
+
+@pytest.fixture
+def journal() -> JournalSink:
+    """A fresh put-order-recording sink per test."""
+    return JournalSink()
 
 
 class JournalSink(MemorySink):

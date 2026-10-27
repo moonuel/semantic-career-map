@@ -94,6 +94,7 @@ def test_schedules_index_their_own_task_definition(env) -> None:
     task_arns = {
         "curator": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-scrape-curator:1",
         "clean": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-clean:1",
+        "embed": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-embed:1",
     }
     lambda_arn = f"arn:aws:lambda:{REGION_OK}:{ACCT}:function:{pcs.LAMBDA_ATS}"
     cluster_arn = f"arn:aws:ecs:{REGION_OK}:{ACCT}:cluster/{pcs.CLUSTER_TASKS}"
@@ -108,6 +109,7 @@ def test_schedules_index_their_own_task_definition(env) -> None:
     assert targets[pcs.SCHEDULE_ATS].endswith(f"function:{pcs.LAMBDA_ATS}")
     assert targets[pcs.SCHEDULE_CURATOR].startswith("pipeline-scrape-curator")
     assert targets[pcs.SCHEDULE_CLEAN].startswith("pipeline-clean")
+    assert targets[pcs.SCHEDULE_EMBED].startswith("pipeline-embed")
     for name, target in session.scheduler.created.items():
         assert target["DeadLetterConfig"]["Arn"].endswith(pcs.QUEUE_DLQ)
         if name != pcs.SCHEDULE_ATS:
@@ -143,6 +145,7 @@ def test_retarget_schedules_moves_ecs_targets_to_new_revision(env) -> None:
         "task_defs": {
             "curator": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-scrape-curator:1",
             "clean": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-clean:1",
+            "embed": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-embed:1",
         },
         "cluster": cluster_arn,
     }
@@ -152,6 +155,7 @@ def test_retarget_schedules_moves_ecs_targets_to_new_revision(env) -> None:
         "task_defs": {
             "curator": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-scrape-curator:2",
             "clean": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-clean:2",
+            "embed": f"arn:aws:ecs:{REGION_OK}:{ACCT}:task-definition/pipeline-embed:2",
         },
         "cluster": cluster_arn,
     }
@@ -163,12 +167,15 @@ def test_retarget_schedules_moves_ecs_targets_to_new_revision(env) -> None:
     assert updates[pcs.SCHEDULE_CLEAN]["EcsParameters"]["TaskDefinitionArn"].endswith(
         ":2"
     )
+    assert updates[pcs.SCHEDULE_EMBED]["EcsParameters"]["TaskDefinitionArn"].endswith(
+        ":2"
+    )
     # the ats target is name-pinned (Lambda ARN) — never re-targeted
     assert pcs.SCHEDULE_ATS not in updates
     assert session.scheduler.schedules[pcs.SCHEDULE_ATS]["State"] == "ENABLED"
     # no churn once the stored target matches the passed revision
     pcs.retarget_schedules(session, ACCT, REGION_OK, new_arns)
-    assert len(session.scheduler.updates) == 2
+    assert len(session.scheduler.updates) == 3
 
 
 def test_scheduler_policy_carries_the_dlq_statement() -> None:

@@ -118,4 +118,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-26**
 
     Survey of S3 Vectors (GA 2025-12): vector buckets, indexes, immutable geometry, strong consistency, ENHANCED pre-filtering, and the three-axis pricing model — evaluated against the lakehouse embedding model (data.md §7) and the baseline-embedding lineage. Verdict: not adopted now; registered as the serverless rung of the retrieval graduation ladder with Parquet staying source of truth and `key = source_hash` sync.
+
+-   [**020 — Job Map Visualization Tools**](020-job-map-visualization-tools.md){ .md-button }
+
+    **2026-10-26**
+
+    Survey of renderers for the GitHub Pages job-posting map — interactive embedding map with a per-point LLM summary panel (one JSON per embedded point). DataMapPlot's `extra_point_data`/`on_click`/DynamicTooltip API is load-bearing for the requirement (confirming #002's pick under a stricter lens); Plotly `scattergl` stands as fallback; Deepscatter (NC license), Nomic Atlas (hosted SaaS), and the archived TF Embedding Projector excluded. Includes GitHub Pages limit math, a 3-stage packaging ladder (inline → split → per-point fetch), and the draft per-point summary JSON contract.
 </div>

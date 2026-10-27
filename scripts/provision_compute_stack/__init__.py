@@ -43,6 +43,7 @@ from scripts.provision_query_layer import (
 ECR_REPO = "pipeline-images"
 IMAGE_TAG_SCRAPE = "scrape"
 IMAGE_TAG_CLEAN = "clean"
+IMAGE_TAG_EMBED = "embed"
 
 ROLE_PIPELINE = "pipeline-execution-role"
 ROLE_SCHEDULER = "pipeline-scheduler-role"
@@ -60,6 +61,7 @@ LAMBDA_RETRY_ATTEMPTS = 2
 LOG_GROUP_ATS = "/pipeline/ats"
 LOG_GROUP_CURATOR = "/pipeline/scrape-curator"
 LOG_GROUP_CLEAN = "/pipeline/clean"
+LOG_GROUP_EMBED = "/pipeline/embed"
 LOG_RETENTION_DAYS = 30
 ALARM_DLQ = "pipeline-dlq-not-empty"
 RULE_TASK_FAILED = "pipeline-task-failed"
@@ -68,23 +70,28 @@ SCHEDULE_GROUP = "pipeline"
 SCHEDULE_ATS = "daily-ats-scrape"
 SCHEDULE_CURATOR = "daily-curator-scrape"
 SCHEDULE_CLEAN = "daily-clean"
+SCHEDULE_EMBED = "daily-embed"
 CRON_ATS = "cron(0 4 * * ? *)"
 CRON_CURATOR = "cron(0 5 * * ? *)"
 CRON_CLEAN = "cron(0 6 * * ? *)"  # offset after the scrape tiers; no chain
+CRON_EMBED = "cron(0 7 * * ? *)"  # offset after clean; embeds the day's lake
 
 SSM_SECRET_PATH = "/semantic-career-map/KILO_API_KEY"
 TASK_DEF_FILES = {
     "curator": "deploy/task-definition-scrape-curator.json",
     "clean": "deploy/task-definition-clean.json",
+    "embed": "deploy/task-definition-embed.json",
 }
 TASK_DEF_FAMILIES = {
     "curator": "pipeline-scrape-curator",
     "clean": "pipeline-clean",
+    "embed": "pipeline-embed",
 }
 SCHEDULE_SPECS = [
     (SCHEDULE_ATS, CRON_ATS, "ats"),
     (SCHEDULE_CURATOR, CRON_CURATOR, "curator"),
     (SCHEDULE_CLEAN, CRON_CLEAN, "clean"),
+    (SCHEDULE_EMBED, CRON_EMBED, "embed"),
 ]
 
 
@@ -151,6 +158,16 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
                 "s3:AbortMultipartUpload",
             ],
             "Resource": [f"{bucket_arn(bucket)}/*"],
+        },
+        {
+            # The embedding tier's reconcile heals aged-out orphan parts
+            # (part written but never booked via its checkpoint) by deleting
+            # them. Deletion is confined to the embeddings prefix — the only
+            # lake slice the reconcile pass ever mutates.
+            "Sid": "LakeEmbeddingsDelete",
+            "Effect": "Allow",
+            "Action": ["s3:DeleteObject"],
+            "Resource": [f"{bucket_arn(bucket)}/lake/embeddings/*"],
         },
         {
             "Sid": "LakeBucketList",
@@ -359,7 +376,12 @@ def stage_plan(acct: str, region: str) -> dict[str, Any]:
         "queue_dlq": f"arn:aws:sqs:{region}:{acct}:{QUEUE_DLQ}",
         "topic_alerts": f"arn:aws:sns:{region}:{acct}:{TOPIC_ALERTS}",
         "ecr_repo": f"arn:aws:ecr:{region}:{acct}:repository/{ECR_REPO}",
-        "log_groups": [LOG_GROUP_ATS, LOG_GROUP_CURATOR, LOG_GROUP_CLEAN],
+        "log_groups": [
+            LOG_GROUP_ATS,
+            LOG_GROUP_CURATOR,
+            LOG_GROUP_CLEAN,
+            LOG_GROUP_EMBED,
+        ],
         "lambda": {
             "name": LAMBDA_ATS,
             "image": f"{acct}.dkr.ecr.{region}.amazonaws.com/{ECR_REPO}:{IMAGE_TAG_SCRAPE}",
@@ -377,6 +399,7 @@ def stage_plan(acct: str, region: str) -> dict[str, Any]:
                 "target": TASK_DEF_FAMILIES["curator"],
             },
             SCHEDULE_CLEAN: {"when": CRON_CLEAN, "target": TASK_DEF_FAMILIES["clean"]},
+            SCHEDULE_EMBED: {"when": CRON_EMBED, "target": TASK_DEF_FAMILIES["embed"]},
             "state_at_creation": "DISABLED (arm via --enable after smoke gates)",
         },
         "alarm": ALARM_DLQ,
@@ -410,6 +433,7 @@ def render_task_definitions(
     tags = {
         "curator": IMAGE_TAG_SCRAPE,
         "clean": IMAGE_TAG_CLEAN,
+        "embed": IMAGE_TAG_EMBED,
         **(image_tags or {}),
     }
     rendered: dict[str, dict[str, Any]] = {}
@@ -614,9 +638,14 @@ def ensure_ecr(session: boto3.Session) -> str:
 
 
 def ensure_log_groups(session: boto3.Session) -> None:
-    """Create-or-ignore the three log groups with retention pinned."""
+    """Create-or-ignore the compute tiers' log groups with retention pinned."""
     logs = session.client("logs")
-    for group in (LOG_GROUP_ATS, LOG_GROUP_CURATOR, LOG_GROUP_CLEAN):
+    for group in (
+        LOG_GROUP_ATS,
+        LOG_GROUP_CURATOR,
+        LOG_GROUP_CLEAN,
+        LOG_GROUP_EMBED,
+    ):
         try:
             logs.create_log_group(logGroupName=group)
             print(f"created log group: {group}")
@@ -841,7 +870,7 @@ def register_task_definitions(
 
 
 def ensure_schedule_group(scheduler) -> None:
-    """Create-or-ignore the schedule group holding all three targets."""
+    """Create-or-ignore the schedule group holding all targets."""
     try:
         scheduler.get_schedule_group(Name=SCHEDULE_GROUP)
         print(f"schedule group exists: {SCHEDULE_GROUP}")
@@ -894,7 +923,7 @@ def _schedule_target(
 def create_schedules(
     session, acct: str, region: str, arns: dict[str, Any], *, state: str
 ) -> None:
-    """Create-or-ignore the three daily schedules (each created DISABLED).
+    """Create-or-ignore the daily schedules (each created DISABLED).
 
     Args:
         session: The boto3 session.
@@ -902,7 +931,7 @@ def create_schedules(
         region: The bucket region.
         arns: The ``lambda`` ARN, the cluster ARN, and the per-tier
             ``task_defs`` mapping (tagged via :func:`register_task_definitions`);
-            the clean and curator schedules index their own tier's
+            the clean, curator, and embed schedules index their own tier's
             task-definition ARN and RunTask into the cluster.
         state: ``DISABLED`` (smoke-first contract) or ``ENABLED``.
     """
@@ -928,7 +957,7 @@ def create_schedules(
 
 
 def enable_schedules(session) -> None:
-    """Flip all three schedules to ``ENABLED`` (the T5 step-6 arming)."""
+    """Flip all schedules to ``ENABLED`` (the T5 step-6 arming)."""
     scheduler = session.client("scheduler")
     for name, _, _ in SCHEDULE_SPECS:
         # GetSchedule returns the schedule object at top level (no wrapper)
@@ -949,7 +978,7 @@ def enable_schedules(session) -> None:
 
 
 def retarget_schedules(session, acct: str, region: str, arns: dict[str, Any]) -> None:
-    """Point the existing curator/clean schedules at fresh task-def revisions.
+    """Point the existing curator/clean/embed schedules at fresh task-def revisions.
 
     ``--reregister`` mints NEW ``family:N`` revisions, and existing
     schedules keep their revision-pinned ``EcsParameters.TaskDefinitionArn``
@@ -1019,7 +1048,7 @@ def put_alarm(session, topic_arn: str) -> None:
 
 
 def put_failure_rule(session, acct: str, region: str, topic_arn: str) -> None:
-    """Bridge ECS task STOPPED-with-nonzero-exit onto SNS (curator/clean).
+    """Bridge ECS task STOPPED-with-nonzero-exit onto SNS (curator/clean/embed).
 
     The ``containers`` match value is the bare-object form — API-proven
     (``test_event_pattern``): a numeric ``[">", 0]`` leaf under it matches
@@ -1041,7 +1070,7 @@ def put_failure_rule(session, acct: str, region: str, topic_arn: str) -> None:
         EventPattern=json.dumps(pattern),
         State="ENABLED",
         EventBusName="default",
-        Description="Non-zero-exit Fargate pipeline tasks (curator/clean)",
+        Description="Non-zero-exit Fargate pipeline tasks (curator/clean/embed)",
     )
     events.put_targets(
         Rule=RULE_TASK_FAILED,

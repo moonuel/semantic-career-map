@@ -1,6 +1,6 @@
 """Gate queries over Athena: the §2.3/§2.4 verification of the query layer.
 
-Runs the three verification gates and prints their tables:
+Runs the verification gates and prints their tables:
 
 1. Per-source object counts — must match the `aws s3 ls` re-baseline
    (dataroles 7,647; hiringcafe 325; greenhouse 766; lever 326; ashby 213;
@@ -14,10 +14,12 @@ Runs the three verification gates and prints their tables:
 3. The uncleaned-selection dry run over a no-artifact configuration: runs
    the raw-only variant of `select_uncleaned`, renders the rows through
    `backend.pipeline.selection`, and asserts 9,316 pin-able postings.
+4. (optional, ``--embeddings``) Embeddings store-vs-table row-count
+   parity — the query-side registration the anti-join's cache depends on.
 
 Usage:
 
-    python -m scripts.provision_query_layer.gate [--skip-dry-run]
+    python -m scripts.provision_query_layer.gate [--skip-dry-run] [--embeddings]
 
 Read-only against S3/Athena. Costs: a full-source JSON scan ≈ 100 MB →
 about $0.0005 per query at the $5/TB rate; the workgroup cap enforces a
@@ -31,6 +33,7 @@ import argparse
 import csv
 import hashlib
 import io
+import os
 import sys
 
 import boto3
@@ -183,6 +186,53 @@ def uncleaned_dry_query() -> str:
     return "\nUNION ALL\n".join(parts) + "\nORDER BY source, source_hash"
 
 
+def store_embedding_row_count(store, prefix: str) -> int:
+    """Count embedding rows across the store's parts under ``prefix``.
+    Metadata-only: this reads each part's Parquet footer metadata — a
+    filter-listing count would miss multi-row parts.
+    """
+    import pyarrow.parquet as pq
+
+    count = 0
+    for key in store.list_keys(prefix):
+        if not key.endswith(".parquet"):
+            continue
+        count += pq.read_metadata(io.BytesIO(store.get(key))).num_rows
+    return count
+
+
+def check_embeddings_parity(
+    store,
+    athena,
+    database: str,
+) -> tuple[bool, int, int]:
+    """Gate 4: store-vs-table row-count parity for the embeddings table.
+
+    The query-side registration makes the cache visible to the anti-join;
+    a drifted registration (or a part outside the registered location)
+    would silently re-encode rows. Parity by row count is the cheap
+    cross-check the §2.3 gates established for the other tables.
+
+    Args:
+        store: The object store.
+        athena: The boto3 Athena client.
+        database: The Glue database the table is registered under.
+
+    Returns:
+        ``(match, store_rows, table_rows)``.
+    """
+    from scripts.provision_query_layer import EMBEDDINGS_TABLE, embeddings_location
+
+    bucket = os.environ["STORE_S3_BUCKET"]
+    location = embeddings_location(bucket)
+    store_rows = store_embedding_row_count(
+        store, location.removeprefix(f"s3://{bucket}/")
+    )
+    rows = run_query(athena, database, f"SELECT count(*) FROM {EMBEDDINGS_TABLE}")
+    table_rows = int(rows[1].strip())
+    return store_rows == table_rows, store_rows, table_rows
+
+
 def main() -> None:
     """Run the gates and print pass/fail per check."""
     load_dotenv()
@@ -191,6 +241,11 @@ def main() -> None:
         "--skip-dry-run",
         action="store_true",
         help="skip gate 3 (the adapter dry run)",
+    )
+    parser.add_argument(
+        "--embeddings",
+        action="store_true",
+        help="also run gate 4: embeddings store-vs-table row-count parity",
     )
     args = parser.parse_args()
 
@@ -252,6 +307,21 @@ def main() -> None:
             f"  manifest postings {n_postings:>6} expected {TOTAL:>6} "
             f"{'OK' if match else 'MISMATCH'}"
         )
+
+    if args.embeddings:
+        print("== gate 4: embeddings store-vs-table row-count parity")
+        from backend.storage.store import ObjectStore
+
+        match, store_rows, table_rows = check_embeddings_parity(
+            ObjectStore.from_env(), athena, DATABASE_DEFAULT
+        )
+        ok &= match
+        print(
+            f"  store parts rows {store_rows:>6} table rows {table_rows:>6} "
+            f"{'OK' if match else 'MISMATCH'}"
+        )
+    else:
+        print("== gate 4 skipped (pass --embeddings)")
 
     print("GATE:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)
