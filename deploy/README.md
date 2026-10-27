@@ -8,6 +8,7 @@ Two images, one private ECR repo `pipeline-images`:
 |---|---|---|---|
 | `scrape` | `Dockerfile.scrape` | `scripts/scrape.py` | Lambda `pipeline-ats-scrape` (ATS tier via image `CMD`), Fargate task definition (curator via command override) |
 | `clean` | `Dockerfile.clean` | `python -m backend.pipeline.cleaning.daily` | Fargate task definition (daily driver: Athena select → manifest → runner) |
+| `embed` | `Dockerfile.embed` | `python scripts/embed.py --config-file /app/embedding-config.json` | Fargate task definition (validation generation: 100-row sample config baked; CPU torch + MiniLM weights baked, cold-start-free) |
 
 Provisioned by `python -m scripts.provision_compute_stack` (T1/T4 of the
 plan); images are built and pushed here, then every consumer references the
