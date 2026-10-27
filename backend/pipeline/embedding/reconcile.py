@@ -291,9 +291,15 @@ def heal_orphan_checkpoints(
     if min_run_age is None:
         min_run_age = DEFAULT_MIN_RUN_AGE
     prefix = version_prefix(config)
-    existing = _existing_checkpoints(store)
+    part_keys = store.list_keys(prefix)
+    run_ids = {
+        keys.parse_part_leaf(part_key.rsplit("/", 1)[-1])[0]
+        for part_key in part_keys
+        if part_key.endswith(".parquet")
+    }
+    existing = _existing_checkpoints(store, run_ids)
     recovered: list[dict[str, Any]] = []
-    for part_key in store.list_keys(prefix):
+    for part_key in part_keys:
         if not part_key.endswith(".parquet"):
             raise ValueError(f"unexpected non-Parquet object in {prefix}: {part_key!r}")
         run_id, seq = keys.parse_part_leaf(part_key.rsplit("/", 1)[-1])
@@ -329,26 +335,34 @@ def heal_orphan_checkpoints(
     return recovered
 
 
-def _existing_checkpoints(store) -> set[tuple[str, int]]:
-    """Collect all ``(run_id, seq)`` checkpoint pairs under the run root.
+def _existing_checkpoints(store, run_ids: set[str] | None = None) -> set[tuple[str, int]]:
+    """Collect ``(run_id, seq)`` checkpoint pairs under the run root.
 
-    One listing instead of one probe per part — the set covers every
-    historical run, and malformed leaves contribute nothing rather than
-    failing a healing pass (same walk as the cleaning stage's runs module).
+    One listing instead of one probe per part. When ``run_ids`` is given, the
+    listing is scoped to those runs' grouping segments (the version prefix's
+    producing runs) instead of walking every historical run across all
+    pipelines — malformed leaves contribute nothing rather than failing a
+    healing pass (same walk as the cleaning stage's runs module).
     """
+    prefixes = (
+        [f"lake/manifests/runs/run_id={run_id}/" for run_id in sorted(run_ids)]
+        if run_ids is not None
+        else ["lake/manifests/runs/"]
+    )
     existing: set[tuple[str, int]] = set()
-    for key in store.list_keys("lake/manifests/runs/"):
-        parent, leaf = key.rstrip("/").rsplit("/", 1)
-        if not leaf.startswith("flush=") or not leaf.endswith(".json"):
-            continue
-        run_segment = parent.rsplit("/", 1)[-1]
-        if not run_segment.startswith("run_id="):
-            continue
-        try:
-            seq = int(leaf.removeprefix("flush=").removesuffix(".json"))
-        except ValueError:
-            continue
-        existing.add((run_segment.removeprefix("run_id="), seq))
+    for prefix in prefixes:
+        for key in store.list_keys(prefix):
+            parent, leaf = key.rstrip("/").rsplit("/", 1)
+            if not leaf.startswith("flush=") or not leaf.endswith(".json"):
+                continue
+            run_segment = parent.rsplit("/", 1)[-1]
+            if not run_segment.startswith("run_id="):
+                continue
+            try:
+                seq = int(leaf.removeprefix("flush=").removesuffix(".json"))
+            except ValueError:
+                continue
+            existing.add((run_segment.removeprefix("run_id="), seq))
     return existing
 
 

@@ -205,7 +205,6 @@ def check_embeddings_parity(
     store,
     athena,
     database: str,
-    embed_spec_version: str = "",
 ) -> tuple[bool, int, int]:
     """Gate 4: store-vs-table row-count parity for the embeddings table.
 
@@ -218,12 +217,10 @@ def check_embeddings_parity(
         store: The object store.
         athena: The boto3 Athena client.
         database: The Glue database the table is registered under.
-        embed_spec_version: Unused version pin placeholder (reserved).
 
     Returns:
         ``(match, store_rows, table_rows)``.
     """
-    del embed_spec_version  # version pins live in the registration location
     from scripts.provision_query_layer import EMBEDDINGS_TABLE, embeddings_location
 
     bucket = os.environ["STORE_S3_BUCKET"]

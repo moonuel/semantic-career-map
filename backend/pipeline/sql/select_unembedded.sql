@@ -22,7 +22,7 @@
 SELECT a.source_hash,
        a.cleaned_text AS variant_text
 FROM artifacts_cleaned a
-LEFT JOIN postings_embeddings e
+LEFT JOIN {embeddings_table} e
   ON e.source_hash = a.source_hash
  AND e.configuration_hash = :config
 WHERE e.source_hash IS NULL

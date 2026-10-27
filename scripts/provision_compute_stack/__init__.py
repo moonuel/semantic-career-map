@@ -156,13 +156,18 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
                 "s3:GetObjectVersion",
                 "s3:PutObject",
                 "s3:AbortMultipartUpload",
-                # The embedding tier's reconcile heals aged-out orphan parts
-                # (part written but never booked via its checkpoint) by
-                # deleting them — found live by the first production run
-                # whose 6h-deferred window had elapsed.
-                "s3:DeleteObject",
             ],
             "Resource": [f"{bucket_arn(bucket)}/*"],
+        },
+        {
+            # The embedding tier's reconcile heals aged-out orphan parts
+            # (part written but never booked via its checkpoint) by deleting
+            # them. Deletion is confined to the embeddings prefix — the only
+            # lake slice the reconcile pass ever mutates.
+            "Sid": "LakeEmbeddingsDelete",
+            "Effect": "Allow",
+            "Action": ["s3:DeleteObject"],
+            "Resource": [f"{bucket_arn(bucket)}/lake/embeddings/*"],
         },
         {
             "Sid": "LakeBucketList",

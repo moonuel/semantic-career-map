@@ -15,6 +15,7 @@ import os
 import boto3
 
 from backend.pipeline.athena import aws_region
+from backend.pipeline.embedding.selection import EMBEDDINGS_TABLE
 
 SCRAPED_JOB_COLUMNS: list[tuple[str, str]] = [
     ("url", "string"),
@@ -83,27 +84,26 @@ ARTIFACTS_COLUMNS: list[tuple[str, str]] = [
     ("created_at", "timestamp"),
 ]
 
-EMBEDDINGS_TABLE = "postings_embeddings"
+# The registered embeddings table name (EMBEDDINGS_TABLE, imported above) is
+# the selection layer's single source of truth
+# (backend.pipeline.embedding.selection.EMBEDDINGS_TABLE) — a rename there
+# must drive both the anti-join SQL and this registration.
 
 # The embedding row schema (driver.py _part_bytes, data.md §7 + provenance):
 # Parquet parts under lake/embeddings/<model-segment>/<variant>/<version>/.
 # select_unembedded.sql anti-joins this table on (source_hash,
 # configuration_hash); the location is pinned to the v1 minilm generation —
 # a model/variant/version bump updates this registration (additive,
-# idempotent, same discipline as the artifacts table).
-EMBEDDINGS_COLUMNS: list[tuple[str, str]] = [
-    ("source_hash", "string"),
-    ("embedding", "array<float>"),
-    ("model", "string"),
-    ("model_version", "string"),
-    ("input_artifact", "string"),
-    ("input_version", "string"),
-    ("embedding_dimension", "bigint"),
-    ("normalization", "string"),
-    ("created_at", "timestamp"),
-    ("configuration_hash", "string"),
-    ("run_id", "string"),
-]
+# idempotent, same discipline as the artifacts table). The column list is
+# the writer's single source of truth (writer.PART_COLUMNS), so a schema
+# change in part_bytes propagates here instead of drifting.
+def _embeddings_columns() -> list[tuple[str, str]]:
+    from backend.pipeline.embedding.writer import PART_COLUMNS
+
+    return PART_COLUMNS
+
+
+EMBEDDINGS_COLUMNS: list[tuple[str, str]] = _embeddings_columns()
 
 # Full ingestion-manifest row schema (header + observation, manifest.py).
 INGESTION_COLUMNS: list[tuple[str, str]] = [

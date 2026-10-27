@@ -20,6 +20,11 @@ from pathlib import Path
 
 SELECT_SQL_PATH = "select_unembedded.sql"
 
+# The registered embeddings table the anti-join targets. The single source
+# of truth — scripts.provision_query_layer re-exports this so a rename here
+# cannot drift the query layer's registration.
+EMBEDDINGS_TABLE = "postings_embeddings"
+
 # Deterministic row cap for the delta selection (deployment bound; the
 # mirror of the cleaning tier's cap — CPU re-encodes are cheap, but the
 # scheduled embedding tier still processes a bounded first-N on retries).
@@ -46,6 +51,7 @@ def select_unembedded_sql(*, max_postings: int | None = None) -> str:
         (Path(__file__).parent.parent / "sql" / SELECT_SQL_PATH)
         .read_text(encoding="utf-8")
         .strip()
+        .replace("{embeddings_table}", EMBEDDINGS_TABLE)
     )
     lines = [f"SELECT s.source_hash, s.variant_text\nFROM ({inner}) s"]
     if max_postings > 0:
@@ -71,6 +77,11 @@ def bind_sql_params(sql: str, params: dict[str, str]) -> str:
     """
     bound = sql
     for name, value in params.items():
+        if "'" in value or "\\" in value or "--" in value:
+            raise ValueError(
+                f"refusing to bind placeholder :{name} to a value that could "
+                "break out of a SQL literal"
+            )
         bound = bound.replace(f":{name}", f"'{value}'")
     leftovers = re.findall(r"(?<!'):[A-Za-z_][A-Za-z_0-9]*", bound)
     if leftovers:

@@ -134,13 +134,10 @@ class SentenceEncoder(EmbeddingEncoder):
                 f"resolved model revision {resolved!r} != pinned "
                 f"{config.model_revision!r} for {config.model_name!r}"
             )
-        self._resolved_unavailable = resolved is None
-        max_length = getattr(self._model, "max_seq_length", None)
         try:
             self._model.max_seq_length = config.max_length  # type: ignore[index]
         except AttributeError, TypeError:
             pass  # double without the attribute; encoding assertions still hold
-        self._max_length_applied = max_length is not None
 
     def encode(self, texts: list[str]) -> np.ndarray:
         """Encode in configuration-normalized float32 rows, input order.

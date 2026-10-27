@@ -243,8 +243,8 @@ def run_embedding(
     rows: list[list[str]] = list(iter_query_results(athena, execution_id))
     usable, empty = selection.shape_rows(
         rows,
-        text_variant="variant_text",
-        fallback_text_variant=None,
+        text_variant=config.text_variant,
+        fallback_text_variant=config.fallback_text_variant,
     )
 
     if not usable:

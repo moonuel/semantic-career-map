@@ -67,6 +67,24 @@ FLUSH_ROWS_DEFAULT = 128
 FLUSH_SECONDS_DEFAULT = 60.0
 FLUSH_BYTES_DEFAULT = 2 * 1024 * 1024
 
+# The embedding part schema (data.md §7 + provenance), in writer column
+# order. This is the single source of truth for the row layout: the Glue
+# registration derives its (name, Athena-type) column list from it so a
+# rename/retype in part_bytes cannot silently drift the query layer.
+PART_COLUMNS: list[tuple[str, str]] = [
+    ("source_hash", "string"),
+    ("embedding", "array<float>"),
+    ("model", "string"),
+    ("model_version", "string"),
+    ("input_artifact", "string"),
+    ("input_version", "string"),
+    ("embedding_dimension", "bigint"),
+    ("normalization", "string"),
+    ("created_at", "timestamp"),
+    ("configuration_hash", "string"),
+    ("run_id", "string"),
+]
+
 
 def part_bytes(
     source_hashes: list[str],
@@ -90,10 +108,16 @@ def part_bytes(
         The Parquet part bytes.
     """
     dimension = int(vectors.shape[1])
+    # Build the embedding column from the flat float32 buffer + row offsets
+    # (all rows share `dimension`), avoiding a numpy→Python-list round-trip
+    # that would box every float on large batches.
+    flat = np.ascontiguousarray(vectors, dtype=np.float32).reshape(-1)
+    offsets = pa.array(range(0, len(flat) + 1, dimension), type=pa.int32())
+    embedding = pa.ListArray.from_arrays(offsets, pa.array(flat, type=pa.float32()))
     table = pa.table(
         {
             "source_hash": pa.array(source_hashes, type=pa.string()),
-            "embedding": pa.array(vectors.tolist(), type=pa.list_(pa.float32())),
+            "embedding": embedding,
             "model": pa.array(
                 [config.model_name] * len(source_hashes), type=pa.string()
             ),
