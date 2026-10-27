@@ -52,6 +52,7 @@ from backend.pipeline.selection import (
 )
 from scripts.provision_query_layer import (
     DATABASE_DEFAULT,
+    INGESTION_TABLE,
     WORKGROUP_DEFAULT,
     aws_region,
 )
@@ -322,6 +323,23 @@ def main() -> None:
         )
     else:
         print("== gate 4 skipped (pass --embeddings)")
+
+    print("== gate 5: manifests_ingestion is readable (partition key is virtual)")
+    # A registration that declares a partition column twice makes Athena
+    # reject the whole table, so every consumer fails — including the
+    # cleaning tier's recency window. One count(*) is enough to catch it,
+    # and it is what would have caught the four-day outage.
+    try:
+        rows = run_query(
+            athena, DATABASE_DEFAULT, f"SELECT count(*) FROM {INGESTION_TABLE}"
+        )
+        manifest_rows = int(rows[1].strip())
+        match = manifest_rows > 0
+        print(f"  rows {manifest_rows:>6} {'OK' if match else 'EMPTY'}")
+    except RuntimeError as error:
+        match = False
+        print(f"  UNREADABLE: {error}")
+    ok &= match
 
     print("GATE:", "PASS" if ok else "FAIL")
     sys.exit(0 if ok else 1)

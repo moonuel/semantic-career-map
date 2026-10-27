@@ -89,6 +89,7 @@ ARTIFACTS_COLUMNS: list[tuple[str, str]] = [
 # (backend.pipeline.embedding.selection.EMBEDDINGS_TABLE) — a rename there
 # must drive both the anti-join SQL and this registration.
 
+
 # The embedding row schema (driver.py _part_bytes, data.md §7 + provenance):
 # Parquet parts under lake/embeddings/<model-segment>/<variant>/<version>/.
 # select_unembedded.sql anti-joins this table on (source_hash,
@@ -106,6 +107,15 @@ def _embeddings_columns() -> list[tuple[str, str]]:
 EMBEDDINGS_COLUMNS: list[tuple[str, str]] = _embeddings_columns()
 
 # Full ingestion-manifest row schema (header + observation, manifest.py).
+#
+# ``ingested_on`` is deliberately ABSENT: it is the table's partition key
+# (``_create_ingestion_manifest_table``), and Hive partition columns are
+# virtual — they name the directory level, they are not fields of the row.
+# Declaring it here as well as in ``PartitionKeys`` makes Athena reject the
+# table outright ("Table descriptor contains duplicate columns") and every
+# query fails, including the cleaning tier's recency window. The Parquet
+# files do carry the column (manifest.py ``_SCHEMA``); the partition value
+# takes precedence.
 INGESTION_COLUMNS: list[tuple[str, str]] = [
     ("source", "string"),
     ("action", "string"),
@@ -116,7 +126,6 @@ INGESTION_COLUMNS: list[tuple[str, str]] = [
     ("observed_at", "timestamp"),
     ("schema_version", "string"),
     ("ingestion_id", "string"),
-    ("ingested_on", "date"),
     ("pipeline_version", "string"),
     ("configuration_hash", "string"),
     ("run_started_at", "timestamp"),
@@ -124,6 +133,11 @@ INGESTION_COLUMNS: list[tuple[str, str]] = [
     ("status", "string"),
     ("board_status", "string"),  # map<string,string> surfaced as JSON string
 ]
+
+# The manifest table's partition key (the ``ingested_on=<date>/`` directory
+# level written by keys.manifest_ingestion). Single source of truth for both
+# the registration and the column list's exclusion of it.
+INGESTION_PARTITION_KEYS: list[tuple[str, str]] = [("ingested_on", "date")]
 
 DATABASE_DEFAULT = "semantic_career_map"
 WORKGROUP_DEFAULT = "semantic_career_map"
@@ -191,9 +205,16 @@ def _create_raw_table(
         print(f"created table: {table} (source={source})")
 
 
-def _storage_descriptor_matches(stored: dict, target: dict[str, dict]) -> bool:
-    """True when the catalog's stored table already matches the managed
+def _storage_descriptor_matches(
+    stored: dict, target: dict[str, dict], *, partition_names: set[str] | None = None
+) -> bool:
+    """True when the catalog's stored STORAGE DESCRIPTOR matches the managed
     definition.
+
+    One half of :func:`_table_matches`, which is what the provisioner calls:
+    the descriptor covers location, formats, serde and columns only. The
+    table-level keys a descriptor does not own (``PartitionKeys``,
+    ``Parameters``) are compared there.
 
     Managed: location, input/output formats, serde, and the provisioned
     columns — external additive evolution (extra stored columns) survives;
@@ -207,6 +228,9 @@ def _storage_descriptor_matches(stored: dict, target: dict[str, dict]) -> bool:
         stored: The ``StorageDescriptor`` of the existing catalog table.
         target: The table_input's ``StorageDescriptor`` this provisioner
             would apply.
+        partition_names: The table's partition key names. A stored column
+            sharing one of them is illegal to Hive (duplicate columns) and
+            is reported as drift despite the additive-column rule.
 
     Returns:
         True when an ``update_table`` call would be a no-op-or-regression.
@@ -224,9 +248,54 @@ def _storage_descriptor_matches(stored: dict, target: dict[str, dict]) -> bool:
     if shape(stored) != shape(target):
         return False
     stored_columns = {(c["Name"], c["Type"]) for c in stored.get("Columns") or []}
-    return all(
+    if not all(
         (name, ctype) in stored_columns
         for name, ctype in ((c["Name"], c["Type"]) for c in target["Columns"])
+    ):
+        return False
+    # Extra stored columns are tolerated (external additive evolution), with
+    # one exception: a column whose name is a partition key is never legal.
+    # Hive rejects such a table outright ("Table descriptor contains
+    # duplicate columns"), so it must count as drift even though the
+    # additive rule would otherwise keep it. This is the exact defect that
+    # made manifests_ingestion unqueryable.
+    return not any(name in partition_names for name, _ in stored_columns)
+
+
+def _table_matches(stored: dict, target: dict) -> bool:
+    """True when the catalog's stored table already matches the managed def.
+
+    Compares the WHOLE managed definition, not just the storage descriptor:
+    a partition-key or projection-parameter drift is as much a drift as a
+    moved location, and ignoring it meant a wrong registration could never
+    be repaired by the tool that wrote it.
+
+    - ``StorageDescriptor``: location and formats exactly; provisioned
+      columns by presence (external additive columns survive).
+    - ``PartitionKeys``: exactly, in order — an extra or reordered key is
+      a real drift, unlike an extra column.
+    - ``Parameters``: the managed keys, as a subset (Glue synthesises
+      further keys of its own, which this provisioner must not revert).
+
+    Args:
+        stored: The catalog's ``Table`` (not its nested descriptor).
+        target: The table_input this provisioner would apply.
+
+    Returns:
+        True when an ``update_table`` call would be a no-op-or-regression.
+    """
+    if not _storage_descriptor_matches(
+        stored.get("StorageDescriptor") or {},
+        target["StorageDescriptor"],
+        partition_names={key["Name"] for key in (target.get("PartitionKeys") or [])},
+    ):
+        return False
+    if (stored.get("PartitionKeys") or []) != (target.get("PartitionKeys") or []):
+        return False
+    stored_params = stored.get("Parameters") or {}
+    return all(
+        stored_params.get(name) == value
+        for name, value in (target.get("Parameters") or {}).items()
     )
 
 
@@ -240,14 +309,12 @@ def _apply_managed_table(glue, database: str, table: str, table_input: dict) -> 
         table_input: The full ``create-table``/``update-table`` input.
     """
     try:
-        stored = glue.get_table(DatabaseName=database, Name=table)["Table"][
-            "StorageDescriptor"
-        ]
+        stored = glue.get_table(DatabaseName=database, Name=table)["Table"]
     except glue.exceptions.EntityNotFoundException:
         glue.create_table(DatabaseName=database, TableInput=table_input)
         print(f"created table: {table}")
         return
-    if _storage_descriptor_matches(stored, table_input["StorageDescriptor"]):
+    if _table_matches(stored, table_input):
         print(f"table up to date: {table}")
         return
     glue.update_table(DatabaseName=database, TableInput=table_input)
@@ -267,7 +334,9 @@ def _create_ingestion_manifest_table(glue, database: str, bucket: str) -> None:
             },
             "Columns": [{"Name": c, "Type": t} for c, t in INGESTION_COLUMNS],
         },
-        "PartitionKeys": [{"Name": "ingested_on", "Type": "date"}],
+        "PartitionKeys": [
+            {"Name": name, "Type": ctype} for name, ctype in INGESTION_PARTITION_KEYS
+        ],
         "Parameters": {
             "projection.enabled": "true",
             "projection.ingested_on.type": "date",
@@ -393,6 +462,7 @@ def provision(
         "manifests_ingestion": {
             "location": f"s3://{bucket}/lake/manifests/ingestion/",
             "columns": [c for c, _ in INGESTION_COLUMNS],
+            "partition_keys": [c for c, _ in INGESTION_PARTITION_KEYS],
         },
         "artifacts_cleaned": {
             "location": (
