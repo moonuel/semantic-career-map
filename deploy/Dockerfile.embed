@@ -22,9 +22,11 @@ ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 WORKDIR /app
 COPY backend/ backend/
 COPY scripts/embed.py scripts/embed.py
-# The validation generation: the pinned config's parameters with the
-# deployment bound capped to a 100-row sample (own configuration_hash).
-COPY deploy/embedding-config-sample.json embedding-config.json
+# The pinned production generation (its own configuration_hash): the same
+# parameters the scheduler's day-2 no-op proof runs against. The 3.7
+# validation baked the 100-row sample (deploy/embedding-config-sample.json,
+# kept for the record); production operation embeds the full bound.
+COPY deploy/embedding-config.json embedding-config.json
 
 ENV STORE_S3_ENDPOINT=
 
