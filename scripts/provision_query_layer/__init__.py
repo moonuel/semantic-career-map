@@ -5,6 +5,12 @@ the workflow this package automates: per-shape raw tables (no crawler),
 ingestion-manifest table with day-partition projection, workgroup with a
 bytes-scanned cap, and the gate queries that cross-check store counts and
 exp 009's tables.
+
+The embeddings table's projection enums are derived from the production
+pointer (:func:`embeddings_projection_values`) — the pointer is the only
+authority over which generations are production, so the catalog cannot
+drift from it by construction, and the pointer gate catches the case
+where an operator forgot to re-provision after a flip.
 """
 
 from __future__ import annotations
@@ -16,6 +22,7 @@ import boto3
 
 from backend.pipeline.athena import aws_region
 from backend.pipeline.embedding.selection import EMBEDDINGS_TABLE
+from backend.storage.pointer import read_pointer
 
 SCRAPED_JOB_COLUMNS: list[tuple[str, str]] = [
     ("url", "string"),
@@ -119,6 +126,8 @@ EMBEDDINGS_PARTITION_KEYS: list[tuple[str, str]] = [
     ("variant", "string"),
     ("version", "string"),
 ]
+
+PRODUCTION_POINTER_KEY = "state/production.json"
 
 # Full ingestion-manifest row schema (header + observation, manifest.py).
 #
@@ -404,8 +413,64 @@ def embeddings_location(bucket: str) -> str:
     return f"s3://{bucket}/lake/embeddings/"
 
 
-def _create_embeddings_table(glue, database: str, bucket: str) -> None:
-    """Register ``postings_embeddings`` over the partitioned vector lake."""
+def embeddings_projection_values(pointer_doc: dict) -> dict[str, str]:
+    """Derive the embeddings table's projection enum values from the pointer.
+
+    The catalog authority question ("which model/variant/version partitions
+    are registered?") has exactly one source: the production pointer. Its
+    embeddings entries' segments become the three projection enums — comma-
+    joined, first-appearance order, deduplicated. Stable tokens only: an
+    ephemeral ``x-...`` prefix is never projected (a pointer parse refuses
+    one outright; this re-check keeps the enum derivation safe if called
+    with a document that bypassed :func:`parse_document`).
+
+    Args:
+        pointer_doc: The production pointer document (parsed).
+
+    Returns:
+        ``{"model_segment": "…", "variant": "…", "version": "…"}`` — the
+        comma-joined enum value strings for the partition parameters.
+
+    Raises:
+        ValueError: when a pointer entry names an ephemeral version token.
+    """
+    from backend.storage import keys as storage_keys
+
+    stacks: dict[str, list[str]] = {
+        "model_segment": [],
+        "variant": [],
+        "version": [],
+    }
+    for entry in pointer_doc["tiers"]["embeddings"]["entries"]:
+        if storage_keys.version_kind(entry["version"]) != "stable":
+            raise ValueError(
+                f"pointer entry version {entry['version']!r} is ephemeral: "
+                "x-... tokens are never projected into the query layer"
+            )
+        for name, value in (
+            ("model_segment", entry["model_segment"]),
+            ("variant", entry["variant"]),
+            ("version", entry["version"]),
+        ):
+            if value not in stacks[name]:
+                stacks[name].append(value)
+    return {name: ",".join(values) for name, values in stacks.items()}
+
+
+def _create_embeddings_table(
+    glue,
+    database: str,
+    bucket: str,
+    *,
+    projection_values: dict[str, str],
+) -> None:
+    """Register ``postings_embeddings`` over the partitioned vector lake.
+
+    The projection enums come from the pointer (``projection_values`` —
+    the output of :func:`embeddings_projection_values`); this provisioner
+    is the only catalog writer, and the pointer is the only enum source,
+    so a re-provision after a flip is what re-registers a generation.
+    """
     table_input = {
         "Name": EMBEDDINGS_TABLE,
         "TableType": "EXTERNAL_TABLE",
@@ -423,15 +488,16 @@ def _create_embeddings_table(glue, database: str, bucket: str) -> None:
         ],
         "Parameters": {
             # Projection rather than registered partitions: the segments are
-            # produced by a structured key builder, so their values are known
-            # at registration time and no BatchCreatePartition call is needed.
+            # pointer-derived (embeddings_projection_values), so their values
+            # are known at registration time and no BatchCreatePartition call
+            # is needed.
             "projection.enabled": "true",
             "projection.model_segment.type": "enum",
-            "projection.model_segment.values": "all-minilm-l6-v2",
+            "projection.model_segment.values": projection_values["model_segment"],
             "projection.variant.type": "enum",
-            "projection.variant.values": "minilm",
+            "projection.variant.values": projection_values["variant"],
             "projection.version.type": "enum",
-            "projection.version.values": "v1",
+            "projection.version.values": projection_values["version"],
             "storage.location.template": (
                 f"s3://{bucket}/lake/embeddings/model=${{model_segment}}"
                 "/variant=${variant}/version=${version}"
@@ -471,6 +537,12 @@ def provision(
 ) -> dict:
     """Plan and apply the provision set; return the applied plan.
 
+    Requires the production pointer: the embeddings table's projection
+    enums are derived from it (the pointer is the catalog's one authority
+    over which generations are production), so provisioning after a flip
+    is what re-registers a generation — and a flip without a re-provision
+    is caught by the pointer gate.
+
     Args:
         database: Glue database name.
         workgroup: Athena workgroup name.
@@ -479,7 +551,25 @@ def provision(
 
     Returns:
         The plan dict (the blueprint of what exists after the call).
+
+    Raises:
+        RuntimeError: when the production pointer is absent (bootstrap
+            first — the pointer describes reality before anything derives
+            from it).
     """
+    from backend.storage.store import ObjectStore
+
+    store = ObjectStore.from_env()
+    try:
+        pointer_doc = read_pointer(store)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "provision requires the production pointer (the catalog derives "
+            "its projection enums from it); bootstrap with: "
+            "python scripts/promote_production.py --bootstrap --apply"
+        ) from exc
+    projection_values = embeddings_projection_values(pointer_doc)
+
     session = boto3.Session(region_name=aws_region())
     # The bucket name is a constant across the codebase (keys.py docs,
     # runbooks) — read the same env source as ObjectStore.from_env rather
@@ -513,6 +603,7 @@ def provision(
             "location": embeddings_location(bucket),
             "columns": [c for c, _ in EMBEDDINGS_COLUMNS],
             "partition_keys": [c for c, _ in EMBEDDINGS_PARTITION_KEYS],
+            "projection_enums": projection_values,
         },
         "athena": {
             "workgroup": workgroup,
@@ -532,7 +623,9 @@ def provision(
         _create_raw_table(glue, database, bucket, table, source, columns)
     _create_ingestion_manifest_table(glue, database, bucket)
     _create_artifacts_table(glue, database, bucket)
-    _create_embeddings_table(glue, database, bucket)
+    _create_embeddings_table(
+        glue, database, bucket, projection_values=projection_values
+    )
     _create_workgroup(athena, workgroup, bucket, max_scan_bytes)
     print("provision complete")
     return plan

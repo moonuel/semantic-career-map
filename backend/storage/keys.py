@@ -738,6 +738,32 @@ def state_pointer() -> str:
 # --- Validators -------------------------------------------------------------
 
 
+def _validate_state_branch(key: str, bucket: str, rest: list[str]) -> None:
+    """Pin the ``state`` branch to its single addressable object.
+
+    The branch is the control-plane exception — the one mutable place in an
+    append-only bucket — and so it is also the most tempting dumping ground.
+    The pin keeps it to exactly one object, the production pointer
+    (``state/production.json``): new control-plane objects need a key
+    builder and a pin here, not a free directory. Anything else on the
+    branch is refused (shape, depth, or file name).
+
+    Args:
+        key: The whole key string.
+        bucket: The first segment (already membership-checked).
+        rest: The segments after the bucket.
+
+    Raises:
+        ValueError: when the key is not exactly the pointer address.
+    """
+    if bucket == "state" and key != state_pointer():
+        raise ValueError(
+            f"state branch admits exactly one object, {state_pointer()!r}: "
+            f"refused {key!r} — new control-plane objects need a builder + "
+            "a shape pin"
+        )
+
+
 def _id_index(bucket: str, rest: list[str]) -> int | None:
     """Index in ``rest`` of the posting-id segment for this key shape, else None.
 
@@ -1048,11 +1074,14 @@ def validate_key(key: str) -> str:
         ``run_id`` segment with ``run.json`` / ``flush=<seq>.json`` leaves),
         and the version-claim registry (``model``/``variant``/``version``
         partitions with a ``claim.json`` leaf);
+      - ``state`` pins the branch to its single object, the production
+        pointer (``state/production.json``, :func:`_validate_state_branch`);
       - no trailing slash; no leading slash.
 
     The once-reserved ``lake/embeddings`` branch is now pinned the same way:
     its builder (:func:`embedding_part`) and shape validator have landed with
-    the embedding-pipeline change.
+    the embedding-pipeline change. The ``state`` branch is pinned with this
+    change too: exactly one addressable object, the production pointer.
     """
     if not key or key.startswith("/"):
         raise ValueError(f"key must not be empty or start with '/': {key!r}")
@@ -1129,5 +1158,8 @@ def validate_key(key: str) -> str:
 
     if bucket == "lake" and rest[:2] == ["manifests", "runs"]:
         _validate_runs_manifest(key, rest)
+
+    if bucket == "state":
+        _validate_state_branch(key, bucket, rest)
 
     return key

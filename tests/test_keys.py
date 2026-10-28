@@ -77,10 +77,20 @@ class TestExactShapes:
         assert keys.state_pointer() == "state/production.json"
 
     def test_state_pointer_is_valid(self) -> None:
-        # The branch's one addressable object passes the validator; the
-        # full state/ shape pinner lands with the pointer module (Layer 3).
         key = keys.state_pointer()
         assert keys.validate_key(key) == key
+
+    def test_state_branch_is_pinned_to_the_pointer(self) -> None:
+        # The branch is the mutable control-plane exception; the pin keeps
+        # it from becoming a dumping ground.
+        with pytest.raises(ValueError, match="admits exactly one object"):
+            keys.validate_key("state/other.json")
+        with pytest.raises(ValueError, match="admits exactly one object"):
+            keys.validate_key("state/x/production.json")
+
+    def test_state_leaf_shape_rejected_by_segment_rules(self) -> None:
+        with pytest.raises(ValueError, match="malformed segment"):
+            keys.validate_key("state/production.json.bak")
 
     def test_manifest_ingestion(self) -> None:
         assert (

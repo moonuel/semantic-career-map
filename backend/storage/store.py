@@ -163,6 +163,59 @@ class ObjectStore:
                 return False
             raise
 
+    def get_with_etag(self, key: str) -> tuple[bytes, str]:
+        """Read the bytes stored at ``key`` together with the object's ETag.
+
+        The ETag rides the same ``get_object`` response — one round trip, one
+        version identity. It is the lock token for :func:`put_if_match`; it
+        is never interpreted as content (S3 multipart ETags are not MD5s).
+
+        Raises:
+            FileNotFoundError: if the object is 404-class absent.
+        """
+        keys.validate_key(key)
+        try:
+            response = self._client.get_object(Bucket=self._bucket, Key=key)
+            return response["Body"].read(), str(response["ETag"])
+        except ClientError as exc:
+            if _is_not_found(exc):
+                raise FileNotFoundError(key) from exc
+            raise
+
+    def put_if_match(self, key: str, data: bytes, *, expected_etag: str) -> bool:
+        """Overwrite ``key`` only while the object carries ``expected_etag``.
+
+        The conditional-write sibling of :func:`put_if_absent`: S3's
+        ``If-Match`` makes the object store arbitrate the replace race, so
+        two concurrent promoters cannot both land on the same version — the
+        loser's call surfaces a failed precondition, translated to ``False``
+        exactly like the create race. Used by the production pointer's
+        ``replace`` (compare-and-swap keyed by the object version).
+
+        Args:
+            key: The validated object key.
+            data: The bytes to write.
+            expected_etag: The ETag :func:`get_with_etag` returned for the
+                caller's read — the version the replace is predicated on.
+
+        Returns:
+            ``True`` when this call overwrote the object, ``False`` when the
+            object moved between the caller's read and the write.
+
+        Raises:
+            ClientError: for any failure other than a failed precondition.
+        """
+        keys.validate_key(key)
+        try:
+            self._client.put_object(
+                Bucket=self._bucket, Key=key, Body=data, IfMatch=expected_etag
+            )
+            return True
+        except ClientError as exc:
+            if _is_precondition_failed(exc):
+                return False
+            raise
+
     def get(self, key: str) -> bytes:
         """Read the bytes stored at ``key``.
 
