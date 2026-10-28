@@ -2,9 +2,9 @@
 
 ``MemorySink`` is the in-process stand-in for
 :class:`backend.storage.store.ObjectStore`: same protocol surface
-(``put``/``exists``/``get``/``delete``/``list_keys``), zero I/O. The object
-store is the only storage backend — local dev runs Garage, CI and prod run
-dev/prod S3 — so tests never touch a filesystem mirror; they use this.
+(``put``/``put_if_absent``/``exists``/``get``/``delete``/``list_keys``), zero
+I/O. The object store is the only storage backend — local dev, CI and prod
+all run against S3 — so tests never touch a filesystem mirror; they use this.
 """
 
 from __future__ import annotations
