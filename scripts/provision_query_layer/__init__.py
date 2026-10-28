@@ -93,9 +93,9 @@ ARTIFACTS_COLUMNS: list[tuple[str, str]] = [
 # The embedding row schema (driver.py _part_bytes, data.md §7 + provenance):
 # Parquet parts under lake/embeddings/<model-segment>/<variant>/<version>/.
 # select_unembedded.sql anti-joins this table on (source_hash,
-# configuration_hash); the location is pinned to the v1 minilm generation —
-# a model/variant/version bump updates this registration (additive,
-# idempotent, same discipline as the artifacts table). The column list is
+# configuration_hash). Those path levels are declared as partition keys
+# (EMBEDDINGS_PARTITION_KEYS), so a model/variant/version bump adds a
+# projection value rather than relocating the table. The column list is
 # the writer's single source of truth (writer.PART_COLUMNS), so a schema
 # change in part_bytes propagates here instead of drifting.
 def _embeddings_columns() -> list[tuple[str, str]]:
@@ -105,6 +105,20 @@ def _embeddings_columns() -> list[tuple[str, str]]:
 
 
 EMBEDDINGS_COLUMNS: list[tuple[str, str]] = _embeddings_columns()
+
+# The embedding table's partition keys, in path order: the
+# ``model=/variant=/version=`` levels written by keys.embedding_part. They are
+# STRING per Athena's partition-key guidance.
+#
+# ``model_segment`` and not ``model``: PART_COLUMNS already carries a ``model``
+# column holding the full model id, and a partition key sharing a column name
+# makes the table unqueryable ("Table descriptor contains duplicate columns")
+# — the defect that once made manifests_ingestion unreadable.
+EMBEDDINGS_PARTITION_KEYS: list[tuple[str, str]] = [
+    ("model_segment", "string"),
+    ("variant", "string"),
+    ("version", "string"),
+]
 
 # Full ingestion-manifest row schema (header + observation, manifest.py).
 #
@@ -371,7 +385,15 @@ def _create_artifacts_table(glue, database: str, bucket: str) -> None:
 
 
 def embeddings_location(bucket: str) -> str:
-    """The embeddings table's pinned location (the v1 minilm generation).
+    """The embeddings table's root location, above the partition levels.
+
+    The generation segments (``model=/variant=/version=``) are Hive partition
+    keys on the registered table, not part of the location: pinning them here
+    was what made every generation after ``v1`` invisible to the catalog and
+    left no way to write a partition predicate. The rows still carry a
+    ``model`` column (the full model id), which is why the partition key is
+    named ``model_segment`` — a partition key sharing a column name makes the
+    table unqueryable ("duplicate columns").
 
     Args:
         bucket: The lake bucket name.
@@ -379,14 +401,11 @@ def embeddings_location(bucket: str) -> str:
     Returns:
         The ``s3://`` location string.
     """
-    return (
-        f"s3://{bucket}/lake/embeddings/"
-        "model=all-minilm-l6-v2/variant=minilm/version=v1/"
-    )
+    return f"s3://{bucket}/lake/embeddings/"
 
 
 def _create_embeddings_table(glue, database: str, bucket: str) -> None:
-    """Register ``postings_embeddings`` over the v1 minilm vector parts."""
+    """Register ``postings_embeddings`` over the partitioned vector lake."""
     table_input = {
         "Name": EMBEDDINGS_TABLE,
         "TableType": "EXTERNAL_TABLE",
@@ -398,6 +417,25 @@ def _create_embeddings_table(glue, database: str, bucket: str) -> None:
                 "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe",
             },
             "Columns": [{"Name": c, "Type": t} for c, t in EMBEDDINGS_COLUMNS],
+        },
+        "PartitionKeys": [
+            {"Name": name, "Type": ctype} for name, ctype in EMBEDDINGS_PARTITION_KEYS
+        ],
+        "Parameters": {
+            # Projection rather than registered partitions: the segments are
+            # produced by a structured key builder, so their values are known
+            # at registration time and no BatchCreatePartition call is needed.
+            "projection.enabled": "true",
+            "projection.model_segment.type": "enum",
+            "projection.model_segment.values": "all-minilm-l6-v2",
+            "projection.variant.type": "enum",
+            "projection.variant.values": "minilm",
+            "projection.version.type": "enum",
+            "projection.version.values": "v1",
+            "storage.location.template": (
+                f"s3://{bucket}/lake/embeddings/model=${{model_segment}}"
+                "/variant=${variant}/version=${version}"
+            ),
         },
     }
     _apply_managed_table(glue, database, EMBEDDINGS_TABLE, table_input)
@@ -474,6 +512,7 @@ def provision(
         "postings_embeddings": {
             "location": embeddings_location(bucket),
             "columns": [c for c, _ in EMBEDDINGS_COLUMNS],
+            "partition_keys": [c for c, _ in EMBEDDINGS_PARTITION_KEYS],
         },
         "athena": {
             "workgroup": workgroup,
