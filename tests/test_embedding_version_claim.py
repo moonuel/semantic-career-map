@@ -10,6 +10,7 @@ import pytest
 from backend.pipeline.embedding.config import EmbeddingConfig
 from backend.pipeline.embedding.version_claim import (
     ClaimConflict,
+    adopt_version_prefix,
     claim_bytes,
     claim_record,
     claim_version,
@@ -85,14 +86,28 @@ def test_ephemeral_part_key_validates() -> None:
 
 def test_claim_key_shape() -> None:
     key = keys.embedding_version_claim("all-minilm-l6-v2", "minilm", "v1")
-    assert key == "lake/manifests/versions/embeddings/all-minilm-l6-v2/minilm/v1.json"
+    assert key == (
+        "lake/manifests/versions/embeddings/model=all-minilm-l6-v2/variant=minilm/"
+        "version=v1/claim.json"
+    )
     assert keys.validate_key(key) == key
 
 
-def test_claim_key_sanitizes_dots() -> None:
+def test_claim_keeps_token_verbatim() -> None:
     key = keys.embedding_version_claim("all-minilm-l6-v2", "minilm", "x-v1.1")
-    assert key.endswith("/x-v1-1.json")
+    assert key.endswith("/variant=minilm/version=x-v1.1/claim.json")
     assert keys.validate_key(key) == key
+
+
+def test_distinct_dotted_tokens_get_distinct_claims() -> None:
+    """The claim segment must not fold `.` to `-`: the two tokens are
+    distinct prefixes, so aliasing them onto one arbitration key would
+    silently block a legitimate prefix."""
+    dotted = keys.embedding_version_claim("m", "v", "x-a.b")
+    literal = keys.embedding_version_claim("m", "v", "x-a-b")
+    assert dotted != literal
+    assert keys.validate_key(dotted) == dotted
+    assert keys.validate_key(literal) == literal
 
 
 # --- Claim protocol ---------------------------------------------------------
@@ -194,6 +209,53 @@ def test_claim_precedes_reconcile_and_parts(journal) -> None:
     ]
 
 
+# --- Legacy-prefix guard -----------------------------------------------------
+
+
+def test_legacy_stable_prefix_refuses_unclaimed(memory_sink) -> None:
+    """A stable prefix with parts but no claim is never silently adopted:
+    first-writer-wins would mint an owner for production v1 (issue #22)."""
+    part = keys.embedding_part("all-minilm-l6-v2", "minilm", "v1", RUN_ID, 1)
+    memory_sink.put(part, b"")
+
+    with pytest.raises(RuntimeError, match="claim_embedding_version"):
+        claim_version(memory_sink, _config(), HASH_A, run_id=RUN_ID)
+
+
+def test_legacy_ephemeral_prefix_still_claims(memory_sink) -> None:
+    """Ephemeral prefixes have no legacy meaning — parts there were written
+    post-registry, or the prefix is fresh; claiming proceeds either way."""
+    part = keys.embedding_part("all-minilm-l6-v2", "minilm", "x-tmp.2", RUN_ID, 1)
+    memory_sink.put(part, b"")
+
+    record = claim_version(
+        memory_sink, _config(version="x-tmp.2"), HASH_A, run_id=RUN_ID
+    )
+    assert record["configuration_hash"] == HASH_A
+
+
+def test_operator_adopted_legacy_owner_reclaims_idempotently(memory_sink) -> None:
+    """After the backfill adopts a legacy prefix, the owning configuration's
+    pipeline runs proceed without the guard blocking them."""
+    memory_sink.put(
+        keys.embedding_part("all-minilm-l6-v2", "minilm", "v1", RUN_ID, 1), b""
+    )
+
+    adopted = adopt_version_prefix(
+        memory_sink,
+        _config(),
+        HASH_A,
+        run_id=RUN_ID,
+    )
+    assert adopted["configuration_hash"] == HASH_A
+
+    repeat = claim_version(memory_sink, _config(), HASH_A, run_id=RUN_ID_B)
+    assert repeat == adopted
+    assert memory_sink.objects[
+        keys.embedding_version_claim("all-minilm-l6-v2", "minilm", "v1")
+    ] == claim_bytes(adopted)
+
+
 # --- Gate drift check -------------------------------------------------------
 
 
@@ -224,3 +286,58 @@ def test_gate_maps_dotted_ephemeral_tokens(memory_sink) -> None:
     )
     claimed, missing = check_embedding_version_claims(memory_sink)
     assert claimed and missing == []
+
+
+def test_gate_reports_malformed_token_instead_of_crashing(memory_sink) -> None:
+    """A bad version token on disk is drift to report, not a traceback."""
+    from scripts.provision_query_layer.gate import (
+        _backfill_command,
+        check_embedding_version_claims,
+    )
+
+    memory_sink.objects[
+        "lake/embeddings/model=all-minilm-l6-v2/variant=minilm/"
+        f"version=v01/part-{RUN_ID}-00001.parquet"
+    ] = b""
+
+    claimed, missing = check_embedding_version_claims(memory_sink)
+    assert not claimed
+    assert missing == ["all-minilm-l6-v2/minilm/version=v01"]
+    assert _backfill_command(missing[0]) is None
+
+
+# --- Registry key shape -----------------------------------------------------
+
+
+def test_registry_claim_key_is_positionally_pinned() -> None:
+    """The claim branch has a shape pinner, like every other manifest branch."""
+    good = keys.embedding_version_claim("all-minilm-l6-v2", "minilm", "v1")
+    assert keys.validate_key(good) == good
+
+    for bad in (
+        # wrong registry namespace
+        good.replace("versions/embeddings", "versions/other"),
+        # partition order flipped
+        good.replace("model=all-minilm-l6-v2/variant=minilm", "variant=minilm/model=m"),
+        # wrong leaf
+        good.replace("claim.json", "owner.json"),
+        # malformed token in the partition
+        good.replace("version=v1", "version=1"),
+        # missing a partition level
+        good.replace("/variant=minilm", ""),
+    ):
+        with pytest.raises(ValueError):
+            keys.validate_key(bad)
+
+
+def test_claim_version_has_no_guard_bypass() -> None:
+    """Adoption is a separate function, not a flag on the enforcing path."""
+    import inspect
+
+    from backend.pipeline.embedding import version_claim
+
+    assert (
+        "allow_preexisting_parts"
+        not in inspect.signature(version_claim.claim_version).parameters
+    )
+    assert "adopt_version_prefix" in dir(version_claim)

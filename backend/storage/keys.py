@@ -43,6 +43,8 @@ segment in a key is lowercase; there is no uppercase exception.
     - ``manifest_run(run_id)``             -> ``lake/manifests/runs/run_id=<run-id>/run.json``
     - ``manifest_run_checkpoint(run_id, seq)`` ->
       ``lake/manifests/runs/run_id=<run-id>/flush=<seq>.json``
+    - ``embedding_version_claim(model, variant, version)`` ->
+      ``lake/manifests/versions/embeddings/model=<model>/variant=<variant>/version=<version>/claim.json``
     - ``raw_posting(id)``        -> ``live/raw/<id>/source.md``
     - ``raw_metadata(id)``       -> ``live/raw/<id>/metadata.json``
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
@@ -515,7 +517,7 @@ def embedding_part(
 def embedding_version_claim(model: str, variant: str, version: str) -> str:
     """Key for the registry object recording who owns an embedding version.
 
-    ``lake/manifests/versions/embeddings/<model>/<variant>/<version>.json``
+    ``lake/manifests/versions/embeddings/model=<model>/variant=<variant>/version=<version>/claim.json``
 
     One JSON object per version prefix, written once with a conditional put
     (``ObjectStore.put_if_absent``) before a run writes any part. It answers
@@ -524,9 +526,13 @@ def embedding_version_claim(model: str, variant: str, version: str) -> str:
     longer mint parts into one prefix, which is the defect behind the 400
     foreign rows in ``version=v1`` (issue #22).
 
-    The leaf is the version token with dots replaced by hyphens, keeping it a
-    plain single-extension filename (``x-v1.1`` → ``x-v1-1.json``). The JSON
-    body carries the token verbatim, so the lossy leaf stays unambiguous.
+    The three levels are the same Hive partitions the embeddings branch uses,
+    in the same order, so reading a claim key and a part key side by side
+    needs no translation. The token is kept verbatim — dots included — so the
+    segment-to-claim mapping is injective: ``x-v1.1`` and ``x-v1-1`` are
+    distinct prefixes with distinct claim objects. A folded leaf (dot →
+    hyphen) would alias the two onto one arbitration key and silently block
+    a legitimate, physically disjoint prefix.
 
     Args:
         model: Model family segment (e.g. ``all-minilm-l6-v2``).
@@ -540,10 +546,9 @@ def embedding_version_claim(model: str, variant: str, version: str) -> str:
         ValueError: if any segment, or the token, is malformed.
     """
     token = _check_version(version, name="embedding version", allow_ephemeral=True)
-    leaf = token.replace(".", "-")
     return (
-        f"lake/manifests/versions/embeddings/{_check(model, name='model')}/"
-        f"{_check(variant, name='variant')}/{_check_plain(leaf, name='version')}.json"
+        f"lake/manifests/versions/embeddings/model={_check(model, name='model')}/"
+        f"variant={_check(variant, name='variant')}/version={token}/claim.json"
     )
 
 
@@ -888,6 +893,28 @@ def _validate_lake_embeddings(key: str, rest: list[str]) -> None:
     _check_part_leaf(key, rest[-1])
 
 
+def _validate_versions_registry(key: str, rest: list[str]) -> None:
+    """Semantic checks for the ``lake/manifests/versions`` claim registry.
+
+    ``lake/manifests/versions/embeddings/model=<model>/variant=<variant>/version=<token>/claim.json``
+
+    One write-once claim per embedding version prefix (issue #22). The token
+    is a Hive partition value kept verbatim, so dotted ephemeral tokens
+    (``x-v1.1``) cannot alias a differently-named prefix. The leaf is always
+    ``claim.json``: the registry is addressed by the partition stack, not by
+    a filename that would have to encode the token a second time.
+    """
+    if len(rest) != 7 or rest[:3] != ["manifests", "versions", "embeddings"]:
+        raise ValueError(
+            f"key {key!r} must be lake/manifests/versions/embeddings/"
+            "model=<model>/variant=<variant>/version=<token>/claim.json"
+        )
+    values = _validated_partitions(key, rest[3:6], ["model", "variant", "version"])
+    _check_version(values[2], name="claim version", allow_ephemeral=True)
+    if rest[6] != "claim.json":
+        raise ValueError(f"key {key!r} must end in 'claim.json', got {rest[6]!r}")
+
+
 def _validate_dataset_manifest(key: str, rest: list[str]) -> None:
     """Semantic checks for the ``lake/manifests/datasets`` key shape.
 
@@ -997,8 +1024,10 @@ def validate_key(key: str) -> str:
         leaf;
       - ``lake/manifests`` pins each sub-branch's shape: batch ingestion
         manifests (``ingested_on`` partition, ``ingestion_id`` leaf), dataset
-        manifests (addressed ``<dataset-id>.json`` leaf), and runs (grouped
-        ``run_id`` segment with ``run.json`` / ``flush=<seq>.json`` leaves);
+        manifests (addressed ``<dataset-id>.json`` leaf), runs (grouped
+        ``run_id`` segment with ``run.json`` / ``flush=<seq>.json`` leaves),
+        and the version-claim registry (``model``/``variant``/``version``
+        partitions with a ``claim.json`` leaf);
       - no trailing slash; no leading slash.
 
     The once-reserved ``lake/embeddings`` branch is now pinned the same way:
@@ -1074,6 +1103,9 @@ def validate_key(key: str) -> str:
 
     if bucket == "lake" and rest[:2] == ["manifests", "datasets"]:
         _validate_dataset_manifest(key, rest)
+
+    if bucket == "lake" and rest[:2] == ["manifests", "versions"]:
+        _validate_versions_registry(key, rest)
 
     if bucket == "lake" and rest[:2] == ["manifests", "runs"]:
         _validate_runs_manifest(key, rest)

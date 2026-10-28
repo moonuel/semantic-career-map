@@ -94,7 +94,9 @@ Two version vocabularies exist, and the difference is a policy the storage layer
 | `vN` | stable | A production generation address. One configuration owns it. |
 | `x-...` | ephemeral | A throwaway prefix (`x-v1.1`, `x-scratch`). Never production, never query-layer-projected by default. |
 
-Ownership is recorded, not assumed. Before a run writes its first part it claims its prefix with a conditional put (`ObjectStore.put_if_absent`) at `manifests/versions/embeddings/<model>/<variant>/<version>.json`; the claim names the owning `configuration_hash`. A second configuration aimed at a claimed prefix fails (`ClaimConflict`) rather than joining the dataset. Ephemeral tokens are claimed the same way -- reuse by the *same* configuration is allowed, reuse by a different one is not.
+Ownership is recorded, not assumed. Before a run writes its first part it claims its prefix with a conditional put (`ObjectStore.put_if_absent`) at `manifests/versions/embeddings/model=<model>/variant=<variant>/version=<token>/claim.json`; the claim names the owning `configuration_hash`. A second configuration aimed at a claimed prefix fails (`ClaimConflict`) rather than joining the dataset. Ephemeral tokens are claimed the same way -- reuse by the *same* configuration is allowed, reuse by a different one is not.
+
+Legacy prefixes that pre-date the registry (parts written before §2.4 landed) are guarded against silent adoption: a run targeting a *stable* token whose prefix already has parts but no claim fails loudly instead of minting itself the owner, and the operator publishes the true owner with `scripts/claim_embedding_version.py` (dry run by default; `--apply` writes) before the next production run. Gate 5 in `scripts/provision_query_layer/gate.py` reports unclaimed prefixes with that exact command.
 
 The rule exists because `configuration_hash` is a row column, never a path segment: a config change re-hashes but does not move the prefix, so without a claim a `LIMIT 100` smoke-test configuration wrote 400 rows into production `version=v1` ([issue #22](https://github.com/moonuel/semantic-career-map/issues/22)).
 

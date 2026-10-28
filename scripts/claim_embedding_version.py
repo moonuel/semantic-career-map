@@ -1,9 +1,12 @@
 """Backfill the embedding version-claim registry for prefixes already in use.
 
 Why this exists: ``version=v1`` was written before claims existed, and it
-already holds rows from two configurations (issue #22). Enforcing claims
-without a backfill would make the next production run fail on day one — the
-registry would be empty and the prefix in use.
+already holds rows from two configurations (issue #22). The pipeline refuses a
+stable prefix that already has parts but no claim — it never adopts one merely
+by being first to run — so the owner recorded here is the *intended* owner the
+operator declares, not a guess minted by whatever run arrives first. Until
+this backfill publishes that owner, every pipeline run against a legacy
+prefix fails loudly with a pointer to this script.
 
 The backfill records the *intended* owner, not the observed population. It
 names the configuration the operator says owns the prefix; rows in that prefix
@@ -24,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,9 +36,17 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backend.pipeline.embedding.version_claim import ClaimConflict, claim_version
+from backend.pipeline.embedding.version_claim import (
+    ClaimConflict,
+    adopt_version_prefix,
+)
 from backend.storage import keys
 from backend.storage.store import ObjectStore
+
+# A declared owner is a configuration_hash: 64-char lowercase hex SHA-256
+# (backend/pipeline/embedding/config.py). The claim object is immutable once
+# written, so a typo here would poison the registry permanently.
+_HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def main() -> int:
@@ -64,6 +76,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if _HASH_RE.fullmatch(args.configuration_hash) is None:
+        print(
+            f"error: --configuration-hash must be 64-char lowercase hex "
+            f"(a sha256 configuration_hash), got {args.configuration_hash!r}"
+        )
+        return 2
+
     key = keys.embedding_version_claim(args.model, args.variant, args.version)
     store = ObjectStore.from_env()
 
@@ -75,7 +94,7 @@ def main() -> int:
 
     run_id = args.run_id or ids.new_id()
     try:
-        record = claim_version(
+        record = adopt_version_prefix(
             store,
             _Proxy(args),
             args.configuration_hash,

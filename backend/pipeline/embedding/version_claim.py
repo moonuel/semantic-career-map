@@ -115,6 +115,44 @@ def _owner(store, key: str) -> dict[str, str] | None:
         return None
 
 
+def _refuse_unclaimed_legacy(store, config: EmbeddingConfig) -> None:
+    """Refuse a stable-token claim when the prefix already has parts.
+
+    A claim-less prefix with parts on disk is a legacy prefix that predates
+    the registry (issue #22) or a run that bypassed the driver. Minting a
+    claim for it here would hand a production address to whichever
+    configuration runs first; publishing the owner belongs to the operator
+    via ``scripts/claim_embedding_version.py``. Ephemeral tokens are
+    unaffected: they postdate the registry, so an unclaimed ephemeral prefix
+    has no legacy meaning.
+
+    Args:
+        store: The object store.
+        config: The run's configuration (supplies the prefix).
+
+    Raises:
+        RuntimeError: with the exact backfill command when the stable
+            prefix already has parts but no claim.
+    """
+    if keys.version_kind(config.version) != "stable":
+        return
+    prefix = (
+        f"lake/embeddings/model={config.model_segment}/"
+        f"variant={config.variant}/version={config.version}/"
+    )
+    first_part = next(iter(store.list_keys(prefix)), None)
+    if first_part is None:
+        return
+    raise RuntimeError(
+        f"embedding version {config.version!r} already has parts but no "
+        "ownership claim; refusing to mint. If this is a legacy prefix, "
+        "declare its owner with: "
+        "python scripts/claim_embedding_version.py "
+        f"--model {config.model_segment} --variant {config.variant} "
+        f"--version {config.version} --configuration-hash <64-char hex> --apply"
+    )
+
+
 def claim_version(
     store,
     config: EmbeddingConfig,
@@ -133,6 +171,12 @@ def claim_version(
     cannot both believe they created the prefix — the loser re-reads and is
     judged by the winner's record.
 
+    A stable (``vN``) prefix that already has parts but no claim is refused
+    instead of adopted: first-writer-wins would silently mint an owner for
+    the legacy ``version=v1`` (issue #22). Only
+    :func:`adopt_version_prefix` — the operator backfill — may publish a
+    claim for such a prefix.
+
     Args:
         store: The object store holding the claim registry.
         config: The run's configuration.
@@ -147,7 +191,81 @@ def claim_version(
 
     Raises:
         ClaimConflict: if a different configuration already owns the prefix.
+        RuntimeError: if a stable prefix has pre-existing parts and no claim.
     """
+    return _claim(
+        store,
+        config,
+        configuration_hash,
+        run_id=run_id,
+        claimed_at=claimed_at,
+        pipeline_version=pipeline_version,
+        note=note,
+        guard_legacy=True,
+    )
+
+
+def adopt_version_prefix(
+    store,
+    config: EmbeddingConfig,
+    configuration_hash: str,
+    *,
+    run_id: str,
+    claimed_at: datetime | None = None,
+    pipeline_version: str = "",
+    note: str | None = "backfilled",
+) -> dict[str, str]:
+    """Publish the declared owner of a prefix that already has parts.
+
+    The operator's backfill path, and the only way to claim a *stable* prefix
+    written before the registry existed. The owner is a declaration, not an
+    inference: it is whatever ``configuration_hash`` the caller names, and it
+    can never be changed afterwards (the claim object is write-once).
+
+    Separate from :func:`claim_version` on purpose. A boolean flag on the
+    enforcing path would let any future caller switch the legacy guard off;
+    reaching this function has to be a deliberate import by the operator
+    script.
+
+    Args:
+        store: The object store holding the claim registry.
+        config: The configuration whose prefix is being adopted.
+        configuration_hash: The declared owning configuration digest.
+        run_id: The run id recording the backfill event.
+        claimed_at: Claim time; ``None`` uses now (UTC).
+        pipeline_version: Producing-code version recorded in the claim.
+        note: Operator note stored with the claim.
+
+    Returns:
+        The owning claim document (this call's, or the pre-existing one).
+
+    Raises:
+        ClaimConflict: if a different configuration already owns the prefix.
+    """
+    return _claim(
+        store,
+        config,
+        configuration_hash,
+        run_id=run_id,
+        claimed_at=claimed_at,
+        pipeline_version=pipeline_version,
+        note=note,
+        guard_legacy=False,
+    )
+
+
+def _claim(
+    store,
+    config: EmbeddingConfig,
+    configuration_hash: str,
+    *,
+    run_id: str,
+    claimed_at: datetime | None,
+    pipeline_version: str,
+    note: str | None,
+    guard_legacy: bool,
+) -> dict[str, str]:
+    """Shared claim protocol; ``guard_legacy`` is set only by the public entry."""
     key = keys.embedding_version_claim(
         config.model_segment, config.variant, config.version
     )
@@ -163,6 +281,9 @@ def claim_version(
     existing = _owner(store, key)
     if existing is not None:
         return _accept_or_raise(existing, config.version, configuration_hash)
+
+    if guard_legacy:
+        _refuse_unclaimed_legacy(store, config)
 
     if store.put_if_absent(key, claim_bytes(record)):
         return record
