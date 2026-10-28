@@ -6,6 +6,7 @@ from __future__ import annotations
 from backend.pipeline.embedding import selection
 from scripts.provision_query_layer import (
     EMBEDDINGS_COLUMNS,
+    EMBEDDINGS_PARTITION_KEYS,
     EMBEDDINGS_TABLE,
     _create_embeddings_table,
     embeddings_location,
@@ -74,23 +75,85 @@ def test_create_embeddings_table_pins_location_and_columns() -> None:
     assert (
         descriptor["Location"]
         == embeddings_location("bucket")
-        == (
-            "s3://bucket/lake/embeddings/model=all-minilm-l6-v2/variant=minilm/version=v1/"
-        )
+        == "s3://bucket/lake/embeddings/"
     )
     assert descriptor["Columns"] == [
         {"Name": c, "Type": t} for c, t in EMBEDDINGS_COLUMNS
     ]
 
 
+def test_embeddings_partition_keys_cover_path_segments() -> None:
+    glue = GlueDouble()
+    _create_embeddings_table(glue, "semantic_career_map", "bucket")
+    keys = glue.created[0]["PartitionKeys"]
+    assert keys == [
+        {"Name": name, "Type": ctype} for name, ctype in EMBEDDINGS_PARTITION_KEYS
+    ]
+    assert [k["Name"] for k in keys] == ["model_segment", "variant", "version"]
+    assert all(k["Type"] == "string" for k in keys)
+
+
+def test_embeddings_partition_keys_never_collide_with_columns() -> None:
+    # A partition key sharing a column name makes the table unqueryable
+    # ("Table descriptor contains duplicate columns"). The row owns a
+    # ``model`` column, so the key is ``model_segment``.
+    column_names = {name for name, _ in EMBEDDINGS_COLUMNS}
+    partition_names = {name for name, _ in EMBEDDINGS_PARTITION_KEYS}
+    assert not (column_names & partition_names)
+    assert "model" in column_names
+    assert "model" not in partition_names
+
+
+def test_embeddings_projection_templates_the_partition_path() -> None:
+    glue = GlueDouble()
+    _create_embeddings_table(glue, "semantic_career_map", "bucket")
+    params = glue.created[0]["Parameters"]
+    assert params["projection.enabled"] == "true"
+    assert params["projection.model_segment.values"] == "all-minilm-l6-v2"
+    assert params["projection.variant.values"] == "minilm"
+    assert params["projection.version.values"] == "v1"
+    assert params["storage.location.template"] == (
+        "s3://bucket/lake/embeddings/model=${model_segment}"
+        "/variant=${variant}/version=${version}"
+    )
+
+
 def test_registration_idempotent_when_current() -> None:
     fresh = GlueDouble()
     _create_embeddings_table(fresh, "semantic_career_map", "bucket")
-    current_descriptor = fresh.created[0]["StorageDescriptor"]
+    current_table = fresh.created[0]
 
-    current = GlueDouble(descriptor=current_descriptor)
+    current = GlueDouble(table=current_table)
     _create_embeddings_table(current, "semantic_career_map", "bucket")
     assert not current.created and not current.updated
+
+
+def test_unpartitioned_registration_is_repaired() -> None:
+    # The pre-partition registration: pinned location, no PartitionKeys.
+    stale = GlueDouble(
+        table={
+            "StorageDescriptor": {
+                "Location": (
+                    "s3://bucket/lake/embeddings/"
+                    "model=all-minilm-l6-v2/variant=minilm/version=v1/"
+                ),
+                "InputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat",
+                "OutputFormat": "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat",
+                "SerdeInfo": {
+                    "SerializationLibrary": "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+                },
+                "Columns": [{"Name": c, "Type": t} for c, t in EMBEDDINGS_COLUMNS],
+            }
+        }
+    )
+    _create_embeddings_table(stale, "semantic_career_map", "bucket")
+    assert len(stale.updated) == 1
+    assert stale.updated[0]["PartitionKeys"] == [
+        {"Name": name, "Type": ctype} for name, ctype in EMBEDDINGS_PARTITION_KEYS
+    ]
+    assert stale.updated[0]["StorageDescriptor"]["Location"] == (
+        "s3://bucket/lake/embeddings/"
+    )
 
 
 def test_stale_registration_updates_and_never_downgrades() -> None:

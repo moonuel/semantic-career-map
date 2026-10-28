@@ -424,6 +424,13 @@ def embedding_part(
     rewriting vector space. The run-minted part leaf names the producing run
     and its 1-based flush sequence (see :func:`_part_leaf`).
 
+    The three levels are declared as Hive partition keys on the registered
+    table (``provision_query_layer.EMBEDDINGS_PARTITION_KEYS``), so keeping
+    this layout stable is what makes them queryable — a segment rename here
+    is a catalog change, not just a path change. The partition key for the
+    leading segment is named ``model_segment`` because the row already owns
+    a ``model`` column.
+
     Args:
         model: Model family segment (e.g. ``all-minilm-l6-v2``).
         variant: Producing method segment (e.g. ``minilm``).
