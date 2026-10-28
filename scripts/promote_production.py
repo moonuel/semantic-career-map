@@ -233,6 +233,11 @@ def main() -> int:
         "--apply", action="store_true", help="write (default: print only)"
     )
     args = parser.parse_args()
+    if args.bootstrap and args.from_file:
+        parser.error(
+            "--bootstrap and --from-file are mutually exclusive: "
+            "bootstrap mints the reality document; --from-file loads yours"
+        )
     args.updated_by = args.updated_by or getpass.getuser()
 
     store = ObjectStore.from_env()

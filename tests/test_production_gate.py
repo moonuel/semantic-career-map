@@ -16,6 +16,7 @@ import pytest
 from backend.pipeline.embedding import config as config_module
 from backend.pipeline.embedding.config import EmbeddingConfig, configuration_hash
 from backend.storage import keys, pointer
+from backend.storage.pointer import content_hash
 from scripts.promote_production import (
     build_bootstrap_doc,
     load_target_doc,
@@ -211,6 +212,112 @@ class TestReadinessRefusals:
 # --- 3. Pointer gate (gate 7) -------------------------------------------------
 
 
+def promote_main(monkeypatch, argv: list[str]) -> int:
+    """Run the promote CLI's main with argv patched (returns its exit code)."""
+    from scripts import promote_production
+
+    monkeypatch.setattr("sys.argv", ["promote_production.py", *argv])
+    return promote_production.main()
+
+
+class TestPromoteCli:
+    """main() over an injected store: the write path's refusal walk.
+
+    ``main`` builds its store via ``ObjectStore.from_env``; the tests
+    monkeypatch that factory to a sink — the CLI's real store never moves
+    in these tests.
+    """
+
+    def _patch(self, monkeypatch: pytest.MonkeyPatch, sink: MemorySink) -> None:
+        from scripts import promote_production
+
+        monkeypatch.setattr(
+            promote_production.ObjectStore, "from_env", staticmethod(lambda: sink)
+        )
+
+    @staticmethod
+    def _target_file(tmp_path, doc: dict) -> str:
+        path = tmp_path / "promote.json"
+        path.write_text(json.dumps(doc | {"updated_by": "olimoon"}))
+        return str(path)
+
+    @staticmethod
+    def _v9_target_doc() -> dict:
+        """A parse-valid target whose cleaning stack has no parts."""
+        doc = pointer_doc()
+        doc["tiers"]["cleaning"]["version"] = "v9"
+        doc["reason"] = "promote: cleaning v9 (not yet built)"
+        return doc
+
+    def test_show_default_writes_nothing(
+        self, monkeypatch, capsys, memory_sink: MemorySink
+    ) -> None:
+        self._patch(monkeypatch, memory_sink)
+        seed_full_chain(memory_sink)
+        before = memory_sink.objects[keys.state_pointer()]
+        assert promote_main(monkeypatch, []) == 0
+        assert memory_sink.objects[keys.state_pointer()] == before
+        assert "content hash" in capsys.readouterr().out
+
+    def test_show_reports_broken_resolution(
+        self, monkeypatch, capsys, memory_sink: MemorySink
+    ) -> None:
+        self._patch(monkeypatch, memory_sink)
+        seed_full_chain(memory_sink)
+        del memory_sink.objects[
+            keys.embedding_version_claim("all-minilm-l6-v2", "minilm", "v1")
+        ]
+        assert promote_main(monkeypatch, []) == 0
+        assert "resolution: BROKEN" in capsys.readouterr().out
+
+    def test_bootstrap_create_then_conflict(
+        self, monkeypatch, capsys, memory_sink: MemorySink
+    ) -> None:
+        self._patch(monkeypatch, memory_sink)
+        assert promote_main(monkeypatch, ["--bootstrap", "--apply"]) == 0
+        assert keys.state_pointer() in memory_sink.objects
+        assert promote_main(monkeypatch, ["--bootstrap", "--apply"]) == 1
+        assert "REFUSED" in capsys.readouterr().out
+
+    def test_bootstrap_and_from_file_are_exclusive(self, monkeypatch) -> None:
+        self._patch(monkeypatch, MemorySink())
+        with pytest.raises(SystemExit) as exc:
+            promote_main(monkeypatch, ["--bootstrap", "--from-file", "x.json"])
+        assert exc.value.code == 2
+
+    def test_refusal_exits_1_and_leaves_pointer(
+        self, monkeypatch, capsys, tmp_path, memory_sink: MemorySink
+    ) -> None:
+        self._patch(monkeypatch, memory_sink)
+        seed_full_chain(memory_sink)
+        target = self._target_file(tmp_path, self._v9_target_doc())
+        assert promote_main(monkeypatch, ["--from-file", target, "--apply"]) == 1
+        out = capsys.readouterr().out
+        assert "REFUSED" in out
+        assert memory_sink.objects[keys.state_pointer()] == pointer.canonical_bytes(
+            pointer_doc()
+        ), "a refused promotion must not write"
+
+    def test_override_applies_and_logs_loudly(
+        self, monkeypatch, capsys, tmp_path, memory_sink: MemorySink
+    ) -> None:
+        self._patch(monkeypatch, memory_sink)
+        seed_full_chain(memory_sink)
+        expected_previous = content_hash(pointer_doc())
+        target = self._target_file(tmp_path, self._v9_target_doc())
+        assert (
+            promote_main(
+                monkeypatch, ["--from-file", target, "--apply", "--allow-incomplete"]
+            )
+            == 0
+        )
+        out = capsys.readouterr().out
+        assert "OVERRIDE" in out
+        live = json.loads(memory_sink.objects[keys.state_pointer()])
+        assert live["previous"] == expected_previous
+        assert live["tiers"]["cleaning"]["version"] == "v9"
+
+
 def part_keys_for(sink: MemorySink) -> list[str]:
     """The sink's embedding part keys (the gate's shared enumeration)."""
     return [
@@ -253,6 +360,18 @@ class TestCheckProductionPointer:
         ok, rows = check_production_pointer(memory_sink, [], None)
         assert ok is False
         assert any("partless" in r for r in rows)
+
+    def test_cleaning_partless_is_error(self, memory_sink: MemorySink) -> None:
+        # The files-only branch follows the same build-then-flip rule.
+        seed_full_chain(memory_sink)
+        del memory_sink.objects[
+            keys.artifact_part("cleaned_text", "llm", "v1", RUN_ID, 1)
+        ]
+        ok, rows = check_production_pointer(
+            memory_sink, part_keys_for(memory_sink), None
+        )
+        assert ok is False
+        assert any(r.startswith("ERROR pointer cleaning stack") for r in rows)
 
     def test_catalog_drift_is_error_with_reprovision_command(
         self, bucket_env, memory_sink: MemorySink

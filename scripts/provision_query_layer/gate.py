@@ -352,6 +352,22 @@ def check_production_pointer(
             "— build the generation first, then flip (refused by "
             "scripts/promote_production.py unless --allow-incomplete)"
         )
+    cleaning = doc["tiers"]["cleaning"]
+    artifact_prefix = (
+        f"lake/artifacts/type={cleaning['artifact_type']}/"
+        f"variant={cleaning['variant']}/version={cleaning['version']}/"
+    )
+    if not any(key.endswith(".parquet") for key in store.list_keys(artifact_prefix)):
+        # Same build-then-flip rule for the files-only branch: the pointer
+        # names the active cleaning generation, so the parts must exist
+        # (promote refuses this at write time; the gate catches the drift
+        # if parts were removed after the flip).
+        error_rows.append(
+            f"ERROR pointer cleaning stack {cleaning['artifact_type']}/"
+            f"{cleaning['variant']}/{cleaning['version']} is partless — run "
+            "the cleaning tier first, then flip (refused by "
+            "scripts/promote_production.py unless --allow-incomplete)"
+        )
     for prefix in sorted(part_prefixes - pointer_stacks):
         info_rows.append(
             f"INFO live prefix {prefix[0]}/{prefix[1]}/version={prefix[2]} "

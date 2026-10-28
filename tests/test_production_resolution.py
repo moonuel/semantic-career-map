@@ -162,6 +162,15 @@ class TestLoudFailures:
         with pytest.raises(ValueError, match="must tier exactly"):
             resolve_production(memory_sink, pointer=doc)
 
+    def test_ephemeral_version_in_pointer_refused(
+        self, memory_sink: MemorySink
+    ) -> None:
+        """A pointer names production; ``x-...`` tokens never qualify."""
+        doc = pointer_doc()
+        doc["tiers"]["embeddings"]["entries"][0]["version"] = "x-scratch"
+        with pytest.raises(ValueError, match="never production"):
+            resolve_production(memory_sink, pointer=doc)
+
 
 # --- 3. The embed entry path --------------------------------------------------
 
