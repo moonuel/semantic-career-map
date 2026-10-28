@@ -50,6 +50,7 @@ segment in a key is lowercase; there is no uppercase exception.
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
     - ``embedding(model, variant, v, id)`` -> ``live/embeddings/<model>/<variant>/v<v>/<id>.npy``
     - ``config(hash)``           -> ``configs/<hash>.json``
+    - ``state_pointer()``        -> ``state/production.json``
 
     Validators:
     - ``validate_key(key)`` raises ``ValueError`` on a malformed key.
@@ -66,8 +67,11 @@ from backend.storage.ids import is_canonical_uuid7, is_sha256_hex
 
 # The single bucket's top-level branches. ``lake`` holds the lakehouse raw
 # layer (content-addressed, immutable); ``live`` and ``configs`` are the legacy
-# object-per-posting store still in use until each branch migrates.
-_BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake"})
+# object-per-posting store still in use until each branch migrates. ``state``
+# is the control-plane exception: the one mutable branch, holding the
+# production pointer that names (never searches) the active generation — the
+# data lake stays append-only, ``configs/`` stays hash-addressed.
+_BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake", "state"})
 
 # Sources admitted into ``lake/raw/source=<source>/``. Kept as an explicit
 # allowlist so partitioning stays governed — a source is a partition column,
@@ -716,6 +720,21 @@ def config(hash_: str) -> str:
     return f"configs/{_check_hash(hash_)}.json"
 
 
+def state_pointer() -> str:
+    """Key for the production pointer — the ``state`` branch's one object.
+
+    ``state/production.json``
+
+    The pointer is the bucket's single mutable control-plane object: one
+    document naming the active production generation for every scheduled
+    tier as a map of partition segments. Pointers name; they never search —
+    resolution goes pointer → claim → ``configs/<hash>.json`` → rows.
+    Everything else on ``state/`` is refused by the branch's shape pinner;
+    this builder is the only way to mint the address.
+    """
+    return "state/production.json"
+
+
 # --- Validators -------------------------------------------------------------
 
 
@@ -1010,7 +1029,8 @@ def validate_key(key: str) -> str:
     """Validate a key and return it unchanged, or raise ``ValueError``.
 
     Enforces the structural rules of ``data.md``:
-      - first segment is one of the known branches (``eval``/``live``/``configs``/``lake``);
+      - first segment is one of the known branches
+        (``eval``/``live``/``configs``/``lake``/``state``);
       - every segment matches the safe-character rule (no ``..``, no trailing
         slash, no reserved characters);
       - the posting-id segment — where the layout places one — is a canonical

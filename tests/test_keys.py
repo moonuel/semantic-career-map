@@ -73,6 +73,15 @@ class TestExactShapes:
     def test_config(self) -> None:
         assert keys.config(HASH) == f"configs/{HASH}.json"
 
+    def test_state_pointer(self) -> None:
+        assert keys.state_pointer() == "state/production.json"
+
+    def test_state_pointer_is_valid(self) -> None:
+        # The branch's one addressable object passes the validator; the
+        # full state/ shape pinner lands with the pointer module (Layer 3).
+        key = keys.state_pointer()
+        assert keys.validate_key(key) == key
+
     def test_manifest_ingestion(self) -> None:
         assert (
             keys.manifest_ingestion("2026-10-06", ID)
