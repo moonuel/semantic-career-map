@@ -25,6 +25,14 @@ class MemorySink:
         keys.validate_key(key)
         self.objects[key] = data
 
+    def put_if_absent(self, key: str, data: bytes) -> bool:
+        """Store ``data`` at ``key`` only when absent; ``True`` when written."""
+        keys.validate_key(key)
+        if key in self.objects:
+            return False
+        self.objects[key] = data
+        return True
+
     def exists(self, key: str) -> bool:
         """Return whether ``key`` is present (validated)."""
         keys.validate_key(key)
@@ -69,3 +77,9 @@ class JournalSink(MemorySink):
     def put(self, key: str, data: bytes) -> None:
         super().put(key, data)
         self.journal.append(key)
+
+    def put_if_absent(self, key: str, data: bytes) -> bool:
+        written = super().put_if_absent(key, data)
+        if written:
+            self.journal.append(key)
+        return written

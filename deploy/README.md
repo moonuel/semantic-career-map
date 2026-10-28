@@ -169,6 +169,21 @@ above):
 python scripts/provision_query_layer/gate.py --embeddings
 ```
 
+Version-claim registry (issue #22): run the owner backfill ONCE **before**
+deploying this image, not after. Every run against an unclaimed stable prefix
+(`version=v1` was written pre-registry with two configurations' rows) refuses
+with this pointer, so a scheduled fire between the rollout and the backfill
+fails. Publish the owner, then deploy:
+
+```bash
+python scripts/claim_embedding_version.py \
+  --model all-minilm-l6-v2 --variant minilm --version v1 \
+  --configuration-hash <production configuration_hash> --apply
+```
+
+Gate 5 prints this command per unclaimed prefix. The dry run (no `--apply`)
+prints the current claim state first.
+
 ## Per-change fast paths
 
 | Change | What's enough |

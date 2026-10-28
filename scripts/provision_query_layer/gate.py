@@ -16,6 +16,9 @@ Runs the verification gates and prints their tables:
    `backend.pipeline.selection`, and asserts 9,316 pin-able postings.
 4. (optional, ``--embeddings``) Embeddings store-vs-table row-count
    parity — the query-side registration the anti-join's cache depends on.
+5. (optional, ``--embeddings``) Every embeddings version prefix on disk has
+   an ownership claim; a missing one is the issue-#22 condition and comes
+   with the exact backfill command to run.
 
 Usage:
 
@@ -50,6 +53,7 @@ from backend.pipeline.selection import (
     parse_query_results,
     select_uncleaned_sql,
 )
+from backend.storage import keys
 from scripts.provision_query_layer import (
     DATABASE_DEFAULT,
     INGESTION_TABLE,
@@ -205,7 +209,9 @@ def uncleaned_dry_query() -> str:
     return "\nUNION ALL\n".join(parts) + "\nORDER BY source, source_hash"
 
 
-def store_embedding_row_count(store, prefix: str) -> int:
+def store_embedding_row_count(
+    store, prefix: str, part_keys: list[str] | None = None
+) -> int:
     """Count embedding rows across the store's parts under ``prefix``.
     Metadata-only: this reads each part's Parquet footer metadata — a
     filter-listing count would miss multi-row parts.
@@ -213,7 +219,7 @@ def store_embedding_row_count(store, prefix: str) -> int:
     import pyarrow.parquet as pq
 
     count = 0
-    for key in store.list_keys(prefix):
+    for key in part_keys if part_keys is not None else store.list_keys(prefix):
         if not key.endswith(".parquet"):
             continue
         count += pq.read_metadata(io.BytesIO(store.get(key))).num_rows
@@ -224,6 +230,7 @@ def check_embeddings_parity(
     store,
     athena,
     database: str,
+    part_keys: list[str] | None = None,
 ) -> tuple[bool, int, int]:
     """Gate 4: store-vs-table row-count parity for the embeddings table.
 
@@ -236,6 +243,8 @@ def check_embeddings_parity(
         store: The object store.
         athena: The boto3 Athena client.
         database: The Glue database the table is registered under.
+        part_keys: Pre-enumerated embedding part keys; ``None`` lists the
+            registered location itself.
 
     Returns:
         ``(match, store_rows, table_rows)``.
@@ -245,11 +254,88 @@ def check_embeddings_parity(
     bucket = os.environ["STORE_S3_BUCKET"]
     location = embeddings_location(bucket)
     store_rows = store_embedding_row_count(
-        store, location.removeprefix(f"s3://{bucket}/")
+        store, location.removeprefix(f"s3://{bucket}/"), part_keys
     )
     rows = run_query(athena, database, f"SELECT count(*) FROM {EMBEDDINGS_TABLE}")
     table_rows = int(rows[1].strip())
     return store_rows == table_rows, store_rows, table_rows
+
+
+CLAIM_ROOT = "lake/manifests/versions/embeddings/"
+
+
+def check_embedding_version_claims(
+    store, part_keys: list[str] | None = None
+) -> tuple[bool, list[str]]:
+    """Gate 5: every embedding version prefix on disk has an owner claim.
+
+    Claims are written by the run before its first part, so an unclaimed
+    prefix means either a legacy prefix that predates the registry or a run
+    that bypassed the driver. Both are the condition that let 400 foreign rows
+    into production ``version=v1`` (issue #22), so the drift is reported.
+    The pipeline also refuses to mint a claim for such a prefix (first
+    writer must not silently adopt a production address), so clearing this
+    gate means publishing the owner via ``scripts/claim_embedding_version.py``.
+
+    Args:
+        store: The object store.
+        part_keys: Pre-enumerated embedding part keys; ``None`` lists
+            ``lake/embeddings/`` itself (tests and standalone callers).
+
+    Returns:
+        ``(all_claimed, missing)`` — the unclaimed version prefixes, sorted.
+        A prefix carrying a malformed version token is reported as unclaimed
+        rather than raised: a bad token on disk is exactly the drift this
+        gate exists to surface, not a reason to lose the whole report.
+    """
+    prefixes: set[tuple[str, str, str]] = set()
+    for key in (
+        part_keys if part_keys is not None else store.list_keys("lake/embeddings/")
+    ):
+        parts = key.split("/")
+        if len(parts) < 5:
+            continue
+        model = parts[2].removeprefix("model=")
+        variant = parts[3].removeprefix("variant=")
+        version = parts[4].removeprefix("version=")
+        prefixes.add((model, variant, version))
+
+    claimed = set(store.list_keys(CLAIM_ROOT))
+    missing = []
+    for model, variant, version in sorted(prefixes):
+        try:
+            claim_key = keys.embedding_version_claim(model, variant, version)
+        except ValueError:
+            missing.append(f"{model}/{variant}/version={version}")
+            continue
+        if claim_key not in claimed:
+            missing.append(f"{model}/{variant}/version={version}")
+    return not missing, missing
+
+
+def _backfill_command(entry: str) -> str | None:
+    """The exact operator command that publishes the owner of ``entry``.
+
+    Args:
+        entry: A missing-prefix string from
+            :func:`check_embedding_version_claims` (``model/variant/version=<token>``).
+
+    Returns:
+        The backfill command with the prefix's coordinates filled in, or
+        ``None`` when the token is not a valid version token — there is no
+        command that can adopt a prefix whose name the key layer rejects.
+    """
+    model, _, rest = entry.partition("/")
+    variant, _, version = rest.partition("/version=")
+    try:
+        keys.version_kind(version)
+    except ValueError:
+        return None
+    return (
+        "python scripts/claim_embedding_version.py "
+        f"--model {model} --variant {variant} --version {version} "
+        "--configuration-hash <64-char hex> --apply"
+    )
 
 
 def main() -> None:
@@ -264,7 +350,7 @@ def main() -> None:
     parser.add_argument(
         "--embeddings",
         action="store_true",
-        help="also run gate 4: embeddings store-vs-table row-count parity",
+        help="also run gate 4 (parity) and gate 5 (version claims)",
     )
     args = parser.parse_args()
 
@@ -336,19 +422,48 @@ def main() -> None:
     if args.embeddings:
         print("== gate 4: embeddings store-vs-table row-count parity")
         from backend.storage.store import ObjectStore
+        from scripts.provision_query_layer import embeddings_location
+
+        # One enumeration of the embeddings prefix feeds both gate 4 (row
+        # counts) and gate 5 (claim discovery) — the lake is append-only, so
+        # re-listing every part key per gate grows without bound.
+        embeddings_store = ObjectStore.from_env()
+        bucket = os.environ["STORE_S3_BUCKET"]
+        prefix = embeddings_location(bucket).removeprefix(f"s3://{bucket}/")
+        part_keys = [
+            key
+            for key in embeddings_store.list_keys(prefix)
+            if key.endswith(".parquet")
+        ]
 
         match, store_rows, table_rows = check_embeddings_parity(
-            ObjectStore.from_env(), athena, DATABASE_DEFAULT
+            embeddings_store, athena, DATABASE_DEFAULT, part_keys
         )
         ok &= match
         print(
             f"  store parts rows {store_rows:>6} table rows {table_rows:>6} "
             f"{'OK' if match else 'MISMATCH'}"
         )
+
+        print("== gate 5: every embeddings version prefix has an owner claim")
+        claimed, missing = check_embedding_version_claims(embeddings_store, part_keys)
+        ok &= claimed
+        if claimed:
+            print("  all version prefixes claimed OK")
+        for entry in missing:
+            print(f"  UNCLAIMED {entry}")
+            command = _backfill_command(entry)
+            if command is None:
+                print(
+                    "  fix: the version token is not a valid vN / x-... token — "
+                    "rename or remove that prefix; no claim can adopt it"
+                )
+            else:
+                print(f"  fix: {command}")
     else:
         print("== gate 4 skipped (pass --embeddings)")
 
-    print("== gate 5: manifests_ingestion is readable (partition key is virtual)")
+    print("== gate 6: manifests_ingestion is readable (partition key is virtual)")
     # A registration that declares a partition column twice makes Athena
     # reject the whole table, so every consumer fails — including the
     # cleaning tier's recency window. One count(*) is enough to catch it,
