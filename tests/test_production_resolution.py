@@ -172,7 +172,42 @@ class TestLoudFailures:
             resolve_production(memory_sink, pointer=doc)
 
 
-# --- 3. The embed entry path --------------------------------------------------
+# --- 3. The `production.resolved` summary (Layer 5) ---------------------------
+
+
+class TestResolvedSummary:
+    """The canonical observability renderer: who named this, what, why."""
+
+    def test_carries_provenance_stacks_and_config_identity(
+        self, memory_sink: MemorySink
+    ) -> None:
+        from backend.pipeline.production import resolved_summary
+
+        owner = seed_chain(memory_sink, run_config())
+        summary = resolved_summary(resolve_production(memory_sink))
+        assert summary["pointer"] == keys.state_pointer()
+        assert summary["updated_by"] == "olimoon"
+        assert summary["reason"] == "bootstrap: describes reality"
+        assert summary["cleaning"] == "cleaned_text/llm/v1"
+        (emb,) = summary["embeddings"]
+        assert emb["stack"] == "all-minilm-l6-v2/minilm/v1"
+        assert emb["claim_owner"] == owner
+        assert emb["config_path"] == keys.config(owner)
+        assert emb["model"] == "sentence-transformers/all-MiniLM-L6-v2"
+        # The rendered hash is the stored document's canonical hash.
+        assert summary["pointer_hash"] == pointer.content_hash(pointer_doc())
+
+    def test_json_serializable(self, memory_sink: MemorySink) -> None:
+        import json
+
+        from backend.pipeline.production import resolved_summary
+
+        seed_chain(memory_sink, run_config())
+        text = json.dumps(resolved_summary(resolve_production(memory_sink)))
+        assert "all-minilm-l6-v2/minilm/v1" in text
+
+
+# --- 4. The embed entry path --------------------------------------------------
 
 
 def _args(**kw: object) -> argparse.Namespace:

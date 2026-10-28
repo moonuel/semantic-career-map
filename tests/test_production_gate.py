@@ -317,6 +317,38 @@ class TestPromoteCli:
         assert live["previous"] == expected_previous
         assert live["tiers"]["cleaning"]["version"] == "v9"
 
+    def test_apply_prints_pointer_updated_json(
+        self, monkeypatch, capsys, tmp_path, memory_sink: MemorySink
+    ) -> None:
+        """The `pointer.updated` log point: who flipped, from what, to what."""
+        self._patch(monkeypatch, memory_sink)
+        seed_full_chain(memory_sink)
+        target = self._target_file(tmp_path, self._v9_target_doc())
+        assert (
+            promote_main(
+                monkeypatch, ["--from-file", target, "--apply", "--allow-incomplete"]
+            )
+            == 0
+        )
+        out = capsys.readouterr().out
+        block = json.loads(out.split("pointer.updated:\n", 1)[1])
+        assert block["mode"] == "replaced"
+        assert block["previous_hash"] == content_hash(pointer_doc())
+        assert block["updated_by"] == "olimoon"
+        assert block["from"]["cleaning"] == "cleaned_text/llm/v1"
+        assert block["to"]["cleaning"] == "cleaned_text/llm/v9"
+        assert block["new_hash"] == block["new_hash"] and len(block["new_hash"]) == 64
+
+    def test_bootstrap_apply_prints_created_json(
+        self, monkeypatch, capsys, memory_sink: MemorySink
+    ) -> None:
+        self._patch(monkeypatch, memory_sink)
+        assert promote_main(monkeypatch, ["--bootstrap", "--apply"]) == 0
+        block = json.loads(capsys.readouterr().out.split("pointer.updated:\n", 1)[1])
+        assert block["mode"] == "created"
+        assert block["previous_hash"] is None
+        assert block["from"] is None
+
 
 def part_keys_for(sink: MemorySink) -> list[str]:
     """The sink's embedding part keys (the gate's shared enumeration)."""

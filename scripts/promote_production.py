@@ -197,6 +197,51 @@ def show(store: ObjectStore) -> None:
         )
 
 
+def _tier_stack(tiers: dict) -> dict:
+    """The pointer's tier map as display stacks (``from``/``to`` payloads)."""
+    return {
+        "cleaning": (
+            f"{tiers['cleaning']['artifact_type']}/"
+            f"{tiers['cleaning']['variant']}/{tiers['cleaning']['version']}"
+        ),
+        "embeddings": [
+            f"{entry['model_segment']}/{entry['variant']}/{entry['version']}"
+            for entry in tiers["embeddings"]["entries"]
+        ],
+    }
+
+
+def _updated_document(
+    new_doc: dict, *, mode: str, previous: dict | None = None
+) -> dict:
+    """Render the ``pointer.updated`` observability document.
+
+    *"Who flipped production, from what, to what?"* — printed as one JSON
+    block on every apply: the predecessor and applied content hashes (the
+    walkable chain), the operator identity and reason, and the tier stacks
+    from → to.
+
+    Args:
+        new_doc: The document that now lives at the pointer key.
+        mode: ``"created"`` (bootstrap) or ``"replaced"`` (promotion).
+        previous: The replaced document; ``None`` for a bootstrap create.
+
+    Returns:
+        The JSON-ready dict.
+    """
+    return {
+        "pointer": keys.state_pointer(),
+        "mode": mode,
+        "previous_hash": content_hash(previous) if previous is not None else None,
+        "new_hash": content_hash(new_doc),
+        "updated_by": new_doc["updated_by"],
+        "updated_at": new_doc["updated_at"],
+        "reason": new_doc["reason"],
+        "from": _tier_stack(previous["tiers"]) if previous is not None else None,
+        "to": _tier_stack(new_doc["tiers"]),
+    }
+
+
 def main() -> int:
     """CLI flow: show (default) or plan-and-apply a promotion."""
     load_dotenv()  # local convention; containers rely on task-def env
@@ -280,7 +325,7 @@ def main() -> int:
         if not created:
             print("REFUSED: lost the create race — read the winner and re-plan")
             return 1
-        print(f"created -> {keys.state_pointer()}")
+        updated = _updated_document(target, mode="created")
     else:
         refusals = readiness_refusals(store, target)
         if refusals and not args.allow_incomplete:
@@ -300,10 +345,9 @@ def main() -> int:
         except PointerConflict as exc:
             print(f"REFUSED: {exc}")
             return 1
-        print(f"replaced -> {keys.state_pointer()}")
-        print(f"previous: {target['previous']}")
-        print(f"new content hash: {content_hash(applied)}")
-    print(f"updated_by: {target['updated_by']}  reason: {target['reason']}")
+        updated = _updated_document(applied, mode="replaced", previous=current)
+    print("pointer.updated:")
+    print(json.dumps(updated, indent=2))
     return 0
 
 

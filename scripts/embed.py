@@ -218,28 +218,19 @@ def main() -> None:
     args = parser.parse_args()
 
     if pointer_mode(args):
-        from backend.storage import keys
         from backend.storage.store import ObjectStore
 
         store = ObjectStore.from_env()
-        from backend.pipeline.production import resolve_production
+        from backend.pipeline.production import (
+            resolve_production,
+            resolved_summary,
+        )
 
         production = resolve_production(store)
         config = production.embeddings[0].config
-        entry = production.embeddings[0]
-        print(
-            json.dumps(
-                {
-                    "pointer": keys.state_pointer(),
-                    "cleaning_stack": production.cleaning.stack,
-                    "embeddings_stack": entry.stack,
-                    "configuration_hash": entry.configuration_hash,
-                    "config_path": keys.config(entry.configuration_hash),
-                    "source": "production pointer",
-                },
-                indent=2,
-            )
-        )
+        # The `production.resolved` log point: what this run uses, and why
+        # (the pointer's provenance) — the canonical renderer's shape.
+        print(json.dumps(resolved_summary(production), indent=2))
     else:
         overridden = {
             name for name in _POINTER_FLAGS if getattr(args, name, None) is not None

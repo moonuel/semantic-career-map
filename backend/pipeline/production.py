@@ -31,7 +31,7 @@ from typing import Any
 
 from backend.pipeline.embedding.config import EmbeddingConfig, configuration_hash
 from backend.storage import keys
-from backend.storage.pointer import parse_document, read_pointer
+from backend.storage.pointer import content_hash, parse_document, read_pointer
 from backend.storage.store import ObjectStore
 
 # The operator-facing fix commands (each failure names its own repair).
@@ -218,3 +218,41 @@ def resolve_production(
         for entry in doc["tiers"]["embeddings"]["entries"]
     ]
     return ProductionSet(pointer=doc, cleaning=cleaning, embeddings=embeddings)
+
+
+def resolved_summary(production: ProductionSet) -> dict[str, Any]:
+    """Render the ``production.resolved`` observability document.
+
+    The one log point for *"which config did a scheduled run use, and
+    why?"*: the pointer's provenance (who named this reality, when, and
+    why), the tier stacks as named, and per embeddings entry the claim
+    owner (the production row-filter value), the config object's path, and
+    the loaded generation parameters. The embed entry path prints this
+    before its run; consumers and dashboards read the same shape.
+
+    Args:
+        production: A resolved :class:`ProductionSet`.
+
+    Returns:
+        The JSON-ready summary dict.
+    """
+    return {
+        "pointer": keys.state_pointer(),
+        "pointer_hash": content_hash(production.pointer),
+        "updated_by": production.pointer["updated_by"],
+        "updated_at": production.pointer["updated_at"],
+        "reason": production.pointer["reason"],
+        "cleaning": production.cleaning.stack,
+        "embeddings": [
+            {
+                "stack": emb.stack,
+                "claim_owner": emb.configuration_hash,
+                "config_path": keys.config(emb.configuration_hash),
+                "model": emb.config.model_name,
+                "model_revision": emb.config.model_revision,
+                "input_artifact": emb.config.input_artifact,
+                "input_version": emb.config.input_version,
+            }
+            for emb in production.embeddings
+        ],
+    }
