@@ -1,6 +1,6 @@
 # AWS Migration Roadmap
 
-> Status: **planned — not started.** Phased plan for moving the object store (local Garage in docker-compose) and the scraper automation (manual `scripts/scrape.py` runs) onto AWS. This is a learning project: each phase names the primitives it teaches, the repo files it touches, a verification gate, and its cost. Do not start a phase before the previous one's gate passes.
+> Status: **Phases 0-2 and 5 in use; Garage retired 2026-10-28.** The object store, the scraper tiers, and the query layer run on AWS. This document is kept as the migration record and the plan for the phases still open (3b, 4). Each phase names the primitives it teaches, the repo files it touches, a verification gate, and its cost.
 
 **Companion documents:** [Data Architecture](data.md) (the lake layout this migration preserves), [Athena Lakehouse Proposal](proposed-athena-layout.md) (the Phase 5 query layer), Research Report [013](../research-reports/013-job-board-api-scrapers.md) (why polling is daily, whole-board, key-free).
 
@@ -10,13 +10,13 @@
 
 | Component | Today | Target on AWS |
 |---|---|---|
-| Object store | Garage v2.4.1 container, `127.0.0.1:3900`, `data/objectstore/garage/` | S3 bucket `lake`, same key namespace, zero file-format changes |
-| Store client | `backend/storage/store.py` via `STORE_S3_*` env (`STORE_S3_ENDPOINT` set → Garage; empty/absent → real S3, default credential chain, static keys refused) | Same `ObjectStore`, IAM role instead of static keys in AWS contexts |
+| Object store | ~~Garage v2.4.1 container~~ **retired 2026-10-28** | S3 bucket, same key namespace, zero file-format changes |
+| Store client | `backend/storage/store.py` via `STORE_S3_*` env (`STORE_S3_ENDPOINT` empty/absent → AWS S3, default credential chain, static keys refused) | Same `ObjectStore`, IAM role instead of static keys in AWS contexts |
 | Scraper run | `python scripts/scrape.py`, manually, `SOURCE_BOARDS` registry | Same script, **two compute tiers**: Lambda for ATS boards (seconds), Fargate task for the dataroles curator (> Lambda's 15-min ceiling; politeness-paced, wall-time grows with the sitemap) |
 | Scheduling | none (manual) | EventBridge Scheduler, `rate(1 day)`, two targets (Lambda + ECS RunTask) — scraping stays **daily per Report 013 §5** |
 | Failure visibility | run summary + manifest | SQS dead-letter queue + CloudWatch alarm → email |
 | Query layer | none | Glue Data Catalog + Athena (Phase 5) |
-| Local dev | Garage as staging mirror | Garage kept until Phase 4 gate passes, then retired |
+| Local dev | AWS S3 (dev bucket) | Same dev bucket; no local store |
 
 The migration principle: **S3 is a drop-in endpoint swap, not a redesign.** Keys are already content-addressed (`sha256=<hash>.json`), validated through `backend/storage/keys.py`, and the scrape run is a single process with the manifest as the observable record — that contract survives unchanged.
 
@@ -48,20 +48,19 @@ The migration principle: **S3 is a drop-in endpoint swap, not a redesign.** Keys
 
 ---
 
-### Phase 1 — S3 replaces Garage as the object store
+### Phase 1 — S3 replaces the local store (done)
 
 **Learns:** S3 bucket security defaults, boto3 against real AWS, one-off data migration with verification.
 
 **Tasks:**
 - Create bucket `lake`: Block Public Access on, SSE-S3 default encryption, versioning **off** (objects are content-addressed and never rewritten — versioning would earn nothing).
-- Generalize `ObjectStore.from_env` (`backend/storage/store.py`): rename env vars to backend-neutral `STORE_S3_*` (or accept empty `STORE_S3_ENDPOINT` meaning "real AWS"), make the endpoint optional. boto3 already supports both; path-style addressing is harmless on real S3.
-- One-off migration script (e.g. `scripts/migrate_garage_to_s3.py`, CLI-configurable paths per repo rules): dual-client copy Garage → S3 using `list_keys` + `get`/`put`, then verify — object count equal, spot-check content bytes, `sha256=` keys re-hash clean.
+- Generalize `ObjectStore.from_env` (`backend/storage/store.py`): backend-neutral `STORE_S3_*` env vars, optional endpoint. boto3 already supports both.
 - Point `.env` at S3; run `python scripts/scrape.py` — expect stored/duplicate observations to land in S3 and a manifest under `lake/manifests/ingestion/`.
-- Keep Garage running locally as staging; nothing retires yet.
+- **Retirement (2026-10-28):** the Garage container, `docker-compose.yml`, `garage.toml`, and `data/objectstore/garage/` were removed. `STORE_S3_ENDPOINT` survives as a generic escape hatch for any S3-compatible server.
 
-**Gate:** `aws s3 ls s3://lake --recursive --summarize` count matches source + new run; `pytest tests/ -v` green.
+**Outcome:** the store runs on S3. The two stores had diverged rather than one being a superset — 1,577 raw payloads existed only in Garage — and they were **not** migrated; that data was retired with the container (a copy sits outside the repo at `/tmp/kilo/garage-retired-2026-10-28/`). Those postings are reproducible from the scrapers.
 
-**Repo touchpoints:** `backend/storage/store.py`, `.env`, new one-off script, `README.md` Garage section gains an S3-usage note.
+**Repo touchpoints:** `backend/storage/store.py`, `.env`, `README.md`.
 
 ---
 
@@ -120,9 +119,9 @@ The registry has two workload shapes (Report 013's two-tier landscape, now in co
 - CloudWatch alarm on DLQ depth (not empty → ATS tier failed) → SNS → email; an EventBridge rule on ECS task `STOPPED` events with non-zero exit code → same SNS topic (curator tier failed).
 - Dashboard: invocations, errors, duration, approximate S3 object growth per day (`list_objects` is fine — or track manifest sizes).
 
-**Gate:** two consecutive scheduled days produce both manifests (ATS run + curator run); day 2 records duplicates only (content-addressed dedup observable in the cloud) — this is the idempotence proof. After this gate passes, the local Garage container may be retired.
+**Gate:** two consecutive scheduled days produce both manifests (ATS run + curator run); day 2 records duplicates only (content-addressed dedup observable in the cloud) — this is the idempotence proof.
 
-**Repo touchpoints:** `README.md` current-status section; archive the Garage compose usage to a "history" note.
+**Repo touchpoints:** `README.md` current-status section.
 
 ---
 

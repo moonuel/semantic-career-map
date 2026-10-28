@@ -14,7 +14,7 @@ This section documents the system design of the Semantic Career Map: how the dat
 
 -   [**AWS Migration Roadmap**](aws-migration-roadmap.md){ .md-button }
 
-    Phased move of the object store and scraper automation onto AWS — S3 as the drop-in Garage replacement, Lambda + EventBridge scheduler, IAM least privilege, Glue/Athena query layer, with per-phase gates and cost guardrails.
+    Phased move of the object store and scraper automation onto AWS — S3 as the drop-in replacement for the retired local store, Lambda + EventBridge scheduler, IAM least privilege, Glue/Athena query layer, with per-phase gates and cost guardrails.
 
 </div> -->
 

@@ -77,7 +77,7 @@ Adding a research report requires updating:
 | Why stateless API | `architecture/design-decisions.md` |
 | Why LLM-based boilerplate removal | `architecture/design-decisions.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
 | Lakehouse data layout: S3 raw layer, Parquet datasets, Hive partitions, metadata/manifests, Athena catalog alignment, legacy store migration | `architecture/data-layout.md` |
-| AWS migration roadmap: phased Garage→S3, Lambda scraper, EventBridge scheduler, IAM, Glue/Athena; per-phase gates and cost guardrails | `architecture/aws-migration-roadmap.md` |
+| AWS migration roadmap: phased local-store→S3 (Garage retired 2026-10-28), Lambda scraper, EventBridge scheduler, IAM, Glue/Athena; per-phase gates and cost guardrails | `architecture/aws-migration-roadmap.md` |
 | Ingestion + cleaning automation on AWS: Phase 4.5 cleaning tier (Fargate daily driver: Athena select → render manifest → clean run), SSM for `KILO_API_KEY`, idempotence-as-orchestration, gates and cost delta | `architecture/cleaning-automation-report.md` |
 
 | S3 Vectors evaluation (GA facts/limits/pricing, vector buckets vs. lakehouse §7, serverless rung of the retrieval ladder, Parquet→index sync contract, `vector_index_arn` snapshot pin) | `research-reports/019-s3-vectors.md`, `architecture/data.md` §7 pointer, `research-reports/014-semantic-search-tools-architecture.md` §4.5 + §9 pointers |

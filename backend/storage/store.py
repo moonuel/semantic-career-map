@@ -1,10 +1,9 @@
 """S3-compatible object store client for the semantic-career-map objects.
 
-The single S3-compatible store (real S3 or the local Garage container) holds
-every branch of ``docs/architecture/data.md`` — the legacy ``live``/``configs``
-branches and the lakehouse ``lake`` branch. This module extracts the inline
-round-trip client from ``scripts/migrate_selected_postings`` now that a second
-consumer (``scripts/seed_lake_raw``) exists.
+The store is AWS S3. The client still accepts an endpoint override so any
+S3-compatible server can stand in (tests, CI, an offline mirror), but the
+project no longer ships or supports a local object store: the retired Garage
+container was removed in favour of the dev S3 bucket.
 
 Keys are always validated through :func:`backend.storage.keys.validate_key`
 before use, so no code path can mint a key outside the layout.
@@ -23,8 +22,8 @@ from backend.storage import keys
 
 # S3 error codes meaning "the object is not there": real S3 uses ``NoSuchKey``
 # on GET, while HEAD carries no body and surfaces as the bare status "404"
-# (Garage does the same). Everything else — auth, bucket, throttling — must
-# propagate, not masquerade as a missing object.
+# (some S3-compatible servers do the same). Everything else — auth, bucket,
+# throttling — must propagate, not masquerade as a missing object.
 _NOT_FOUND_CODES = frozenset({"NoSuchKey", "NotFound", "404"})
 
 
@@ -50,12 +49,12 @@ def _is_precondition_failed(exc: ClientError) -> bool:
 
 
 class ObjectStore:
-    """Thin boto3 S3-compatible client, validated through ``keys``.
+    """Thin boto3 S3 client, validated through ``keys``.
 
-    Points at real S3 (no endpoint override; credentials resolved by
-    boto3's default chain) or at a local Garage store (endpoint override;
-    explicit keys) — the two are behaviourally identical from the caller's
-    side. Keys are always validated before use.
+    Points at AWS S3 by default (no endpoint override; credentials resolved
+    by boto3's default chain) or at any S3-compatible endpoint when one is
+    supplied explicitly. The two are behaviourally identical from the
+    caller's side. Keys are always validated before use.
     """
 
     def __init__(
@@ -74,8 +73,8 @@ class ObjectStore:
             region_name=region,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            # Endpoint-style servers (Garage) require path-style addressing;
-            # real S3 keeps boto3's auto resolution.
+            # Endpoint-style servers need path-style addressing; AWS keeps
+            # boto3's auto resolution.
             config=Config(s3={"addressing_style": "path"}) if endpoint_url else None,
         )
 
@@ -83,13 +82,13 @@ class ObjectStore:
     def from_env(cls) -> ObjectStore:
         """Construct from the ``STORE_S3_*`` variables loaded from ``.env``.
 
-        ``STORE_S3_ENDPOINT`` selects the store. Set, it targets a local
-        S3-compatible server (Garage) and the explicit
-        ``STORE_S3_ACCESS_KEY_ID`` / ``STORE_S3_SECRET_ACCESS_KEY`` pair is
-        required — Garage has no credential chain of its own. Empty or
-        absent, it targets real S3: credentials must come from boto3's
-        default chain (CLI profile locally, execution role in AWS), and
-        static keys in the environment are refused, not used.
+        ``STORE_S3_ENDPOINT`` selects the target. Set, it names an
+        S3-compatible server and the explicit ``STORE_S3_ACCESS_KEY_ID`` /
+        ``STORE_S3_SECRET_ACCESS_KEY`` pair is required — such servers have
+        no credential chain of their own. Empty or absent, it targets AWS S3:
+        credentials must come from boto3's default chain (CLI profile
+        locally, execution role in AWS), and static keys in the environment
+        are refused, not used.
 
         Raises:
             RuntimeError: if required variables are missing or the
