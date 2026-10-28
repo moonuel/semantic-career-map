@@ -416,7 +416,14 @@ class TestCheckProductionPointer:
             memory_sink, part_keys_for(memory_sink), athena
         )
         assert ok is False
-        assert any("re-provision" in r for r in rows)
+        # The exact re-provision command, and nothing that does not run:
+        # the provisioner applies by default — it has no --apply flag.
+        assert any(
+            "re-provision" in r
+            and "python -m scripts.provision_query_layer" in r
+            and "--apply" not in r
+            for r in rows
+        )
 
     def test_catalog_agreement_passes(
         self, bucket_env, memory_sink: MemorySink

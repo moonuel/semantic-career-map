@@ -390,7 +390,7 @@ def check_production_pointer(
                     f"ERROR catalog does not project pointer stack "
                     f"{stack[0]}/{stack[1]}/{stack[2]} — re-provision to "
                     "derive the enums from the pointer: "
-                    "python -m scripts.provision_query_layer --apply"
+                    "python -m scripts.provision_query_layer"
                 )
 
     ok = not error_rows
