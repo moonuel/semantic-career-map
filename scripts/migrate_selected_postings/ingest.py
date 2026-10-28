@@ -1,4 +1,4 @@
-"""Ingest curated job postings into the Garage object store.
+"""Ingest curated job postings into the object store.
 
 One-off migration that moves the hand-picked markdown postings in
 ``data/selected-job-postings/`` into the ``live/raw/`` branch defined by

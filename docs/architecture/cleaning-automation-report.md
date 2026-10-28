@@ -52,7 +52,7 @@ Eval stays a **manual gate**: it runs when a cleaning configuration changes (`--
 ### 4.1 Prerequisites (existing roadmap phases — unexecuted)
 
 - [ ] Phase 0: account, billing alarm ($1), budget ($2/mo), region in `.env` comments.
-- [ ] Phase 1: S3 `lake` bucket + one-off Garage→S3 migration script (`scripts/migrate_garage_to_s3.py`) with count/hash verification. `ObjectStore` is already backend-neutral (`STORE_S3_*`); today's 9.3k postings still sit on the dev-store Garage.
+- [x] Phase 1: S3 `lake` bucket live; `ObjectStore` is backend-neutral (`STORE_S3_*`). The local Garage store was retired 2026-10-28 — the stores had diverged, and the Garage-only payloads were retired with it rather than migrated.
 - [ ] Phase 2: pipeline execution role — `s3:GetObject/PutObject/ListBucket`, CloudWatch Logs. Verified in the IAM Policy Simulator.
 
 ### 4.2 IAM extension for the cleaning tier
