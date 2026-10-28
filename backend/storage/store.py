@@ -34,6 +34,21 @@ def _is_not_found(exc: ClientError) -> bool:
     return exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 404
 
 
+# S3 answers a failed ``If-None-Match: *`` with 412 ``PreconditionFailed``. A
+# concurrent conditional write can instead surface as 409
+# ``ConditionalRequestConflict`` on some S3-compatible servers; both mean "not
+# written by this call", never "the store is broken".
+_PRECONDITION_FAILED_CODES = frozenset(
+    {"PreconditionFailed", "ConditionalRequestConflict"}
+)
+
+
+def _is_precondition_failed(exc: ClientError) -> bool:
+    if exc.response.get("Error", {}).get("Code") in _PRECONDITION_FAILED_CODES:
+        return True
+    return exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 412
+
+
 class ObjectStore:
     """Thin boto3 S3-compatible client, validated through ``keys``.
 
@@ -118,6 +133,36 @@ class ObjectStore:
         """Write ``data`` at ``key`` (overwrite if present)."""
         keys.validate_key(key)
         self._client.put_object(Bucket=self._bucket, Key=key, Body=data)
+
+    def put_if_absent(self, key: str, data: bytes) -> bool:
+        """Write ``data`` at ``key`` only when no object is already there.
+
+        The conditional write is S3's ``If-None-Match: *``: the object store
+        itself arbitrates the race, so two concurrent writers cannot both
+        believe they created the object. Used by the version-claim registry
+        to bind one ``configuration_hash`` to one prefix.
+
+        Args:
+            key: The validated object key.
+            data: The bytes to write.
+
+        Returns:
+            ``True`` when this call created the object, ``False`` when it
+            already existed.
+
+        Raises:
+            ClientError: for any failure other than a failed precondition.
+        """
+        keys.validate_key(key)
+        try:
+            self._client.put_object(
+                Bucket=self._bucket, Key=key, Body=data, IfNoneMatch="*"
+            )
+            return True
+        except ClientError as exc:
+            if _is_precondition_failed(exc):
+                return False
+            raise
 
     def get(self, key: str) -> bytes:
         """Read the bytes stored at ``key``.

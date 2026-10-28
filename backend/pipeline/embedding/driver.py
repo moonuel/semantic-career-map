@@ -49,6 +49,7 @@ from backend.pipeline.embedding.reconcile import (
     heal_orphan_checkpoints,
     reconcile_configuration,
 )
+from backend.pipeline.embedding.version_claim import claim_version
 from backend.pipeline.embedding.writer import FlushWriter
 from backend.storage import ids, keys
 
@@ -220,15 +221,29 @@ def run_embedding(
             "select_unembedded_sql … or pass --sql-file)"
         )
     now_fn = now if now is not None else (lambda: datetime.now(UTC))
+    run_id = ids.new_id()
+    created_at = now_fn()
+    pipeline_version = pipeline_version or resolve_pipeline_version()
     digest = ensure_config_object(store, config)
+
+    # Bind this configuration to its version prefix before anything durable is
+    # written under it. A second configuration aimed at the same prefix fails
+    # here instead of silently joining the dataset (issue #22), and the claim
+    # precedes the reconcile pass so no run heals a prefix it does not own.
+    claim_version(
+        store,
+        config,
+        digest,
+        run_id=run_id,
+        claimed_at=created_at,
+        pipeline_version=pipeline_version,
+    )
+
     report: ReconcileReport | None = None
     recovered: list[dict[str, Any]] = []
     if reconcile:
         report = reconcile_configuration(store, config, as_of=now_fn())
         recovered = heal_orphan_checkpoints(store, config, as_of=now_fn())
-    run_id = ids.new_id()
-    created_at = now_fn()
-    pipeline_version = pipeline_version or resolve_pipeline_version()
 
     sql = selection.bind_sql_params(config.sql_text, {"config": digest})
     execution_id = submit_query(

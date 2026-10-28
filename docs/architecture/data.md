@@ -41,7 +41,7 @@ lake/                          # the single bucket, for now
   embeddings/
     model=<model>/
       variant=<variant>/
-        version=<vN>/
+        version=<version>/              # vN (stable) or x-... (ephemeral)
           part-00000.parquet            # one posting per row
   eval/
     datasets/
@@ -58,6 +58,7 @@ lake/                          # the single bucket, for now
     datasets/                           # one manifest per dataset generation
     ingestion/                          # one entry per ingestion event
     runs/                               # pipeline-run records
+    versions/embeddings/                # version-ownership claims (§2.4)
 ```
 
 The former `eval`/`live` split survives as the `eval/` prefix -- authored ground truth never crosses with generated data. The former `configs/` branch is absorbed into `manifests/` (§3).
@@ -85,6 +86,17 @@ Directory levels are Hive-style `<column>=<value>` pairs, which become Athena pa
 ### 2.4 Versions
 
 `vN` identifies a transformation or dataset definition, not individual records. `responsibility_text/version=v2` may be a different extraction method over the same inputs; `embeddings/.../version=v2` may mean a different model or preprocessing configuration. Data science and ML engineering is an iterative process, and we should store artifacts from each iteration separately -- versions add, they don't overwrite, and a version never silently replaces an incompatible dataset.
+
+Two version vocabularies exist, and the difference is a policy the storage layer enforces, not a naming convention:
+
+| Token | Class | Meaning |
+| --- | --- | --- |
+| `vN` | stable | A production generation address. One configuration owns it. |
+| `x-...` | ephemeral | A throwaway prefix (`x-v1.1`, `x-scratch`). Never production, never query-layer-projected by default. |
+
+Ownership is recorded, not assumed. Before a run writes its first part it claims its prefix with a conditional put (`ObjectStore.put_if_absent`) at `manifests/versions/embeddings/<model>/<variant>/<version>.json`; the claim names the owning `configuration_hash`. A second configuration aimed at a claimed prefix fails (`ClaimConflict`) rather than joining the dataset. Ephemeral tokens are claimed the same way -- reuse by the *same* configuration is allowed, reuse by a different one is not.
+
+The rule exists because `configuration_hash` is a row column, never a path segment: a config change re-hashes but does not move the prefix, so without a claim a `LIMIT 100` smoke-test configuration wrote 400 rows into production `version=v1` ([issue #22](https://github.com/moonuel/semantic-career-map/issues/22)).
 
 ## 3. Configuration & Manifests
 

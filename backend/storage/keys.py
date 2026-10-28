@@ -113,8 +113,20 @@ _FILENAME_RE = re.compile(r"^[a-z0-9]+(?:[-_=][a-z0-9]+)*(?:\.[a-z0-9]+)?$")
 # (e.g. a dataset id that is itself the addressed leaf).
 _PLAIN_SEGMENT_RE = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 
-# Version token: `v` followed by a positive integer.
+# Version token: `v` followed by a positive integer. A stable token names a
+# claimable generation: one configuration owns it, and it is the address a
+# consumer means when it says "this dataset".
 _VERSION_RE = re.compile(r"^v[1-9][0-9]*$")
+
+# Ephemeral version token: `x-` then a lowercase name, dots allowed
+# (`x-v1.1`, `x-scratch-run3`). An ephemeral prefix is a throwaway, claimed
+# only against concurrent writers — it never names production data and is
+# never projected into the query layer's partition enum.
+_EPHEMERAL_VERSION_RE = re.compile(r"^x-[a-z0-9]+(?:[._-][a-z0-9]+)*$")
+
+# A `version=` partition segment, dots included. Structural only: each branch's
+# shape pinner still decides which version vocabulary it accepts.
+_VERSION_PARTITION_RE = re.compile(r"^version=[a-z0-9]+(?:[-_.][a-z0-9]+)*$")
 
 
 # --- Helpers ----------------------------------------------------------------
@@ -148,10 +160,58 @@ def _check_id(id: str, *, name: str = "posting id") -> str:
     return id
 
 
-def _check_version(version: str, *, name: str = "version") -> str:
-    if _VERSION_RE.fullmatch(version) is None:
-        raise ValueError(f"{name} must be 'vN' (v1, v2, ...), got {version!r}")
-    return version
+def _check_version(
+    version: str, *, name: str = "version", allow_ephemeral: bool = False
+) -> str:
+    """Return ``version`` if a stable token, or an allowed ephemeral token.
+
+    Args:
+        version: The version token to check.
+        name: Label used in the error message.
+        allow_ephemeral: Accept ``x-...`` throwaway tokens beside ``vN``.
+            Default is stable-only, so widening the vocabulary for embeddings
+            cannot leak into the artifact or eval branches.
+
+    Raises:
+        ValueError: if ``version`` is neither form.
+    """
+    if _VERSION_RE.fullmatch(version) is not None:
+        return version
+    if allow_ephemeral and _EPHEMERAL_VERSION_RE.fullmatch(version) is not None:
+        return version
+    expected = (
+        "'vN' (v1, v2, ...) or an ephemeral 'x-...' token"
+        if allow_ephemeral
+        else "'vN' (v1, v2, ...)"
+    )
+    raise ValueError(f"{name} must be {expected}, got {version!r}")
+
+
+def version_kind(version: str) -> str:
+    """Classify a version token as ``"stable"`` or ``"ephemeral"``.
+
+    Stable tokens (``vN``) are the claimable, production-addressable
+    generations. Ephemeral tokens (``x-...``) are throwaway prefixes: still
+    claimed, so two runs cannot interleave parts, but never projected into the
+    query layer and never a production address.
+
+    Args:
+        version: The version token to classify.
+
+    Returns:
+        ``"stable"`` or ``"ephemeral"``.
+
+    Raises:
+        ValueError: if the token is neither form.
+    """
+    if _VERSION_RE.fullmatch(version) is not None:
+        return "stable"
+    if _EPHEMERAL_VERSION_RE.fullmatch(version) is not None:
+        return "ephemeral"
+    raise ValueError(
+        f"version must be 'vN' (v1, v2, ...) or an ephemeral 'x-...' token, "
+        f"got {version!r}"
+    )
 
 
 def _check_hash(hash_: str, *, name: str = "config hash") -> str:
@@ -434,7 +494,7 @@ def embedding_part(
     Args:
         model: Model family segment (e.g. ``all-minilm-l6-v2``).
         variant: Producing method segment (e.g. ``minilm``).
-        version: Version token ``vN``.
+        version: Version token ``vN``, or an ephemeral ``x-...`` token.
         run_id: Canonical UUIDv7 of the pipeline run that wrote this part.
         seq: 1-based flush sequence within the run.
 
@@ -447,8 +507,43 @@ def embedding_part(
     return (
         f"lake/embeddings/model={_check(model, name='model')}/"
         f"variant={_check(variant, name='variant')}/"
-        f"version={_check_version(version, name='embedding version')}/"
+        f"version={_check_version(version, name='embedding version', allow_ephemeral=True)}/"
         f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
+def embedding_version_claim(model: str, variant: str, version: str) -> str:
+    """Key for the registry object recording who owns an embedding version.
+
+    ``lake/manifests/versions/embeddings/<model>/<variant>/<version>.json``
+
+    One JSON object per version prefix, written once with a conditional put
+    (``ObjectStore.put_if_absent``) before a run writes any part. It answers
+    the question the pipeline could not answer before: *which configuration
+    owns this prefix?* Two different ``configuration_hash`` values can no
+    longer mint parts into one prefix, which is the defect behind the 400
+    foreign rows in ``version=v1`` (issue #22).
+
+    The leaf is the version token with dots replaced by hyphens, keeping it a
+    plain single-extension filename (``x-v1.1`` → ``x-v1-1.json``). The JSON
+    body carries the token verbatim, so the lossy leaf stays unambiguous.
+
+    Args:
+        model: Model family segment (e.g. ``all-minilm-l6-v2``).
+        variant: Producing method segment (e.g. ``minilm``).
+        version: Version token ``vN`` or an ephemeral ``x-...`` token.
+
+    Returns:
+        The well-formed version-claim object key.
+
+    Raises:
+        ValueError: if any segment, or the token, is malformed.
+    """
+    token = _check_version(version, name="embedding version", allow_ephemeral=True)
+    leaf = token.replace(".", "-")
+    return (
+        f"lake/manifests/versions/embeddings/{_check(model, name='model')}/"
+        f"{_check(variant, name='variant')}/{_check_plain(leaf, name='version')}.json"
     )
 
 
@@ -773,9 +868,15 @@ def _validate_lake_embeddings(key: str, rest: list[str]) -> None:
     ``lake/embeddings/model=<model>/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet``
 
     Pins the branch, the three Hive partitions in order (model-first per
-    data.md §7), the ``vN`` version token, and the run-minted part leaf —
-    the branch is no longer merely reserved; its positional layout is
-    enforced like the other dataset branches.
+    data.md §7), the version token, and the run-minted part leaf — the branch
+    is no longer merely reserved; its positional layout is enforced like the
+    other dataset branches.
+
+    Embedding versions accept ephemeral ``x-...`` tokens beside ``vN``: an
+    experimental generation writes into its own throwaway prefix instead of
+    sharing the production one (issue #22). The claim registry
+    (:func:`embedding_version_claim`) is what keeps two configurations from
+    ever sharing a prefix.
     """
     if len(rest) != 5 or rest[0] != "embeddings":
         raise ValueError(
@@ -783,7 +884,7 @@ def _validate_lake_embeddings(key: str, rest: list[str]) -> None:
             f"/variant=<variant>/version=<vN>/part-<run-id>-<seq>.parquet"
         )
     values = _validated_partitions(key, rest[1:4], ["model", "variant", "version"])
-    _check_version(values[2], name="embedding version")
+    _check_version(values[2], name="embedding version", allow_ephemeral=True)
     _check_part_leaf(key, rest[-1])
 
 
@@ -941,7 +1042,14 @@ def validate_key(key: str) -> str:
             _check_id(id_segment)
             continue
         is_last = index == len(rest) - 1
-        pattern = _FILENAME_RE if is_last else _SEGMENT_RE
+        if is_last:
+            pattern = _FILENAME_RE
+        elif segment.startswith("version="):
+            # Ephemeral tokens carry a dot (`version=x-v1.1`); each branch's
+            # shape pinner still decides whether that vocabulary is allowed.
+            pattern = _VERSION_PARTITION_RE
+        else:
+            pattern = _SEGMENT_RE
         if pattern.fullmatch(segment) is None:
             raise ValueError(
                 f"key {key!r} contains malformed segment {segment!r} "

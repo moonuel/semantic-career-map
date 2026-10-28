@@ -138,6 +138,12 @@ def dataset_id(config: EmbeddingConfig) -> str:
     prompt-flag change) never share a manifest object — dataset ids are
     addresses, never rewritten (data.md §2.3).
 
+    Dots are not valid in a plain dataset id, so an ephemeral version token's
+    dots become hyphens (``x-v1.1`` → ``x-v1-1``). The 12-char hash suffix
+    keeps the rewrite collision-free: ``x-v1.1`` and ``x-v1-1`` differ in the
+    hashed config (the version token is part of it), hence differ in the
+    suffix.
+
     Args:
         config: The embedding configuration.
 
@@ -145,6 +151,6 @@ def dataset_id(config: EmbeddingConfig) -> str:
         The plain (no `k=v`) dataset id.
     """
     return (
-        f"embeddings-{config.model_segment}-{config.variant}-{config.version}-"
-        f"{configuration_hash(config)[:12]}"
+        f"embeddings-{config.model_segment}-{config.variant}-"
+        f"{config.version.replace('.', '-')}-{configuration_hash(config)[:12]}"
     )

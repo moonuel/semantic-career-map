@@ -252,6 +252,50 @@ def check_embeddings_parity(
     return store_rows == table_rows, store_rows, table_rows
 
 
+def check_embedding_version_claims(store) -> tuple[bool, list[str]]:
+    """Gate 6: every embedding version prefix on disk has an owner claim.
+
+    Claims are written by the run before its first part, so an unclaimed
+    prefix means either a legacy prefix that predates the registry or a run
+    that bypassed the driver. Both are the condition that let 400 foreign rows
+    into production ``version=v1`` (issue #22), so the drift is reported.
+
+    Args:
+        store: The object store.
+
+    Returns:
+        ``(all_claimed, missing)`` — the unclaimed version tokens, sorted.
+    """
+    prefixes: set[tuple[str, str, str]] = set()
+    for key in store.list_keys("lake/embeddings/"):
+        parts = key.split("/")
+        if len(parts) < 5:
+            continue
+        model = parts[2].removeprefix("model=")
+        variant = parts[3].removeprefix("variant=")
+        version = parts[4].removeprefix("version=")
+        prefixes.add((model, variant, version))
+
+    missing = [
+        f"{model}/{variant}/version={version}"
+        for model, variant, version in sorted(prefixes)
+        if not store.exists(_claim_key(model, variant, version))
+    ]
+    return not missing, missing
+
+
+def _claim_key(model: str, variant: str, version: str) -> str:
+    """Recompute the claim key from a prefix without re-validating the token.
+
+    The token came from a stored key, so it is already well-formed; dots in an
+    ephemeral token are folded to hyphens exactly as the builder does.
+    """
+    return (
+        f"lake/manifests/versions/embeddings/{model}/{variant}/"
+        f"{version.replace('.', '-')}.json"
+    )
+
+
 def main() -> None:
     """Run the gates and print pass/fail per check."""
     load_dotenv()
@@ -264,7 +308,7 @@ def main() -> None:
     parser.add_argument(
         "--embeddings",
         action="store_true",
-        help="also run gate 4: embeddings store-vs-table row-count parity",
+        help="also run gate 4 (parity) and gate 5 (version claims)",
     )
     args = parser.parse_args()
 
@@ -345,10 +389,18 @@ def main() -> None:
             f"  store parts rows {store_rows:>6} table rows {table_rows:>6} "
             f"{'OK' if match else 'MISMATCH'}"
         )
+
+        print("== gate 5: every embeddings version prefix has an owner claim")
+        claimed, missing = check_embedding_version_claims(ObjectStore.from_env())
+        ok &= claimed
+        if claimed:
+            print("  all version prefixes claimed OK")
+        for entry in missing:
+            print(f"  UNCLAIMED {entry}")
     else:
         print("== gate 4 skipped (pass --embeddings)")
 
-    print("== gate 5: manifests_ingestion is readable (partition key is virtual)")
+    print("== gate 6: manifests_ingestion is readable (partition key is virtual)")
     # A registration that declares a partition column twice makes Athena
     # reject the whole table, so every consumer fails — including the
     # cleaning tier's recency window. One count(*) is enough to catch it,

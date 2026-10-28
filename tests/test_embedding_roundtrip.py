@@ -163,12 +163,23 @@ def test_round_trip_commits_parts_and_manifest(memory_sink: MemorySink) -> None:
     assert stored["config"]["sql_text"] == config.sql_text
 
 
+def _claim_key(config=None) -> str:
+    """The version-claim object every run writes before touching its prefix."""
+    config = config or _config()
+    return keys.embedding_version_claim(
+        config.model_segment, config.variant, config.version
+    )
+
+
 def test_zero_delta_is_healthy_noop(memory_sink: MemorySink) -> None:
     athena = FakeAthena([["source_hash", "variant_text"]])
     summary = driver.run_embedding(memory_sink, athena, StubEncoder(8), _config())
     assert summary.zero_delta and summary.embedded == 0 and summary.selected == 0
     assert summary.part_keys == [] and summary.dataset_manifest_key is None
-    assert list(memory_sink.objects) == [keys.config(configuration_hash(_config()))]
+    assert list(memory_sink.objects) == [
+        keys.config(configuration_hash(_config())),
+        _claim_key(),
+    ]
 
 
 def test_empty_rows_counted_not_dropped(memory_sink: MemorySink) -> None:
@@ -184,11 +195,13 @@ def test_empty_rows_counted_not_dropped(memory_sink: MemorySink) -> None:
 
 
 def test_failed_query_state_writes_nothing(memory_sink: MemorySink) -> None:
+    """A failed selection lands no data — only the config object and the
+    version claim, both of which must precede the query."""
     athena = FakeAthena(_page("a"))
     athena.failure_state = "FAILED"
     with pytest.raises(RuntimeError):
         driver.run_embedding(memory_sink, athena, StubEncoder(8), _config())
-    keys_set = [keys.config(configuration_hash(_config()))]
+    keys_set = [keys.config(configuration_hash(_config())), _claim_key()]
     assert list(memory_sink.objects) == keys_set
 
 
