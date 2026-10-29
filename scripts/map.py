@@ -249,24 +249,26 @@ def write_coords(keys: list[str], coords: np.ndarray, target: Path) -> Path:
 
 
 def fetch_metadata(store: ObjectStore, keys: list[str]) -> dict[str, dict[str, str]]:
-    """Resolve ``source_hash`` → raw-lake hover metadata (title, employer).
+    """Resolve ``source_hash`` → raw-lake posting metadata for the map panel.
 
     Lists each allowlisted source partition, keeps only the keys this run
     needs, then reads those objects. A missing or unreadable payload yields
-    empty strings — metadata gaps never fail a point.
+    empty strings — metadata gaps never fail a point. ``source`` comes from
+    the key's partition (the payload dict carries none).
 
     Args:
         store: Object store holding the raw lake.
         keys: The run's ``source_hash`` values.
 
     Returns:
-        Map of hash → ``{"source", "title", "employer"}`` (all six
-        allowlisted sources probed; only matched hashes present).
+        Map of hash → posting fields (title, employer, url, location,
+        country, employment_type, date_posted, salary, source_id, source);
+        only matched hashes present.
     """
     from backend.storage.keys import RAW_SOURCES
 
     wanted = set(keys)
-    found: dict[str, str] = {}
+    found: dict[str, tuple[str, str]] = {}
     for source in sorted(RAW_SOURCES):
         prefix = f"lake/raw/source={source}/"
         for key in store.list_keys(prefix):
@@ -275,39 +277,199 @@ def fetch_metadata(store: ObjectStore, keys: list[str]) -> dict[str, dict[str, s
             except ValueError:
                 continue
             if source_hash in wanted:
-                found[source_hash] = key
+                found[source_hash] = (source, key)
 
     meta: dict[str, dict[str, str]] = {}
-    for source_hash, key in found.items():
-        record: dict[str, str] = {"source": "", "title": "", "employer": ""}
+    for source_hash, (source, key) in found.items():
+        record: dict[str, str] = {"source": source}
         try:
             data = json.loads(store.get(key).decode("utf-8"))
-            record["source"] = str(data.get("source", ""))
-            record["title"] = str(data.get("title", ""))
-            record["employer"] = str(data.get("employer", ""))
         except OSError, ValueError, json.JSONDecodeError, AttributeError:
-            pass
+            meta[source_hash] = record
+            continue
+        for name in (
+            "title",
+            "employer",
+            "url",
+            "location",
+            "country",
+            "employment_type",
+            "date_posted",
+            "source_id",
+        ):
+            value = data.get(name)
+            record[name] = "" if value is None else str(value)
+        record["salary"] = _format_salary(data)
         meta[source_hash] = record
 
     missing = len(keys) - len(meta)
     if missing:
-        print(f"metadata: {missing}/{len(keys)} hashes unresolved (empty hover)")
+        print(f"metadata: {missing}/{len(keys)} hashes unresolved (empty panel)")
     return meta
+
+
+def _format_salary(data: dict) -> str:
+    """Render the payload's salary bounds as one display string."""
+    low, high = data.get("salary_min"), data.get("salary_max")
+    currency = str(data.get("salary_currency") or "")
+    if low is None and high is None:
+        return ""
+    bounds = " – ".join(
+        f"{value:,.0f}" for value in (low, high) if isinstance(value, int | float)
+    )
+    return f"{bounds} {currency}".strip()
+
+
+def fetch_cleaned_text(keys: list[str]) -> dict[str, str]:
+    """Pull the LLM-cleaned posting text from Athena for the run's keys.
+
+    The table is fetched whole (9.6k rows, ~35 MB of text) and filtered to
+    the run's keys client-side — an ``IN`` list of thousands of hashes would
+    exceed Athena's query-size limit.
+
+    Args:
+        keys: The run's ``source_hash`` values.
+
+    Returns:
+        Map of hash → cleaned text (only hashes present in the artifact
+        table appear).
+    """
+    wanted = set(keys)
+    sql = f"""
+SELECT source_hash, cleaned_text
+FROM {DATABASE}.artifacts_cleaned
+WHERE variant = 'llm' AND version = 'v1'
+"""
+    rows = _run(_athena(), sql)
+    text: dict[str, str] = {}
+    for row in rows[1:]:
+        if len(row) >= 2 and row[0] in wanted:
+            text[row[0]] = row[1]
+    print(f"cleaned_text: {len(text)}/{len(keys)} hashes matched")
+    return text
+
+
+def write_details(
+    keys: list[str],
+    meta: dict[str, dict[str, str]],
+    cleaned: dict[str, str],
+    out_dir: Path,
+) -> list[Path]:
+    """Write hash-bucketed click-detail JSON files beside the map.
+
+    Each file ``details/<first two hex chars>.json`` holds
+    ``{source_hash: record}`` for the postings sharing that prefix, so the
+    page fetches ~330 KB per bucket on demand instead of a 35 MB blob.
+
+    Args:
+        keys: The run's ``source_hash`` values.
+        meta: Per-hash posting metadata from :func:`fetch_metadata`.
+        cleaned: Per-hash cleaned text from :func:`fetch_cleaned_text`.
+        out_dir: Map output directory; buckets land in ``out_dir/details``.
+
+    Returns:
+        Written bucket paths.
+    """
+    buckets: dict[str, dict[str, dict[str, str]]] = {}
+    for source_hash in keys:
+        record = dict(meta.get(source_hash, {}))
+        record["hash"] = source_hash
+        record["cleaned_text"] = cleaned.get(source_hash, "")
+        buckets.setdefault(source_hash[:2], {})[source_hash] = record
+
+    details_dir = out_dir / "details"
+    details_dir.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for prefix, payload in sorted(buckets.items()):
+        target = details_dir / f"{prefix}.json"
+        target.write_text(json.dumps(payload), encoding="utf-8")
+        written.append(target)
+    total = sum(p.stat().st_size for p in written)
+    print(f"details: {len(written)} buckets, {total / 2**20:.1f} MB")
+    return written
 
 
 _ARROW_ESM = "https://cdn.jsdelivr.net/npm/apache-arrow@20/+esm"
 
+_DETAILS_JS = """
+    const hoverHashes = hoverData.getChild('hash').toArray();
+    const detailBuckets = {};
+    async function loadDetail(hash) {
+      const bucket = hash.slice(0, 2);
+      if (!(bucket in detailBuckets)) {
+        const resp = await fetch(`details/${bucket}.json`);
+        detailBuckets[bucket] = resp.ok ? await resp.json() : {};
+      }
+      return detailBuckets[bucket][hash] || null;
+    }
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;top:0;right:0;width:min(480px,92vw);height:100%;' +
+      'overflow:auto;background:#fff;box-shadow:-2px 0 10px rgba(0,0,0,.25);' +
+      'padding:18px;box-sizing:border-box;font-family:arial;font-size:14px;' +
+      'line-height:1.45;display:none;z-index:20';
+    document.body.appendChild(panel);
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '\\u00d7';
+    closeBtn.style.cssText = 'float:right;border:0;background:none;font-size:24px;' +
+      'cursor:pointer;padding:0 4px';
+    closeBtn.onclick = () => { panel.style.display = 'none'; };
+    async function showDetails(info) {
+      if (!info || info.index == null) return;
+      const detail = await loadDetail(hoverHashes[info.index]);
+      if (!detail) return;
+      panel.replaceChildren(closeBtn);
+      const title = document.createElement('div');
+      title.textContent = detail.title || '(untitled)';
+      title.style.cssText = 'font-size:18px;font-weight:bold;margin:0 28px 4px 0';
+      panel.appendChild(title);
+      for (const line of [
+        [detail.employer, detail.location].filter(Boolean).join(' \\u00b7 '),
+        [detail.salary, detail.employment_type, detail.date_posted]
+          .filter(Boolean).join(' \\u00b7 '),
+        [detail.source, detail.source_id].filter(Boolean).join(' \\u00b7 '),
+      ]) {
+        if (!line) continue;
+        const d = document.createElement('div');
+        d.textContent = line;
+        d.style.color = '#555';
+        panel.appendChild(d);
+      }
+      if (detail.url) {
+        const a = document.createElement('a');
+        a.href = detail.url;
+        a.textContent = 'original posting';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.display = 'block';
+        a.style.margin = '6px 0';
+        panel.appendChild(a);
+      }
+      panel.appendChild(document.createElement('hr'));
+      const body = document.createElement('div');
+      body.textContent = detail.cleaned_text || '(no cleaned text)';
+      body.style.whiteSpace = 'pre-wrap';
+      panel.appendChild(body);
+      panel.scrollTop = 0;
+      panel.style.display = 'block';
+    }
+"""
+
 _HTML_PATCHES: list[tuple[str, str]] = [
     (
         (
-            "    import * as loaders from "
-            "'https://cdn.jsdelivr.net/npm/@loaders.gl/core@4.1.0-alpha.10/+esm'\n"
             "    import { ArrowLoader } from "
             "'https://cdn.jsdelivr.net/npm/@loaders.gl/arrow@4.1.0-alpha.10/+esm'\n"
             "    import { JSONLoader } from "
             "'https://cdn.jsdelivr.net/npm/@loaders.gl/json@4.0.5/+esm'"
         ),
         f"    import {{ tableFromIPC }} from '{_ARROW_ESM}'",
+    ),
+    (
+        (
+            "    import * as loaders from "
+            "'https://cdn.jsdelivr.net/npm/@loaders.gl/core@4.1.0-alpha.10/+esm'\n"
+        ),
+        "",
     ),
     (
         "const pointData = await loaders.parse(pointDataBuffer, ArrowLoader);",
@@ -336,6 +498,14 @@ _HTML_PATCHES: list[tuple[str, str]] = [
     (
         "({index}) => hoverData.data.hover_text[index]",
         "({index}) => hoverData.getChild('hover_text').toArray()[index]",
+    ),
+    (
+        "autoHighlight: true,",
+        "autoHighlight: true,\n        onClick: showDetails,",
+    ),
+    (
+        'document.getElementById("loading").style.display = "none";',
+        'document.getElementById("loading").style.display = "none";' + _DETAILS_JS,
     ),
 ]
 
@@ -421,11 +591,16 @@ def render_interactive(
         )
         fig.save(str(target))
         html = Path(target).read_text(encoding="utf-8")
-        html, applied = patch_interactive_html(html)
+        html, _applied = patch_interactive_html(html)
         Path(target).write_text(html, encoding="utf-8")
-        if applied < len(_HTML_PATCHES):
+        problems = [
+            marker
+            for marker in ("tableFromIPC", "onClick: showDetails", "loadDetail")
+            if marker not in html
+        ]
+        if problems:
             print(
-                f"interactive template patch incomplete ({applied}/{len(_HTML_PATCHES)}); "
+                f"interactive template patch incomplete (missing {problems}); "
                 "map may not load",
                 file=sys.stderr,
             )
@@ -485,6 +660,11 @@ def main(argv: list[str] | None = None) -> int:
         "--no-interactive", action="store_true", help="skip the HTML render"
     )
     parser.add_argument(
+        "--no-text",
+        action="store_true",
+        help="skip the Athena cleaned-text join and the click-detail buckets",
+    )
+    parser.add_argument(
         "--n-dims",
         type=int,
         default=0,
@@ -512,6 +692,11 @@ def main(argv: list[str] | None = None) -> int:
             meta = fetch_metadata(ObjectStore.from_env(), keys)
         except RuntimeError as exc:
             print(f"metadata unavailable ({exc}); hovers empty", file=sys.stderr)
+
+    want_details = needs_meta and not args.no_text
+    if want_details:
+        cleaned = fetch_cleaned_text(keys)
+        write_details(keys, meta, cleaned, args.out_dir)
 
     coords_2d: np.ndarray | None = None
     if args.only in ("2d", "both"):
