@@ -24,7 +24,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from run_benchmark import DEFAULT_RAW, DEFAULT_SUMMARY, JACCARD_THRESHOLD
+from run_benchmark import DEFAULT_RAW, DEFAULT_SUMMARY, JACCARD_THRESHOLD, KNN_PRIMARY
 
 DEFAULT_PLOTS = Path(__file__).resolve().parents[2] / "docs" / "experiments" / "assets"
 
@@ -234,6 +234,52 @@ def plot_retention(summary: dict, target: Path) -> Path:
     return target
 
 
+def plot_amendment(summary: dict, target: Path) -> Path:
+    """Render the 009A amendment figure: both frames' Jaccard through the grid."""
+    amendment = summary.get("amendment")
+    if not amendment:
+        print("no amendment block in summary; skipping 009A plot")
+        return target
+    ks = [row["k_d"] for row in amendment["arm_a"]]
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(
+        ks,
+        [r["jaccard_15"] for r in amendment["arm_a"]],
+        marker="o",
+        ms=3.5,
+        lw=1.4,
+        label="A — in-frame (centered PCA, renormalized)",
+    )
+    ax.plot(
+        ks,
+        [r["jaccard_15"] for r in amendment["arm_b"]],
+        marker="s",
+        ms=3,
+        lw=1.0,
+        label="B — sphere-frame reconstruction (+μ)",
+    )
+    ax.axhline(
+        JACCARD_THRESHOLD,
+        color="tab:red",
+        lw=0.8,
+        ls=":",
+        label=f"gate {JACCARD_THRESHOLD}",
+    )
+    k_star = amendment["k_d_star_in_frame"]
+    if k_star is not None:
+        ax.axvline(k_star, color="tab:green", lw=1.2, label=f"k_d* = {k_star}")
+    ax.set_xscale("log")
+    ax.set_ylim(0.0, 1.02)
+    ax.set_xlabel("PCA retained dims $k_d$")
+    ax.set_ylabel(f"Jaccard@{KNN_PRIMARY} vs in-frame ground truth")
+    ax.set_title("009A — frame-corrected pre-reduction gate")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(target, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return target
+
+
 def main(argv: list[str] | None = None) -> int:
     """Load the recorded results, print tables, and render both plots.
 
@@ -268,8 +314,12 @@ def main(argv: list[str] | None = None) -> int:
     args.plots_dir.mkdir(parents=True, exist_ok=True)
     scree_path = plot_scree(summary, raw, args.plots_dir / "009_scree.png")
     retention_path = plot_retention(summary, args.plots_dir / "009_retention_curve.png")
+    amendment_path = plot_amendment(
+        summary, args.plots_dir / "009a_amendment_curve.png"
+    )
     print(f"\nplots -> {scree_path}")
     print(f"plots -> {retention_path}")
+    print(f"plots -> {amendment_path}")
     return 0
 
 

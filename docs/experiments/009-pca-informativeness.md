@@ -158,6 +158,47 @@ Since the harness is frozen and the first run recorded, any revision is a new ar
 2. **Uncentered truncation (LSA-style)** — thin SVD of X *without* mean subtraction (variant: top-k singular triplets of the uncentered matrix). For points on a sphere with a non-zero mean, this preserves original cosine geometry better than centered PCA; it is the standard truncation used in text retrieval (LSA), and cheap to test in the same harness shape.
 3. Whichever variant clears its gate feeds report 022's rung-1 default and the subsample experiment (010) unchanged.
 
+## Experiment 009A — Frame-Corrected PCA Pre-Reduction (Amendment, 2026-10-29)
+
+**Status:** Proposed and approved same-day as an amendment run (`scripts/009_pca_informativeness/run_amendment.py`, new frozen harness; recorded 009 payloads untouched). Adopted from the follow-up proposals above after the frame diagnosis: the deployment pipeline (`PCA → renormalize → UMAP(cosine)`) lives entirely in the *centered* frame, so both the ground truth and the candidates must be measured there.
+
+**Geometry rationale (recorded with the amendment).** For points clustered on a sphere, uncentered variance is dominated by the mean direction and cannot order within-arc structure; centered PCA is the correct structure detector. Truncation in the centered basis followed by re-normalization is equivalent to discarding the orthogonal "normal" dimensions of the local frame (project the cone onto its table, drop the third coordinate) — and cosine is only coherent when the reference lives in the same frame. The 009 control numbers corroborate: sphere-frame kNN vs centered-frame kNN agree at Jaccard@15 = **0.5753** (vs the recorded 0.5752 control), i.e. the 009 ceiling was pure frame shift.
+
+**Design deltas vs 009** (all else inherited verbatim — data, grid, gate thresholds):
+
+- Ground truth: exact cosine 15-NN of the **centered full-rank space, re-normalized** (deployment frame).
+- **Arm A (primary):** centered PCA top-`k_d` basis coords `rn(U_k S_k)` — truncate, renormalize, cosine.
+- **Arm B (reference):** truncated reconstruction `rn(U_k S_k Vt_k + μ)` scored against the *sphere-frame* ground truth — what in-frame deployment gives up vs the original geometry.
+- Fully deterministic (no stochastic component); acceptance checks: frame agreement must reproduce 0.5752 ± 0.02, arm-A k=384 must be ≈ 1.0.
+
+![009A frame-corrected gate curve](assets/009a_amendment_curve.png)
+
+### 009A results
+
+Run 2026-10-29, 85.3 s, cached corpus (no Athena). Frame agreement reproduced at **0.5753** ✓.
+
+| k_d | A: in-frame Jaccard@15 | B: sphere-recon Jaccard@15 |
+|---|---|---|
+| 8 | 0.1556 | 0.1475 |
+| 12 | 0.2201 | 0.1996 |
+| 16 | 0.2704 | 0.2433 |
+| 24 | 0.3577 | 0.3221 |
+| 32 | 0.4268 | 0.3865 |
+| 48 | 0.5276 | 0.4844 |
+| 64 | 0.6064 | 0.5633 |
+| 96 | 0.7164 | 0.6790 |
+| 128 | 0.7922 | 0.7641 |
+| 192 | 0.8933 | 0.8803 |
+| **256** | **0.9554 — gate clears** | 0.9511 |
+| 320 | 0.9831 | 0.9816 |
+| 384 | 0.9990 (control ≈ 1.0 ✓) | 0.9995 |
+
+### 009A decision
+
+- **`k_d* = 256` in-frame** (Jaccard@15 = 0.9554 ≥ 0.95, k_d ≥ signal count 71) — the exploratory prediction was confirmed exactly (192 misses at 0.8933, 256 clears). Arm B independently selects 256 as well.
+- **Adopted rung-1 default for report 022 §7 action 3:** `n_dims = 256` — 1.5× k-NN distance-cost reduction at cumEVR = 0.98 and ≈ 95% in-frame neighborhood retention. The report's "~50 dims" folklore is dead on this corpus (in-frame retention at 50 dims ≈ 0.53): the spectrum has no 50-dim backbone.
+- **010 input space fixed:** the subsample-stability experiment runs on the centered top-256 basis coordinates (in-frame pipeline), composing the two experiments into one claim: *fit UMAP on a 256-dim centered-PCA subsample*.
+
 ## Post-Script — Experiment 010 (UMAP Subsample-Fit vs Full Stability)
 
 Second half of the visualization-tools workstream, sketched now, finalized after 009 because `k_d*` defines its input space. Design pending 009's results.

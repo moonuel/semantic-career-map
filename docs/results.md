@@ -37,6 +37,7 @@ As of October 29, 2026:
 - **Effective dimensionality is real but not tiny**: participation ratio 57.6, permutation noise-floor signal count 71 dims, and cumulative explained variance reaches 0.95 only past ~192 dims — the folklore "PCA to ~50" would retain 64% of variance and lose most cosine 15-NN structure.
 - **The pre-registered gate returns `k_d* = None`**: no candidate dimension cut holds Jaccard@15 ≥ 0.95, because the k_d = 384 control isolates PCA centering — not truncation — as the dominant effect (42.5% of 15-NN sets and ~7% of 1-NNs turn over from the centering frame shift alone; truncation beyond that costs little, ~95% kept at 128 dims).
 - Consequence for the UMAP scaling ladder: the `n_dims` pre-reduction default stays unset rather than guessed; a centered-frame or LSA-style uncentered-truncation variant is the proposed follow-up (design note in the experiment page).
+- [Experiment 009A](./experiments/009-pca-informativeness.md#experiment-009a-frame-corrected-pca-pre-reduction-amendment-2026-10-29) — the approved amendment run re-gates the same truncations **inside the centered frame** (the frame the `PCA → renormalize → UMAP(cosine)` deployment actually lives in). Result: **`k_d* = 256`** (in-frame Jaccard@15 0.9554, cumEVR 0.98, 1.5× distance-cost cut), independently confirmed by the sphere-reconstruction arm; the "~50 dims" estimate is dead (in-frame retention at 50 dims ≈ 0.53). Rung-1 default named; experiment 010's input space is fixed to the centered top-256 basis coordinates.
 
 <!-- 
 ## Summary Dashboard

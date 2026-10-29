@@ -80,7 +80,7 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
     **2026-10-29**
 
-    PCA pre-reduction benchmark on the full 9,354×384 production corpus: participation ratio 57.6, permutation signal count 71, cumEVR ≥ 0.95 only at ~192 dims. The pre-registered gate returns `k_d* = None` — the k_d=384 control isolated PCA's centering shift as the dominant turnover (42.5% of cosine 15-NN neighborhoods), dwarfing truncation loss (95% of surviving neighborhoods kept at 128 dims). Report 022's `n_dims` default stays unset pending a centered-frame/uncentered-truncation variant.
+    PCA pre-reduction benchmark on the full 9,354×384 production corpus: participation ratio 57.6, permutation signal count 71, cumEVR ≥ 0.95 only at ~192 dims. The pre-registered gate returns `k_d* = None` — the k_d=384 control isolated PCA's centering shift as the dominant turnover (42.5% of cosine 15-NN neighborhoods), dwarfing truncation loss (95% of surviving neighborhoods kept at 128 dims). **009A amendment same day:** re-gated inside the centered deployment frame, `k_d* = 256` (Jaccard@15 0.9554, cumEVR 0.98) — rung-1 `n_dims` default named, "~50 dims" folklore rejected.
 
 </div>
 

@@ -1858,5 +1858,189 @@
   },
   "summary": {
     "k_d_star": null
+  },
+  "amendment_009a": {
+    "frame_agreement": 0.575287,
+    "arm_a_in_frame": [
+      {
+        "k_d": 8,
+        "jaccard_15": 0.155593,
+        "jaccard_50": 0.322657,
+        "nn1_rate": 0.933611
+      },
+      {
+        "k_d": 12,
+        "jaccard_15": 0.220092,
+        "jaccard_50": 0.45528,
+        "nn1_rate": 0.930939
+      },
+      {
+        "k_d": 16,
+        "jaccard_15": 0.270379,
+        "jaccard_50": 0.55219,
+        "nn1_rate": 0.931366
+      },
+      {
+        "k_d": 24,
+        "jaccard_15": 0.35774,
+        "jaccard_50": 0.703099,
+        "nn1_rate": 0.933825
+      },
+      {
+        "k_d": 32,
+        "jaccard_15": 0.426789,
+        "jaccard_50": 0.797445,
+        "nn1_rate": 0.937674
+      },
+      {
+        "k_d": 48,
+        "jaccard_15": 0.527616,
+        "jaccard_50": 0.901502,
+        "nn1_rate": 0.935429
+      },
+      {
+        "k_d": 64,
+        "jaccard_15": 0.606437,
+        "jaccard_50": 0.953353,
+        "nn1_rate": 0.937674
+      },
+      {
+        "k_d": 96,
+        "jaccard_15": 0.716373,
+        "jaccard_50": 0.988857,
+        "nn1_rate": 0.934894
+      },
+      {
+        "k_d": 128,
+        "jaccard_15": 0.792168,
+        "jaccard_50": 0.997653,
+        "nn1_rate": 0.936925
+      },
+      {
+        "k_d": 192,
+        "jaccard_15": 0.893304,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.936605
+      },
+      {
+        "k_d": 256,
+        "jaccard_15": 0.955399,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.934467
+      },
+      {
+        "k_d": 320,
+        "jaccard_15": 0.983061,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.935108
+      },
+      {
+        "k_d": 384,
+        "jaccard_15": 0.999001,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.990806
+      }
+    ],
+    "arm_b_sphere_reconstruction": [
+      {
+        "k_d": 8,
+        "jaccard_15": 0.147507,
+        "jaccard_50": 0.293236,
+        "nn1_rate": 0.933077
+      },
+      {
+        "k_d": 12,
+        "jaccard_15": 0.199591,
+        "jaccard_50": 0.407373,
+        "nn1_rate": 0.932115
+      },
+      {
+        "k_d": 16,
+        "jaccard_15": 0.243341,
+        "jaccard_50": 0.499293,
+        "nn1_rate": 0.938422
+      },
+      {
+        "k_d": 24,
+        "jaccard_15": 0.322078,
+        "jaccard_50": 0.651182,
+        "nn1_rate": 0.93885
+      },
+      {
+        "k_d": 32,
+        "jaccard_15": 0.386536,
+        "jaccard_50": 0.753987,
+        "nn1_rate": 0.936284
+      },
+      {
+        "k_d": 48,
+        "jaccard_15": 0.484415,
+        "jaccard_50": 0.8813,
+        "nn1_rate": 0.936818
+      },
+      {
+        "k_d": 64,
+        "jaccard_15": 0.563273,
+        "jaccard_50": 0.945545,
+        "nn1_rate": 0.933291
+      },
+      {
+        "k_d": 96,
+        "jaccard_15": 0.678982,
+        "jaccard_50": 0.98963,
+        "nn1_rate": 0.932863
+      },
+      {
+        "k_d": 128,
+        "jaccard_15": 0.764149,
+        "jaccard_50": 0.998239,
+        "nn1_rate": 0.935001
+      },
+      {
+        "k_d": 192,
+        "jaccard_15": 0.880346,
+        "jaccard_50": 0.999987,
+        "nn1_rate": 0.940988
+      },
+      {
+        "k_d": 256,
+        "jaccard_15": 0.951145,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.934467
+      },
+      {
+        "k_d": 320,
+        "jaccard_15": 0.981564,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.934253
+      },
+      {
+        "k_d": 384,
+        "jaccard_15": 0.99947,
+        "jaccard_50": 1.0,
+        "nn1_rate": 0.992623
+      }
+    ],
+    "decision": {
+      "k_d_star": 256,
+      "signal_count_009": 71,
+      "jaccard_threshold": 0.95,
+      "gates": {
+        "8": false,
+        "12": false,
+        "16": false,
+        "24": false,
+        "32": false,
+        "48": false,
+        "64": false,
+        "96": false,
+        "128": false,
+        "192": false,
+        "256": true,
+        "320": true,
+        "384": true
+      }
+    },
+    "total_seconds": 85.29
   }
 }
