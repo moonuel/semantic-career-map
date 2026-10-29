@@ -1,7 +1,7 @@
 # Scaling UMAP to Cloud Hardware — Memory Maps, Memory-Optimized Instances, and GPU Out-of-Core
 
 > Date: 2026-10-28
-> Context: The job-map deliverable projects the full production corpus (`postings_embeddings`, 9,354 rows × 384 dims, float32) through UMAP. `scripts/map_umap_probe.py` already runs the whole corpus with `low_memory=True, n_jobs=1`, but that is the tail end of a much larger growth curve: the sampling manifests (`data/sample_manifests/per_source*_seed7_bands5000_15000.json`) are designed toward hundreds of thousands of postings. UMAP's memory demand grows super-linearly with corpus size and will outgrow this machine (23 GiB RAM, 12 cores, CPU-only) long before the pipeline is done. This report maps the memory model, evaluates memory maps and cloud instance choices, and sets a graduation ladder.
+> Context: The job-map deliverable projects the full production corpus (`postings_embeddings`, 9,354 rows × 384 dims, float32) through UMAP. `scripts/map_umap_probe.py` targets the whole corpus with `low_memory=True, n_jobs=1`, but that is the tail end of a much larger growth curve: the sampling manifests (`data/sample_manifests/per_source*_seed7_bands5000_15000.json`) are designed toward hundreds of thousands of postings. UMAP's memory demand grows super-linearly with corpus size and will outgrow this machine (23 GiB RAM, 12 cores, CPU-only) long before the pipeline is done. This report maps the memory model, evaluates memory maps and cloud instance choices, and sets a graduation ladder.
 
 ---
 
@@ -158,21 +158,21 @@ Positioning: this is the *extreme-scale* rung (10⁶–10⁸ vectors). It is not
 
 ## 7. Recommendation & Graduation Ladder
 
-**Adopt a CPU-first, memory-map-staged, cloud-batch projection path**, graduated by corpus size. The current 9,354-row projection already runs locally; the ladder is about not letting the next order of magnitude become an emergency.
+**Adopt a CPU-first, memory-map-staged, cloud-batch projection path**, graduated by corpus size. The current 9,354-row projection fits locally with wide headroom — measured 2026-10-29: **42 s wall, 636 MB peak RSS** for the pinned full-corpus fit (previously only 100-row probe runs had completed; see the Decision Log); the ladder is about not letting the next order of magnitude become an emergency.
 
 | Rung | Corpus `n` | Input size | Strategy | Hardware |
 |---|---|---|---|---|
-| 0 — current | ~10⁴ | 14 MB | `low_memory=True, n_jobs=1` (as today) | local 23 GiB |
-| 1 | ~10⁵ | 154 MB | + PCA→~50d, stay approximate, memmap input/output | local or `r7i`/`r8g` |
+| 0 — current | ~10⁴ | 14 MB | `low_memory=True, n_jobs=1` (as today) | local 23 GiB — measured: 636 MB peak RSS, 42 s (2026-10-29) |
+| 1 | ~10⁵ | 154 MB | + PCA pre-reduction (009A: `n_dims=256`, not ~50 — §8 log), stay approximate, memmap input/output | local or `r7i`/`r8g` |
 | 2 | ~10⁶ | 1.5 GB | + fit-on-subsample + `transform` tail | `r8g`/`x2iedn` + NVMe instance store, spot |
 | 3 | ≥10⁷ | ≥15 GB | cuML out-of-core (`knn_n_clusters`, multi-GPU) — explicit exception to CPU-first | `p5`/`p5e` |
 
 Concrete near-term actions (no new dependencies for rungs 0–2):
 
-1. **Extract the projection into a reusable module** (`backend/`), per the immutable-scripts rule — `map_umap_probe.py` is a spike that gets deleted once `scripts/map.py` graduates. Move the pinned UMAP parameters and the memmap staging there.
+1. **Extract the projection into a reusable module** (`backend/`), per the immutable-scripts rule — `map_umap_probe.py` is a spike that gets deleted once `scripts/map.py` graduates. Move the pinned UMAP parameters and the memmap staging there. (Graduation into `scripts/map.py` supersedes the probes; in progress per the 2026-10-29 plan in `.kilo/plans/2026-10-29-live-map-batch.md`.)
 2. **Memmap the input and the coordinate outputs** (`.npy` in, `.npy`/JSON out) so a cloud run never holds the full matrix twice, and so a preempted spot run resumes from S3.
-3. **Add PCA pre-reduction as a flag** (384 → ~50), defaulted on for `n > 10⁵`. This is the highest-leverage CPU knob and touches no dependency.
-4. **Wire `fit(sample)` / `transform(tail)`** for rung 2, with the sample size as a CLI arg, so the map remains a one-shot bounded batch job.
+3. **Add PCA pre-reduction as a flag** (009A: 384 → 256 in the centered frame), defaulted on for `n > 10⁵`. This is the highest-leverage CPU knob and touches no dependency.
+4. **Wire `fit(sample)` / `transform(tail)`** for rung 2, with the sample size as a CLI arg, so the map remains a one-shot bounded batch job. (The `m*` scaling contract this needs is experiment 010 — **deferred 2026-10-29**, preregistration frozen in `docs/experiments/010-umap-subsample-fit.md`; revive at rung 2 or resolve empirically then.)
 5. **Keep cuML off the dependency list** until a measured `n ≥ 10⁶` run actually fails the CPU ladder — then raise it as an explicit decision (§8), not a silent add.
 
 Memory maps are the *staging* mechanism (input/output, cheap page-in on NVMe), **not** the scaling mechanism. Scaling comes from the CPU ladder (PCA + subsample-fit + approximate k-NN) and, only at the top, from cuML's GPU out-of-core k-NN.
@@ -188,6 +188,8 @@ Memory maps are the *staging* mechanism (input/output, cheap page-in on NVMe), *
 | PCA pre-reduction (384→~50) as the primary CPU lever | Collapses k-NN distance cost ~8× with negligible loss for low-rank embeddings (§4.4) | 2026-10-28 |
 | cuML GPU out-of-core reserved for the 10⁶+ rung, as an explicit exception | MLSys 2026 out-of-core UMAP is the proven extreme-scale solution (22.7×/74× speedups; CPU needs ~1.4 TB RAM at 16M rows); adopting it early would violate the CPU-first rule for no current benefit (§6, §7) | 2026-10-28 |
 | Exclude LLNL/OSDI "UMap" as a scaling path | Same name, different artifact — a user-space mmap runtime, not a manifold scaler; at best a backing store for §3.1, not a substitute for the ladder (§3.2) | 2026-10-28 |
+| Rung-0 corrected: full-corpus fit measured locally (42 s, 636 MB peak RSS); earlier "runs the whole corpus locally" lines were extrapolations from 100-row probe runs | First `/usr/bin/time -v` measurement of the pinned 9,354-row fit (2026-10-29); rung-0 strategy unchanged, local hardware headroom far larger than assumed (§7 table) | 2026-10-29 |
+| PCA pre-reduction target corrected: `n_dims=256` (009A, centered frame), replacing the 384→~50 estimate | Experiment 009A re-gated inside the deployment frame — in-frame Jaccard@15 = 0.9554 at 256 dims; ~50 dims retains only ≈ 0.53 ([009A](../experiments/009-pca-informativeness.md#experiment-009a-frame-corrected-pca-pre-reduction-amendment-2026-10-29)) | 2026-10-29 |
 
 ---
 

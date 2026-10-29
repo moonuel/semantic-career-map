@@ -2,7 +2,7 @@
 
 **Date:** October 29, 2026
 
-**Status:** Approved 2026-10-29 — preregistration page; harness not yet built. Preregistered gate and hypotheses recorded before the run, per the 007/009 protocol.
+**Status:** **Deferred 2026-10-29** — preregistration page frozen (gate + hypotheses recorded before any run, per the 007/009 protocol); harness not built. The `m*` scaling contract only bites at ~10⁵–10⁶ rows; revive this preregistration at rung 2, or resolve the transform-penalty question empirically per the closing clause. Map-deploy work proceeds without it (`.kilo/plans/2026-10-29-live-map-batch.md`).
 
 ## Motivation
 

@@ -97,7 +97,7 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
 | # | Title | Variable | Step |
 |---|---|---|---|
-| 010 | UMAP Subsample-Fit Stability | Fit sample size m × seeds; trustworthiness vs full fit | 1.11 (job map) |
+| 010 | UMAP Subsample-Fit Stability | Fit sample size m × seeds; trustworthiness vs full fit | 1.11 (job map) — **deferred 2026-10-29**; preregistration frozen, revive at ~10⁵–10⁶ rows |
 | ? | Skill Extraction | spaCy PhraseMatcher with 200-term ML vocabulary | 1.6 |
 | ? | Weighted Concatenation | Title 3×, skills 2×, body 1× vs multi-field fusion | 1.7 |
 | ? | Golden Set Evaluation | pytrec_eval: Precision@5, MRR, NDCG | 1.9 |
