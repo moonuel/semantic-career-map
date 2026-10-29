@@ -162,6 +162,47 @@ class TestLoudFailures:
         with pytest.raises(ValueError, match="must tier exactly"):
             resolve_production(memory_sink, pointer=doc)
 
+    def test_unreadable_claim_json_is_loud(self, memory_sink: MemorySink) -> None:
+        """A corrupted claim object is a named data fault, not a crash."""
+        config = run_config()
+        memory_sink.objects[keys.state_pointer()] = pointer.canonical_bytes(
+            pointer_doc()
+        )
+        memory_sink.objects[
+            keys.embedding_version_claim(
+                config.model_segment, config.variant, config.version
+            )
+        ] = b"{oops"
+        with pytest.raises(RuntimeError, match="not valid JSON"):
+            resolve_production(memory_sink)
+
+    def test_non_object_claim_is_loud(self, memory_sink: MemorySink) -> None:
+        config = run_config()
+        memory_sink.objects[keys.state_pointer()] = pointer.canonical_bytes(
+            pointer_doc()
+        )
+        memory_sink.objects[
+            keys.embedding_version_claim(
+                config.model_segment, config.variant, config.version
+            )
+        ] = json.dumps([1, 2]).encode()
+        with pytest.raises(RuntimeError, match="not a JSON object"):
+            resolve_production(memory_sink)
+
+    def test_non_hex_owner_is_loud(self, memory_sink: MemorySink) -> None:
+        """A claim naming garbage instead of a hash fails before any config read."""
+        config = run_config()
+        memory_sink.objects[keys.state_pointer()] = pointer.canonical_bytes(
+            pointer_doc()
+        )
+        memory_sink.objects[
+            keys.embedding_version_claim(
+                config.model_segment, config.variant, config.version
+            )
+        ] = json.dumps({"configuration_hash": "not-hex"}).encode()
+        with pytest.raises(RuntimeError, match="non-hex configuration_hash"):
+            resolve_production(memory_sink)
+
     def test_ephemeral_version_in_pointer_refused(
         self, memory_sink: MemorySink
     ) -> None:
@@ -238,20 +279,16 @@ class TestEmbedEntryPath:
     def test_pointer_resolved_config_is_the_scheduled_one(
         self, memory_sink: MemorySink
     ) -> None:
-        from scripts.embed import config_from_store
-
         owner = seed_chain(memory_sink, run_config())
-        config = config_from_store(memory_sink)
+        config = resolve_production(memory_sink).embeddings[0].config
         assert configuration_hash(config) == owner
         assert config == run_config()
 
     def test_pointer_mode_without_chain_fails_loudly(
         self, memory_sink: MemorySink
     ) -> None:
-        from scripts.embed import config_from_store
-
         with pytest.raises(RuntimeError, match="--bootstrap --apply"):
-            config_from_store(memory_sink)
+            resolve_production(memory_sink)
 
     def test_build_path_defaults_match_prepointer_behavior(self) -> None:
         """Unset flags fall back to the build defaults the CLI shipped with."""

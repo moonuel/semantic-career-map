@@ -73,6 +73,40 @@ class TestExactShapes:
     def test_config(self) -> None:
         assert keys.config(HASH) == f"configs/{HASH}.json"
 
+    def test_embedding_prefix(self) -> None:
+        assert keys.embedding_prefix("all-minilm-l6-v2", "minilm", "v1") == (
+            "lake/embeddings/model=all-minilm-l6-v2/variant=minilm/version=v1/"
+        )
+
+    def test_artifact_prefix(self) -> None:
+        assert keys.artifact_prefix("cleaned_text", "llm", "v1") == (
+            "lake/artifacts/type=cleaned_text/variant=llm/version=v1/"
+        )
+
+    def test_embedding_prefix_admits_ephemeral(self) -> None:
+        # x- prefixed generation parts exist on disk; the prefix lists them.
+        assert keys.embedding_prefix("m", "minilm", "x-scratch").endswith(
+            "version=x-scratch/"
+        )
+
+    def test_artifact_prefix_stable_only(self) -> None:
+        # Mirrors artifact_part: no ephemeral token has artifact parts.
+        with pytest.raises(ValueError, match="artifact version"):
+            keys.artifact_prefix("cleaned_text", "llm", "x-scratch")
+
+    def test_prefixes_are_prefixes_not_keys(self) -> None:
+        # Trailing slash is the contract of a listing prefix; keys end in a
+        # leaf file name, so validate_key must keep refusing these strings
+        # while list_keys consumes them.
+        with pytest.raises(ValueError, match="must not end with"):
+            keys.validate_key(keys.embedding_prefix("m", "minilm", "v1"))
+
+    def test_prefix_segment_validation(self) -> None:
+        with pytest.raises(ValueError, match="unknown artifact type"):
+            keys.artifact_prefix("unheard_of", "llm", "v1")
+        with pytest.raises(ValueError, match="model"):
+            keys.embedding_prefix("Bad_Segment", "minilm", "v1")
+
     def test_state_pointer(self) -> None:
         assert keys.state_pointer() == "state/production.json"
 

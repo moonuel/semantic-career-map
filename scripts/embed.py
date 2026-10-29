@@ -103,26 +103,6 @@ def pointer_mode(args: argparse.Namespace) -> bool:
     return all(getattr(args, name, None) is None for name in _POINTER_FLAGS)
 
 
-def config_from_store(store) -> EmbeddingConfig:
-    """Resolve the scheduled run's config through the production pointer.
-
-    Args:
-        store: The object store.
-
-    Returns:
-        The first pointer-named embeddings generation's loaded config (its
-        digest equals the claim owner by construction).
-
-    Raises:
-        RuntimeError: naming the fix when pointer/claim/config is absent
-            or the chain disagrees (never a silent fallback).
-    """
-    from backend.pipeline.production import resolve_production
-
-    production = resolve_production(store)
-    return production.embeddings[0].config
-
-
 def build_config(args: argparse.Namespace) -> EmbeddingConfig:
     """Resolve CLI flags (or a config file) into the run configuration.
 

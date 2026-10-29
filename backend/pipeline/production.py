@@ -141,11 +141,22 @@ def verify_embedding_entry(
             f"--model {model_segment} --variant {variant} --version {version} "
             "--configuration-hash <64-char hex> --apply"
         ) from None
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"claim {claim_key} is not valid JSON: {exc}") from None
+    if not isinstance(claim, dict):
+        raise RuntimeError(  # noqa: TRY004 — malformed claim is a data fault, one class to callers
+            f"claim {claim_key} is not a JSON object"
+        )
     owner = claim.get("configuration_hash")
     if not owner or not isinstance(owner, str):
         raise RuntimeError(f"claim {claim_key} names no configuration_hash")
 
-    config_key = keys.config(owner)
+    try:
+        config_key = keys.config(owner)
+    except ValueError:
+        raise RuntimeError(
+            f"claim {claim_key} names a non-hex configuration_hash {owner!r}"
+        ) from None
     try:
         config_doc = json.loads(store.get(config_key))
     except FileNotFoundError:
@@ -153,6 +164,10 @@ def verify_embedding_entry(
             f"orphan claim: {config_key} is absent for claim owner "
             f"{owner[:12]}… — an adopted claim's configuration must be "
             "written before anything resolves it"
+        ) from None
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"config object {config_key} is not valid JSON: {exc}"
         ) from None
     try:
         config = EmbeddingConfig(**config_doc["config"])

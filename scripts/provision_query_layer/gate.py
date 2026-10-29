@@ -353,9 +353,8 @@ def check_production_pointer(
             "scripts/promote_production.py unless --allow-incomplete)"
         )
     cleaning = doc["tiers"]["cleaning"]
-    artifact_prefix = (
-        f"lake/artifacts/type={cleaning['artifact_type']}/"
-        f"variant={cleaning['variant']}/version={cleaning['version']}/"
+    artifact_prefix = keys.artifact_prefix(
+        cleaning["artifact_type"], cleaning["variant"], cleaning["version"]
     )
     if not any(key.endswith(".parquet") for key in store.list_keys(artifact_prefix)):
         # Same build-then-flip rule for the files-only branch: the pointer

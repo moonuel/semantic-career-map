@@ -285,6 +285,14 @@ class TestPromoteCli:
             promote_main(monkeypatch, ["--bootstrap", "--from-file", "x.json"])
         assert exc.value.code == 2
 
+    def test_apply_requires_a_target(self, monkeypatch) -> None:
+        # Bare --apply has nothing to promote; refuse at usage parsing
+        # instead of crashing in load_target_doc.
+        self._patch(monkeypatch, MemorySink())
+        with pytest.raises(SystemExit) as exc:
+            promote_main(monkeypatch, ["--apply"])
+        assert exc.value.code == 2
+
     def test_refusal_exits_1_and_leaves_pointer(
         self, monkeypatch, capsys, tmp_path, memory_sink: MemorySink
     ) -> None:

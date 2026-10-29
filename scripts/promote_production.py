@@ -146,10 +146,7 @@ def readiness_refusals(store: ObjectStore, doc: dict) -> list[str]:
             entry["variant"],
             entry["version"],
         )
-        prefix = (
-            f"lake/embeddings/model={model_segment}/"
-            f"variant={variant}/version={version}/"
-        )
+        prefix = keys.embedding_prefix(model_segment, variant, version)
         if not any(key.endswith(".parquet") for key in store.list_keys(prefix)):
             refusals.append(
                 f"embedding stack {model_segment}/{variant}/{version} is "
@@ -157,9 +154,8 @@ def readiness_refusals(store: ObjectStore, doc: dict) -> list[str]:
                 "(override: --allow-incomplete)"
             )
     cleaning = doc["tiers"]["cleaning"]
-    artifact_prefix = (
-        f"lake/artifacts/type={cleaning['artifact_type']}/"
-        f"variant={cleaning['variant']}/version={cleaning['version']}/"
+    artifact_prefix = keys.artifact_prefix(
+        cleaning["artifact_type"], cleaning["variant"], cleaning["version"]
     )
     if not any(key.endswith(".parquet") for key in store.list_keys(artifact_prefix)):
         refusals.append(
@@ -283,6 +279,8 @@ def main() -> int:
             "--bootstrap and --from-file are mutually exclusive: "
             "bootstrap mints the reality document; --from-file loads yours"
         )
+    if args.apply and not args.bootstrap and not args.from_file:
+        parser.error("--apply requires --bootstrap or --from-file")
     args.updated_by = args.updated_by or getpass.getuser()
 
     store = ObjectStore.from_env()

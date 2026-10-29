@@ -127,8 +127,6 @@ EMBEDDINGS_PARTITION_KEYS: list[tuple[str, str]] = [
     ("version", "string"),
 ]
 
-PRODUCTION_POINTER_KEY = "state/production.json"
-
 # Full ingestion-manifest row schema (header + observation, manifest.py).
 #
 # ``ingested_on`` is deliberately ABSENT: it is the table's partition key

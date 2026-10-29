@@ -398,6 +398,39 @@ def artifact_part(
     )
 
 
+def artifact_prefix(artifact_type: str, variant: str, version: str) -> str:
+    """Key prefix for one derived artifact dataset version (all its parts).
+
+    ``lake/artifacts/type=<artifact-type>/variant=<variant>/version=<version>/``
+
+    The exact prefix :func:`artifact_part` writes under; sharing this builder
+    keeps listing callers (readiness/gate) in lockstep with the part layout,
+    so a layout change cannot silently re-target their ``list_keys``.
+
+    Args:
+        artifact_type: Artifact family; must be in :data:`ARTIFACT_TYPES`.
+        variant: Producing method.
+        version: Version token ``vN``.
+
+    Returns:
+        The well-formed prefix (trailing slash).
+
+    Raises:
+        ValueError: if any segment is malformed or ``artifact_type`` is not
+            allowlisted.
+    """
+    if artifact_type not in ARTIFACT_TYPES:
+        raise ValueError(
+            f"unknown artifact type {artifact_type!r}; "
+            f"expected one of {sorted(ARTIFACT_TYPES)}"
+        )
+    return (
+        f"lake/artifacts/type={_check(artifact_type, name='artifact type')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='artifact version')}/"
+    )
+
+
 def eval_dataset(
     eval_type: str, variant: str, version: str, run_id: str, seq: int
 ) -> str:
@@ -515,6 +548,32 @@ def embedding_part(
         f"variant={_check(variant, name='variant')}/"
         f"version={_check_version(version, name='embedding version', allow_ephemeral=True)}/"
         f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
+def embedding_prefix(model: str, variant: str, version: str) -> str:
+    """Key prefix for one embedding dataset version (all its parts).
+
+    ``lake/embeddings/model=<model>/variant=<variant>/version=<version>/``
+
+    The exact prefix :func:`embedding_part` writes under; sharing this builder
+    keeps listing callers (readiness/gate) in lockstep with the part layout.
+
+    Args:
+        model: Model family segment (e.g. ``all-minilm-l6-v2``).
+        variant: Producing method segment (e.g. ``minilm``).
+        version: Version token ``vN``, or an ephemeral ``x-...`` token.
+
+    Returns:
+        The well-formed prefix (trailing slash).
+
+    Raises:
+        ValueError: if any segment is malformed.
+    """
+    return (
+        f"lake/embeddings/model={_check(model, name='model')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='embedding version', allow_ephemeral=True)}/"
     )
 
 
