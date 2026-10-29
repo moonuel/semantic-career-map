@@ -91,6 +91,8 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
 | # | Title | Variable | Step |
 |---|---|---|---|
+| 009 | PCA Informativeness Benchmark | Pre-UMAP PCA retained dims `k_d` (spectrum, cosine kNN retention, distance fidelity) | 1.11 (job map) |
+| 010 | UMAP Subsample-Fit Stability | Fit sample size m × seeds; trustworthiness vs full fit | 1.11 (job map) |
 | ? | Skill Extraction | spaCy PhraseMatcher with 200-term ML vocabulary | 1.6 |
 | ? | Weighted Concatenation | Title 3×, skills 2×, body 1× vs multi-field fusion | 1.7 |
 | ? | Golden Set Evaluation | pytrec_eval: Precision@5, MRR, NDCG | 1.9 |
