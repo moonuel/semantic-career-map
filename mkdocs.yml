@@ -65,6 +65,7 @@ nav:
     - "007 - LLM Latency Benchmark": experiments/007-llm-latency-benchmark.md
     - "008 - Boilerplate-Only LLM Cleaning": experiments/008-boilerplate-only-cleaning.md
     - "009 - PCA Informativeness": experiments/009-pca-informativeness.md
+    # - "010 - UMAP Subsample-Fit Stability": experiments/010-umap-subsample-fit.md # deferred until optimization necessary
   - Research Reports:
     - Overview: research-reports/index.md
     - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md
