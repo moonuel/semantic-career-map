@@ -90,7 +90,7 @@ FastAPI backend + Docker + Cloud deployment
 |---|---|---|
 | 1 | Data Ingestion Pipeline | 🟡 Lake live: 9.2k raw postings content-addressed on the dev store + manifest branches (`manifests/runs|datasets|ingestion`); curated 39-posting golden set as the eval-dataset author branch |
 | 2 | Embedding Pipeline | ✅ all-MiniLM-L6-v2, L2-normalized |
-| 3 | Embedding Optimization & Feature Engineering | 🟡 8 experiments complete — cleaning + eval layers LANDED (exp 008 choice in production): `cleaned_text/variant=llm/version=v1` (65 rows, flush-watermark + artifact-cache) and `cleaning_quality`/`cleaning_golden` eval datasets; feature engineering next |
+| 3 | Embedding Optimization & Feature Engineering | 🟡 9 experiments complete — cleaning + eval layers LANDED (exp 008 choice in production): `cleaned_text/variant=llm/version=v1` (65 rows, flush-watermark + artifact-cache) and `cleaning_quality`/`cleaning_golden` eval datasets; PCA informativeness measured (exp 009: no safe pre-reduction cut named yet); feature engineering next |
 | 4 | Clustering and Similarity Scoring | 🟡 Cosine distance implemented |
 | 5 | FastAPI Backend | 🔴 Not started (Phase 5 D12 selections pulled forward: Athena catalog + `select_uncleaned` anti-join is the live production selection path) |
 | 6 | Docker Containerization | 🔴 Not started |

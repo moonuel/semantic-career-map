@@ -31,6 +31,13 @@ As of October 23, 2026:
 
 - The 008 recommendation is **in production**: the lake's cleaning stage (`backend/pipeline/cleaning`) runs it with flush-watermark durability, the artifact-cache done-index, and per-posting fail-fast (65-row `cleaned_text/variant=llm/version=v1` on the dev store), and the eval loop (`backend/pipeline/eval`, exp-003 metrics verbatim) is wired on golden `variant=author/version=v1` (39 references) + `cleaning_quality` results `v1/v2`. Live eval over the golden ∩ sample intersection: mean Jaccard 0.958, mean over-deletion 0.9% (one 6.1% flag — the organizational-context residue), zero hallucinations. Dataset layout + lineage: [data.md](./architecture/data.md).
 
+As of October 29, 2026:
+
+- [Experiment 009](./experiments/009-pca-informativeness.md) benchmarks PCA pre-reduction on the full 9,354×384 production corpus (preregistered design; UMAP-scaling context in [Report 022](./research-reports/022-umap-cloud-scale-deployment.md)). Metrics are neighborhood-retention shaped (Jaccard@15/50, 1-NN rate, pairwise-cosine fidelity) rather than separation-gap shaped, so they are recorded there, not in the dashboard.
+- **Effective dimensionality is real but not tiny**: participation ratio 57.6, permutation noise-floor signal count 71 dims, and cumulative explained variance reaches 0.95 only past ~192 dims — the folklore "PCA to ~50" would retain 64% of variance and lose most cosine 15-NN structure.
+- **The pre-registered gate returns `k_d* = None`**: no candidate dimension cut holds Jaccard@15 ≥ 0.95, because the k_d = 384 control isolates PCA centering — not truncation — as the dominant effect (42.5% of 15-NN sets and ~7% of 1-NNs turn over from the centering frame shift alone; truncation beyond that costs little, ~95% kept at 128 dims).
+- Consequence for the UMAP scaling ladder: the `n_dims` pre-reduction default stays unset rather than guessed; a centered-frame or LSA-style uncentered-truncation variant is the proposed follow-up (design note in the experiment page).
+
 <!-- 
 ## Summary Dashboard
 

@@ -74,7 +74,13 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
     **2026-10-20**
 
-    Corrected boilerplate-only prompt fixes 003's over-deletion at scale (22.8% → 2.3–5.2% on one model) on a 39-posting hand-curated golden set. Prompt v3, distilled from human strip behavior, lifts Jaccard 0.826 → 0.858. Deploy recommendation: `gemini-2.5-flash-lite` (Jaccard 0.894, $0.00036/posting). **Deployed as production 2026-10-23** — see the [landing update](../technical/data-processing.md#step-2-llm-cleaning).
+    Corrected boilerplate-only prompt fixes 003's over-deletion at scale (    22.8% → 2.3–5.2% on one model) on a 39-posting hand-curated golden set. Prompt v3, distilled from human strip behavior, lifts Jaccard 0.826 → 0.858. Deploy recommendation: `gemini-2.5-flash-lite` (Jaccard 0.894, $0.00036/posting). **Deployed as production 2026-10-23** — see the [landing update](../technical/data-processing.md#step-2-llm-cleaning).
+
+-   [**009 — PCA Informativeness**](009-pca-informativeness.md){ .md-button }
+
+    **2026-10-29**
+
+    PCA pre-reduction benchmark on the full 9,354×384 production corpus: participation ratio 57.6, permutation signal count 71, cumEVR ≥ 0.95 only at ~192 dims. The pre-registered gate returns `k_d* = None` — the k_d=384 control isolated PCA's centering shift as the dominant turnover (42.5% of cosine 15-NN neighborhoods), dwarfing truncation loss (95% of surviving neighborhoods kept at 128 dims). Report 022's `n_dims` default stays unset pending a centered-frame/uncentered-truncation variant.
 
 </div>
 
@@ -91,7 +97,6 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 
 | # | Title | Variable | Step |
 |---|---|---|---|
-| 009 | PCA Informativeness Benchmark | Pre-UMAP PCA retained dims `k_d` (spectrum, cosine kNN retention, distance fidelity) | 1.11 (job map) |
 | 010 | UMAP Subsample-Fit Stability | Fit sample size m × seeds; trustworthiness vs full fit | 1.11 (job map) |
 | ? | Skill Extraction | spaCy PhraseMatcher with 200-term ML vocabulary | 1.6 |
 | ? | Weighted Concatenation | Title 3×, skills 2×, body 1× vs multi-field fusion | 1.7 |
