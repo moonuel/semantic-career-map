@@ -85,6 +85,7 @@ from backend.pipeline.selection import (
     parse_query_results,
     select_uncleaned_sql,
 )
+from backend.storage.pointer import read_pointer
 
 DATABASE_DEFAULT = "semantic_career_map"
 WORKGROUP_DEFAULT = "semantic_career_map"
@@ -367,20 +368,62 @@ def run_daily_dry(athena, store, settings: Settings) -> dict:
     }
 
 
-def settings_from_env(args: argparse.Namespace) -> Settings:
+def resolve_version_root(explicit: str, store) -> str:
+    """The run's artifact ``version`` partition: an override, or the pointer.
+
+    There is deliberately no ``v1`` default left here: an explicit flag or
+    ``CLEAN_VERSION`` is the loud escape hatch (logged), and the scheduled
+    path resolves the cleaning triple from the production pointer — the
+    pointer is the single authority over what is production. A fresh
+    environment with neither fails loudly instead of silently cleaning into
+    a guessed version prefix.
+
+    Args:
+        explicit: The merged ``--version-root``/``CLEAN_VERSION`` override
+            (empty string/``None`` when unset).
+        store: The object store (read for the pointer when no override).
+
+    Returns:
+        The version token the run names its parts with.
+
+    Raises:
+        ValueError: when no override is set and the pointer cannot provide
+            the cleaning triple (absent or malformed), naming the fix.
+    """
+    if explicit:
+        print(f"OVERRIDE: cleaning version rooted at {explicit!r} — pointer bypassed")
+        return explicit
+    try:
+        pointer = read_pointer(store)
+    except FileNotFoundError:
+        raise ValueError(
+            "no cleaning version root: --version-root / CLEAN_VERSION unset "
+            "and no production pointer at state/production.json — set an "
+            "override for a manual run, or bootstrap the pointer with: "
+            "python scripts/promote_production.py --bootstrap --apply"
+        ) from None
+    return pointer["tiers"]["cleaning"]["version"]
+
+
+def settings_from_env(args: argparse.Namespace, store) -> Settings:
     """Merge the task-def environment + CLI flags into a :class:`Settings`.
 
     Flags override their environment equivalents (an explicit flag describes
-    a manual run; the env describes the scheduled one).
+    a manual run; the env describes the scheduled one). The version root —
+    the cleaning tier's production address — comes from the pointer when
+    neither is set (:func:`resolve_version_root`).
 
     Args:
         args: The parsed CLI namespace (``None``-able option fields).
+        store: The object store (read for the pointer when no version
+            override is set).
 
     Returns:
         The resolved settings, configuration digest included.
 
     Raises:
-        ValueError: on a non-hex ``CONFIGURATION_HASH`` override.
+        ValueError: on a non-hex ``CONFIGURATION_HASH`` override, or when
+            the version root cannot be resolved.
     """
     model = args.model or os.environ.get("CLEAN_MODEL") or MODEL_DEFAULT
     workers = args.workers
@@ -388,7 +431,9 @@ def settings_from_env(args: argparse.Namespace) -> Settings:
         workers = int(os.environ.get("CLEAN_WORKERS", "8"))
     database = args.database or os.environ.get("CLEAN_DATABASE") or DATABASE_DEFAULT
     workgroup = args.workgroup or os.environ.get("CLEAN_WORKGROUP") or WORKGROUP_DEFAULT
-    version = args.version_root or os.environ.get("CLEAN_VERSION") or "v1"
+    version = resolve_version_root(
+        args.version_root or os.environ.get("CLEAN_VERSION"), store
+    )
     max_run_hours = args.max_run_hours
     if max_run_hours is None:
         max_run_hours = float(os.environ.get("MAX_RUN_HOURS", "2"))
@@ -458,22 +503,20 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    settings = settings_from_env(args)
-    if args.dry_run:
-        from backend.storage.store import ObjectStore
+    from backend.storage.store import ObjectStore
 
-        summary = run_daily_dry(
-            boto3_client("athena"), ObjectStore.from_env(), settings
-        )
+    store = ObjectStore.from_env()
+    settings = settings_from_env(args, store)
+    if args.dry_run:
+        summary = run_daily_dry(boto3_client("athena"), store, settings)
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         return
 
     fetch_secret_if_absent(boto3_client("ssm"))
-    from backend.storage.store import ObjectStore
 
     athena = boto3_client("athena")
     try:
-        record = run_daily(athena, ObjectStore.from_env(), GatewayClient(), settings)
+        record = run_daily(athena, store, GatewayClient(), settings)
     except KeyboardInterrupt:
         print(
             "daily: interrupted before/around the run; any committed "

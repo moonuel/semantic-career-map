@@ -19,6 +19,12 @@ Runs the verification gates and prints their tables:
 5. (optional, ``--embeddings``) Every embeddings version prefix on disk has
    an ownership claim; a missing one is the issue-#22 condition and comes
    with the exact backfill command to run.
+6. (optional, ``--embeddings``) The production pointer's chain end to end:
+   pointer → claims → configs → parts → catalog projection. The printed
+   runner also carries a manifests-readability check numbered 6 (pre-dating
+   the module-level registers); the pointer gate is the plan's
+   "gate 6" spec row and prints as gate 7 to avoid renumbering. Failure
+   rows carry the exact operator command.
 
 Usage:
 
@@ -264,6 +270,132 @@ def check_embeddings_parity(
 CLAIM_ROOT = "lake/manifests/versions/embeddings/"
 
 
+def check_production_pointer(
+    store, part_keys: list[str] | None = None, athena=None
+) -> tuple[bool, list[str]]:
+    """Gate 7 (the pointer gate): pointer ↔ claims ↔ parts ↔ catalog.
+
+    The production pointer names the scheduled generation per tier; this
+    gate verifies the naming is real end to end, per the settled read rule
+    (pointer → claim → ``configs/<hash>.json`` → rows):
+
+    - the pointer exists, parses, and names generations the chain can load
+      (resolution's own verification — missing claim/config rows come with
+      the exact operator command);
+    - every pointer-named stacks prefix has parts on disk (build-then-flip);
+    - every embeddings prefix on disk is either pointer-named (production)
+      or reported as *not in pointer* (a live non-production generation —
+      informational, not a failure);
+    - the catalog actually projects every pointer-named embeddings stack
+      (a flip without re-provision is invisible to Athena — drift row with
+      the re-provision command).
+
+    Malformed tokens or segments are reported, never raised (gate-5
+    precedent): the gate's job is the full report, not losing it to one
+    bad line.
+
+    Args:
+        store: The object store (pointer + registry reads).
+        part_keys: Pre-enumerated embedding part keys; ``None`` lists
+            ``lake/embeddings/`` itself.
+        athena: The Athena client for the catalog-projection check;
+            ``None`` skips it (tests with no DB fixture).
+
+    Returns:
+        ``(ok, rows)`` — ok is False when any ERROR row was emitted.
+    """
+    from backend.pipeline.production import verify_embedding_entry
+    from backend.storage import pointer as pointer_module
+    from scripts.provision_query_layer import EMBEDDINGS_TABLE
+
+    error_rows: list[str] = []
+    info_rows: list[str] = []
+
+    try:
+        doc = pointer_module.read_pointer(store)
+    except FileNotFoundError:
+        return False, [
+            (
+                "ERROR no production pointer at state/production.json; "
+                "bootstrap: python scripts/promote_production.py --bootstrap --apply"
+            )
+        ]
+    except ValueError as exc:
+        return False, [f"ERROR pointer unreadable: {exc}"]
+
+    pointer_stacks: set[tuple[str, str, str]] = set()
+    for entry in doc["tiers"]["embeddings"]["entries"]:
+        stack = (entry["model_segment"], entry["variant"], entry["version"])
+        pointer_stacks.add(stack)
+        try:
+            verify_embedding_entry(store, entry)
+        except RuntimeError as exc:
+            error_rows.append(f"ERROR {exc}")
+
+    part_prefixes: set[tuple[str, str, str]] = set()
+    for key in (
+        part_keys if part_keys is not None else store.list_keys("lake/embeddings/")
+    ):
+        segments = key.split("/")
+        if len(segments) >= 5 and segments[1] == "embeddings":
+            part_prefixes.add(
+                (
+                    segments[2].removeprefix("model="),
+                    segments[3].removeprefix("variant="),
+                    segments[4].removeprefix("version="),
+                )
+            )
+
+    for stack in sorted(pointer_stacks - part_prefixes):
+        error_rows.append(
+            f"ERROR pointer stack {stack[0]}/{stack[1]}/{stack[2]} is partless "
+            "— build the generation first, then flip (refused by "
+            "scripts/promote_production.py unless --allow-incomplete)"
+        )
+    cleaning = doc["tiers"]["cleaning"]
+    artifact_prefix = keys.artifact_prefix(
+        cleaning["artifact_type"], cleaning["variant"], cleaning["version"]
+    )
+    if not any(key.endswith(".parquet") for key in store.list_keys(artifact_prefix)):
+        # Same build-then-flip rule for the files-only branch: the pointer
+        # names the active cleaning generation, so the parts must exist
+        # (promote refuses this at write time; the gate catches the drift
+        # if parts were removed after the flip).
+        error_rows.append(
+            f"ERROR pointer cleaning stack {cleaning['artifact_type']}/"
+            f"{cleaning['variant']}/{cleaning['version']} is partless — run "
+            "the cleaning tier first, then flip (refused by "
+            "scripts/promote_production.py unless --allow-incomplete)"
+        )
+    for prefix in sorted(part_prefixes - pointer_stacks):
+        info_rows.append(
+            f"INFO live prefix {prefix[0]}/{prefix[1]}/version={prefix[2]} "
+            "is not named by the pointer (not production — fine while "
+            "unclaimed-and-ephemeral; UNCLAIMED+stable is gate 5's row)"
+        )
+
+    if athena is not None:
+        rows = run_query(
+            athena,
+            DATABASE_DEFAULT,
+            "SELECT DISTINCT model_segment, variant, version "
+            f"FROM {EMBEDDINGS_TABLE} "
+            "ORDER BY model_segment, variant, version",
+        )[1:]
+        projected = {tuple(line.split(",")) for line in rows if line}
+        for stack in sorted(pointer_stacks):
+            if stack not in projected:
+                error_rows.append(
+                    f"ERROR catalog does not project pointer stack "
+                    f"{stack[0]}/{stack[1]}/{stack[2]} — re-provision to "
+                    "derive the enums from the pointer: "
+                    "python -m scripts.provision_query_layer"
+                )
+
+    ok = not error_rows
+    return ok, info_rows + error_rows
+
+
 def check_embedding_version_claims(
     store, part_keys: list[str] | None = None
 ) -> tuple[bool, list[str]]:
@@ -460,6 +592,14 @@ def main() -> None:
                 )
             else:
                 print(f"  fix: {command}")
+
+        print("== gate 7: production pointer ↔ claims ↔ configs ↔ parts ↔ catalog")
+        match, rows = check_production_pointer(embeddings_store, part_keys, athena)
+        ok &= match
+        if not rows:
+            print("  pointer chain agrees end to end OK")
+        for row in rows:
+            print(f"  {row}")
     else:
         print("== gate 4 skipped (pass --embeddings)")
 

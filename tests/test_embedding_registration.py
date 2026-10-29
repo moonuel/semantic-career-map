@@ -1,7 +1,11 @@
 """Selection SQL + query-layer registration tests: the embeddings table
-definition, idempotent registration updates, and the parity gate path."""
+definition, idempotent registration updates, the parity gate path, and the
+pointer-derived projection enums (the pointer is the catalog's one enum
+authority — provision re-registers a generation after a flip)."""
 
 from __future__ import annotations
+
+import pytest
 
 from backend.pipeline.embedding import selection
 from scripts.provision_query_layer import (
@@ -10,7 +14,40 @@ from scripts.provision_query_layer import (
     EMBEDDINGS_TABLE,
     _create_embeddings_table,
     embeddings_location,
+    embeddings_projection_values,
 )
+
+# The pointer's tiers → projection enums (the pointer_doc() fixture shape
+# matches the live bootstrap document: one all-minilm entry + cleaning v1).
+POINTER_DOC = {
+    "pointer_version": 1,
+    "updated_by": "olimoon",
+    "updated_at": "2026-10-28T17:00:00+00:00",
+    "reason": "bootstrap: describes reality",
+    "previous": None,
+    "tiers": {
+        "cleaning": {
+            "artifact_type": "cleaned_text",
+            "variant": "llm",
+            "version": "v1",
+        },
+        "embeddings": {
+            "entries": [
+                {
+                    "model_segment": "all-minilm-l6-v2",
+                    "variant": "minilm",
+                    "version": "v1",
+                }
+            ]
+        },
+    },
+}
+
+PROJECTION_VALUES = {
+    "model_segment": "all-minilm-l6-v2",
+    "variant": "minilm",
+    "version": "v1",
+}
 
 
 class GlueExceptions:
@@ -55,6 +92,14 @@ class GlueDouble:
         return GlueExceptions()
 
 
+def _register(glue: GlueDouble) -> dict | None:
+    """Register with the pointer-derived enums; the created input if it created."""
+    _create_embeddings_table(
+        glue, "semantic_career_map", "bucket", projection_values=PROJECTION_VALUES
+    )
+    return glue.created[0] if glue.created else None
+
+
 def test_embeddings_table_definition_shape() -> None:
     types = dict(EMBEDDINGS_COLUMNS)
     assert types["source_hash"] == "string"
@@ -67,7 +112,7 @@ def test_embeddings_table_definition_shape() -> None:
 
 def test_create_embeddings_table_pins_location_and_columns() -> None:
     glue = GlueDouble()
-    _create_embeddings_table(glue, "semantic_career_map", "bucket")
+    _register(glue)
     assert len(glue.created) == 1
     table_input = glue.created[0]
     assert table_input["Name"] == EMBEDDINGS_TABLE
@@ -84,7 +129,7 @@ def test_create_embeddings_table_pins_location_and_columns() -> None:
 
 def test_embeddings_partition_keys_cover_path_segments() -> None:
     glue = GlueDouble()
-    _create_embeddings_table(glue, "semantic_career_map", "bucket")
+    _register(glue)
     keys = glue.created[0]["PartitionKeys"]
     assert keys == [
         {"Name": name, "Type": ctype} for name, ctype in EMBEDDINGS_PARTITION_KEYS
@@ -106,7 +151,7 @@ def test_embeddings_partition_keys_never_collide_with_columns() -> None:
 
 def test_embeddings_projection_templates_the_partition_path() -> None:
     glue = GlueDouble()
-    _create_embeddings_table(glue, "semantic_career_map", "bucket")
+    _register(glue)
     params = glue.created[0]["Parameters"]
     assert params["projection.enabled"] == "true"
     assert params["projection.model_segment.values"] == "all-minilm-l6-v2"
@@ -120,11 +165,11 @@ def test_embeddings_projection_templates_the_partition_path() -> None:
 
 def test_registration_idempotent_when_current() -> None:
     fresh = GlueDouble()
-    _create_embeddings_table(fresh, "semantic_career_map", "bucket")
+    _register(fresh)
     current_table = fresh.created[0]
 
     current = GlueDouble(table=current_table)
-    _create_embeddings_table(current, "semantic_career_map", "bucket")
+    _register(current)
     assert not current.created and not current.updated
 
 
@@ -146,7 +191,7 @@ def test_unpartitioned_registration_is_repaired() -> None:
             }
         }
     )
-    _create_embeddings_table(stale, "semantic_career_map", "bucket")
+    _register(stale)
     assert len(stale.updated) == 1
     assert stale.updated[0]["PartitionKeys"] == [
         {"Name": name, "Type": ctype} for name, ctype in EMBEDDINGS_PARTITION_KEYS
@@ -166,7 +211,7 @@ def test_stale_registration_updates_and_never_downgrades() -> None:
             "Columns": [{"Name": "source_hash", "Type": "string"}],
         }
     )
-    _create_embeddings_table(stale, "semantic_career_map", "bucket")
+    _register(stale)
     assert len(stale.updated) == 1
     applied = stale.updated[0]["StorageDescriptor"]
     assert applied["Columns"] == [{"Name": c, "Type": t} for c, t in EMBEDDINGS_COLUMNS]
@@ -176,3 +221,67 @@ def test_stale_registration_updates_and_never_downgrades() -> None:
 def test_selection_sql_names_the_registered_table() -> None:
     # a rename must touch both sides together
     assert EMBEDDINGS_TABLE in selection.select_unembedded_sql()
+
+
+# --- Pointer-derived projection enums ----------------------------------------
+
+
+class TestEmbeddingsProjectionValues:
+    """The catalog's single enum source: the production pointer."""
+
+    def test_derives_the_live_enums(self) -> None:
+        assert embeddings_projection_values(POINTER_DOC) == PROJECTION_VALUES
+
+    def test_multi_entry_enums_are_column_joined(self) -> None:
+        doc = {
+            **POINTER_DOC,
+            "tiers": {
+                "cleaning": POINTER_DOC["tiers"]["cleaning"],
+                "embeddings": {
+                    "entries": [
+                        POINTER_DOC["tiers"]["embeddings"]["entries"][0],
+                        {
+                            "model_segment": "bge-small",
+                            "variant": "bge",
+                            "version": "v2",
+                        },
+                    ]
+                },
+            },
+        }
+        values = embeddings_projection_values(doc)
+        assert values == {
+            "model_segment": "all-minilm-l6-v2,bge-small",
+            "variant": "minilm,bge",
+            "version": "v1,v2",
+        }
+
+    def test_ephemeral_entry_is_never_projected(self) -> None:
+        doc = {
+            **POINTER_DOC,
+            "tiers": {
+                "cleaning": POINTER_DOC["tiers"]["cleaning"],
+                "embeddings": {
+                    "entries": [
+                        {
+                            "model_segment": "all-minilm-l6-v2",
+                            "variant": "minilm",
+                            "version": "x-scratch",
+                        }
+                    ]
+                },
+            },
+        }
+        with pytest.raises(ValueError, match="never projected"):
+            embeddings_projection_values(doc)
+
+    def test_registration_carries_pointer_enums_after_flip(self) -> None:
+        """A flip's re-provision re-registers the new generation's enum."""
+        flipped = PROJECTION_VALUES | {"version": "v2"}
+        glue = GlueDouble()
+        _create_embeddings_table(
+            glue, "semantic_career_map", "bucket", projection_values=flipped
+        )
+        params = glue.created[0]["Parameters"]
+        assert params["projection.version.values"] == "v2"
+        assert params["projection.model_segment.values"] == "all-minilm-l6-v2"

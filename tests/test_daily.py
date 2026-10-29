@@ -20,7 +20,7 @@ from backend.pipeline.cleaning.prompts import (
     BOILERPLATE_ONLY_SYSTEM_PROMPT,
     USER_MESSAGE_TEMPLATE,
 )
-from backend.storage import ids, keys
+from backend.storage import ids, keys, pointer
 from tests.conftest import JournalSink
 
 MODEL = "google/gemini-2.5-flash-lite"
@@ -274,7 +274,7 @@ def test_run_daily_submits_bounded_selection(bucket_env: None) -> None:
 
 
 def test_settings_from_env_backfill_disables_bounds(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, memory_sink
 ) -> None:
     """``--backfill`` turns off both deployment bounds in one flag."""
     args = argparse.Namespace(
@@ -290,9 +290,87 @@ def test_settings_from_env_backfill_disables_bounds(
         dry_run=False,
     )
     monkeypatch.delenv("CONFIGURATION_HASH", raising=False)
-    settings = daily.settings_from_env(args)
+    monkeypatch.setenv("CLEAN_VERSION", "v1")
+    settings = daily.settings_from_env(args, memory_sink)
     assert settings.window_days == 0
     assert settings.max_postings == 0
+
+
+# --- Version-root resolution: overrides + pointer path (Layer 3) --------------
+
+POINTER_DOC = {
+    "pointer_version": 1,
+    "updated_by": "olimoon",
+    "updated_at": "2026-10-28T17:00:00+00:00",
+    "reason": "bootstrap: describes reality",
+    "previous": None,
+    "tiers": {
+        "cleaning": {
+            "artifact_type": "cleaned_text",
+            "variant": "llm",
+            "version": "v9",
+        },
+        "embeddings": {
+            "entries": [
+                {
+                    "model_segment": "all-minilm-l6-v2",
+                    "variant": "minilm",
+                    "version": "v1",
+                }
+            ]
+        },
+    },
+}
+
+
+def seeded_pointer_sink() -> JournalSink:
+    """A sink carrying a parse-valid pointer whose cleaning triple is v9."""
+    from tests.conftest import MemorySink
+
+    sink = MemorySink()
+    sink.objects[keys.state_pointer()] = pointer.canonical_bytes(POINTER_DOC)
+    return sink
+
+
+def settings_args() -> argparse.Namespace:
+    """The CLI namespace with every option unset."""
+    return argparse.Namespace(
+        database=None,
+        workgroup=None,
+        model=None,
+        workers=None,
+        version_root=None,
+        max_run_hours=None,
+        window_days=None,
+        max_postings=None,
+        backfill=False,
+        dry_run=False,
+    )
+
+
+def test_settings_version_root_resolves_from_pointer(monkeypatch) -> None:
+    """The scheduled path takes the cleaning triple from the pointer."""
+    monkeypatch.delenv("CLEAN_VERSION", raising=False)
+    monkeypatch.delenv("CONFIGURATION_HASH", raising=False)
+    settings = daily.settings_from_env(settings_args(), seeded_pointer_sink())
+    assert settings.version == "v9"
+
+
+def test_settings_version_root_override_is_loud(monkeypatch, capsys) -> None:
+    """An explicit override bypasses the pointer and says so."""
+    monkeypatch.delenv("CONFIGURATION_HASH", raising=False)
+    monkeypatch.setenv("CLEAN_VERSION", "v3")
+    settings = daily.settings_from_env(settings_args(), seeded_pointer_sink())
+    assert settings.version == "v3"
+    assert "OVERRIDE" in capsys.readouterr().out
+
+
+def test_settings_version_root_absent_everywhere_fails_loudly(monkeypatch) -> None:
+    """No flag, no env, no pointer: a loud failure naming the fix."""
+    monkeypatch.delenv("CLEAN_VERSION", raising=False)
+    monkeypatch.delenv("CONFIGURATION_HASH", raising=False)
+    with pytest.raises(ValueError, match="--bootstrap --apply"):
+        daily.settings_from_env(settings_args(), JournalSink())
 
 
 def test_run_daily_resolves_version_from_env_when_unspecified(

@@ -50,6 +50,7 @@ segment in a key is lowercase; there is no uppercase exception.
     - ``derived(id, variant, v)``-> ``live/derived/<id>/<variant>/v<v>.json``
     - ``embedding(model, variant, v, id)`` -> ``live/embeddings/<model>/<variant>/v<v>/<id>.npy``
     - ``config(hash)``           -> ``configs/<hash>.json``
+    - ``state_pointer()``        -> ``state/production.json``
 
     Validators:
     - ``validate_key(key)`` raises ``ValueError`` on a malformed key.
@@ -66,8 +67,11 @@ from backend.storage.ids import is_canonical_uuid7, is_sha256_hex
 
 # The single bucket's top-level branches. ``lake`` holds the lakehouse raw
 # layer (content-addressed, immutable); ``live`` and ``configs`` are the legacy
-# object-per-posting store still in use until each branch migrates.
-_BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake"})
+# object-per-posting store still in use until each branch migrates. ``state``
+# is the control-plane exception: the one mutable branch, holding the
+# production pointer that names (never searches) the active generation — the
+# data lake stays append-only, ``configs/`` stays hash-addressed.
+_BUCKETS: frozenset[str] = frozenset({"eval", "live", "configs", "lake", "state"})
 
 # Sources admitted into ``lake/raw/source=<source>/``. Kept as an explicit
 # allowlist so partitioning stays governed — a source is a partition column,
@@ -394,6 +398,39 @@ def artifact_part(
     )
 
 
+def artifact_prefix(artifact_type: str, variant: str, version: str) -> str:
+    """Key prefix for one derived artifact dataset version (all its parts).
+
+    ``lake/artifacts/type=<artifact-type>/variant=<variant>/version=<version>/``
+
+    The exact prefix :func:`artifact_part` writes under; sharing this builder
+    keeps listing callers (readiness/gate) in lockstep with the part layout,
+    so a layout change cannot silently re-target their ``list_keys``.
+
+    Args:
+        artifact_type: Artifact family; must be in :data:`ARTIFACT_TYPES`.
+        variant: Producing method.
+        version: Version token ``vN``.
+
+    Returns:
+        The well-formed prefix (trailing slash).
+
+    Raises:
+        ValueError: if any segment is malformed or ``artifact_type`` is not
+            allowlisted.
+    """
+    if artifact_type not in ARTIFACT_TYPES:
+        raise ValueError(
+            f"unknown artifact type {artifact_type!r}; "
+            f"expected one of {sorted(ARTIFACT_TYPES)}"
+        )
+    return (
+        f"lake/artifacts/type={_check(artifact_type, name='artifact type')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='artifact version')}/"
+    )
+
+
 def eval_dataset(
     eval_type: str, variant: str, version: str, run_id: str, seq: int
 ) -> str:
@@ -511,6 +548,32 @@ def embedding_part(
         f"variant={_check(variant, name='variant')}/"
         f"version={_check_version(version, name='embedding version', allow_ephemeral=True)}/"
         f"{_part_leaf(_check_id(run_id, name='run id'), _check_seq(seq))}"
+    )
+
+
+def embedding_prefix(model: str, variant: str, version: str) -> str:
+    """Key prefix for one embedding dataset version (all its parts).
+
+    ``lake/embeddings/model=<model>/variant=<variant>/version=<version>/``
+
+    The exact prefix :func:`embedding_part` writes under; sharing this builder
+    keeps listing callers (readiness/gate) in lockstep with the part layout.
+
+    Args:
+        model: Model family segment (e.g. ``all-minilm-l6-v2``).
+        variant: Producing method segment (e.g. ``minilm``).
+        version: Version token ``vN``, or an ephemeral ``x-...`` token.
+
+    Returns:
+        The well-formed prefix (trailing slash).
+
+    Raises:
+        ValueError: if any segment is malformed.
+    """
+    return (
+        f"lake/embeddings/model={_check(model, name='model')}/"
+        f"variant={_check(variant, name='variant')}/"
+        f"version={_check_version(version, name='embedding version', allow_ephemeral=True)}/"
     )
 
 
@@ -716,7 +779,48 @@ def config(hash_: str) -> str:
     return f"configs/{_check_hash(hash_)}.json"
 
 
+def state_pointer() -> str:
+    """Key for the production pointer — the ``state`` branch's one object.
+
+    ``state/production.json``
+
+    The pointer is the bucket's single mutable control-plane object: one
+    document naming the active production generation for every scheduled
+    tier as a map of partition segments. Pointers name; they never search —
+    resolution goes pointer → claim → ``configs/<hash>.json`` → rows.
+    Everything else on ``state/`` is refused by the branch's shape pinner;
+    this builder is the only way to mint the address.
+    """
+    return "state/production.json"
+
+
 # --- Validators -------------------------------------------------------------
+
+
+def _validate_state_branch(key: str, bucket: str, rest: list[str]) -> None:
+    """Pin the ``state`` branch to its single addressable object.
+
+    The branch is the control-plane exception — the one mutable place in an
+    append-only bucket — and so it is also the most tempting dumping ground.
+    The pin keeps it to exactly one object, the production pointer
+    (``state/production.json``): new control-plane objects need a key
+    builder and a pin here, not a free directory. Anything else on the
+    branch is refused (shape, depth, or file name).
+
+    Args:
+        key: The whole key string.
+        bucket: The first segment (already membership-checked).
+        rest: The segments after the bucket.
+
+    Raises:
+        ValueError: when the key is not exactly the pointer address.
+    """
+    if bucket == "state" and key != state_pointer():
+        raise ValueError(
+            f"state branch admits exactly one object, {state_pointer()!r}: "
+            f"refused {key!r} — new control-plane objects need a builder + "
+            "a shape pin"
+        )
 
 
 def _id_index(bucket: str, rest: list[str]) -> int | None:
@@ -1010,7 +1114,8 @@ def validate_key(key: str) -> str:
     """Validate a key and return it unchanged, or raise ``ValueError``.
 
     Enforces the structural rules of ``data.md``:
-      - first segment is one of the known branches (``eval``/``live``/``configs``/``lake``);
+      - first segment is one of the known branches
+        (``eval``/``live``/``configs``/``lake``/``state``);
       - every segment matches the safe-character rule (no ``..``, no trailing
         slash, no reserved characters);
       - the posting-id segment — where the layout places one — is a canonical
@@ -1028,11 +1133,14 @@ def validate_key(key: str) -> str:
         ``run_id`` segment with ``run.json`` / ``flush=<seq>.json`` leaves),
         and the version-claim registry (``model``/``variant``/``version``
         partitions with a ``claim.json`` leaf);
+      - ``state`` pins the branch to its single object, the production
+        pointer (``state/production.json``, :func:`_validate_state_branch`);
       - no trailing slash; no leading slash.
 
     The once-reserved ``lake/embeddings`` branch is now pinned the same way:
     its builder (:func:`embedding_part`) and shape validator have landed with
-    the embedding-pipeline change.
+    the embedding-pipeline change. The ``state`` branch is pinned with this
+    change too: exactly one addressable object, the production pointer.
     """
     if not key or key.startswith("/"):
         raise ValueError(f"key must not be empty or start with '/': {key!r}")
@@ -1109,5 +1217,8 @@ def validate_key(key: str) -> str:
 
     if bucket == "lake" and rest[:2] == ["manifests", "runs"]:
         _validate_runs_manifest(key, rest)
+
+    if bucket == "state":
+        _validate_state_branch(key, bucket, rest)
 
     return key

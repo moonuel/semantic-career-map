@@ -2,16 +2,30 @@
 
 ``MemorySink`` is the in-process stand-in for
 :class:`backend.storage.store.ObjectStore`: same protocol surface
-(``put``/``put_if_absent``/``exists``/``get``/``delete``/``list_keys``), zero
-I/O. The object store is the only storage backend — local dev, CI and prod
-all run against S3 — so tests never touch a filesystem mirror; they use this.
+(``put``/``put_if_absent``/``get``/``get_with_etag``/``put_if_match``/
+``exists``/``delete``/``list_keys``), zero I/O. The object store is the
+only storage backend — local dev, CI and prod all run against S3 — so
+tests never touch a filesystem mirror; they use this.
+
+ETags: in S3 they are object-version tokens the conditional writes
+predicate on; the double derives an equivalent version token from the
+bytes (quoted content digest, the same shape as an S3 ETag), so every
+overwrite changes it and a ``put_if_match`` predicated on a stale read
+loses exactly like the store does.
 """
 
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 from backend.storage import keys
+
+
+def _etag(data: bytes) -> str:
+    """A quoted version token derived from the object's bytes."""
+    return f'"{hashlib.sha256(data).hexdigest()}"'
 
 
 class MemorySink:
@@ -29,6 +43,22 @@ class MemorySink:
         """Store ``data`` at ``key`` only when absent; ``True`` when written."""
         keys.validate_key(key)
         if key in self.objects:
+            return False
+        self.objects[key] = data
+        return True
+
+    def get_with_etag(self, key: str) -> tuple[bytes, str]:
+        """Return ``(bytes, etag)``; ``FileNotFoundError`` when absent."""
+        keys.validate_key(key)
+        if key not in self.objects:
+            raise FileNotFoundError(key)
+        data = self.objects[key]
+        return data, _etag(data)
+
+    def put_if_match(self, key: str, data: bytes, *, expected_etag: str) -> bool:
+        """Overwrite ``key`` while its etag matches; ``False`` on a stale read."""
+        keys.validate_key(key)
+        if key not in self.objects or _etag(self.objects[key]) != expected_etag:
             return False
         self.objects[key] = data
         return True
@@ -80,6 +110,12 @@ class JournalSink(MemorySink):
 
     def put_if_absent(self, key: str, data: bytes) -> bool:
         written = super().put_if_absent(key, data)
+        if written:
+            self.journal.append(key)
+        return written
+
+    def put_if_match(self, key: str, data: bytes, *, expected_etag: str) -> bool:
+        written = super().put_if_match(key, data, expected_etag=expected_etag)
         if written:
             self.journal.append(key)
         return written
