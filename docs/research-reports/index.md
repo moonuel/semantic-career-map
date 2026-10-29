@@ -123,5 +123,17 @@ Research log for exploratory reports that fuel experiments and the final design.
 
     **2026-10-26**
 
-    Survey of renderers for the GitHub Pages job-posting map — interactive embedding map with a per-point LLM summary panel (one JSON per embedded point). DataMapPlot's `extra_point_data`/`on_click`/DynamicTooltip API is load-bearing for the requirement (confirming #002's pick under a stricter lens); Plotly `scattergl` stands as fallback; Deepscatter (NC license), Nomic Atlas (hosted SaaS), and the archived TF Embedding Projector excluded. Includes GitHub Pages limit math, a 3-stage packaging ladder (inline → split → per-point fetch), and the draft per-point summary JSON contract.
+    Survey of renderers for the GitHub Pages job-posting map — interactive embedding map with a per-point LLM summary panel (one JSON per embedded point). DataMapPlot's `extra_point_data`/`on_click`/DynamicTooltip API is load-bearing for the requirement (confirming #002's pick under a stricter lens); Plotly `scattergl` stands as fallback; Deepscatter (NC license), Nomic Atlas (hosted SaaS), and the archived TF Embedding Projector excluded.     Includes GitHub Pages limit math, a 3-stage packaging ladder (inline → split → per-point fetch), and the draft per-point summary JSON contract.
+
+-   [**021 — Clustering Metrics at Scale**](021-clustering-metrics-at-scale.md){ .md-button }
+
+    **2026-10-28**
+
+    Survey of clustering-quality metrics for high-dimensional embeddings — internal (Silhouette/CH/DB, DBCV→DISCO, k-NN purity, EVōC persistence) vs external (ARI/AMI/V-measure) — why centroid indices and DBCV misbehave on embeddings, how to beat the O(n²) pairwise wall (sampling, k-NN graph reuse, partitionable pair-counts), and where clustering + metrics run on AWS (SageMaker K-Means, EMR/Spark MLlib, Athena external metrics, Fargate single-node). Mapped onto separation gap, the HDBSCAN/EVōC validation plans, and function-tag labels.
+
+-   [**022 — Scaling UMAP to Cloud Hardware**](022-umap-cloud-scale-deployment.md){ .md-button }
+
+    **2026-10-28**
+
+    UMAP's memory grows super-linearly with corpus size (the k-NN graph, not the input, is the killer) and will outgrow this machine before the pipeline is done. Memory maps are staging, not scaling — `numpy.memmap` removes input/output copies but cannot make UMAP's hot loops out-of-core. Sets a CPU-first graduation ladder (float32 → low_memory → PCA pre-reduction → subsample-fit + transform) over memory-optimized EC2, with cuML's MLSys 2026 GPU out-of-core k-NN reserved as the 10⁶+ break-glass.
 </div>
