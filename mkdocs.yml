@@ -91,6 +91,7 @@ nav:
     - "021 - Clustering Metrics at Scale": research-reports/021-clustering-metrics-at-scale.md
     - "022 - Scaling UMAP to Cloud Hardware": research-reports/022-umap-cloud-scale-deployment.md
     - "023 - Context Engineering for Embeddings": research-reports/023-context-engineering-for-embeddings.md
+    - "024 - Embedding Models for Semantic Clustering": research-reports/024-embedding-models-for-semantic-clustering.md
   - Developer Log:
     - Overview: dev-log/index.md
     - "2026": dev-log/2026.md
