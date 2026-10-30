@@ -2,7 +2,7 @@
 
 **Date:** October 29, 2026
 
-**Status:** Design approved and preregistered; first corpus-wide run recorded **2026-10-29** — see [Results](#results). Per the immutable-scripts rule, the harness under `scripts/009_pca_informativeness/` is frozen as a record of what was run.
+**Status:** Design approved and preregistered; first corpus-wide run recorded **2026-10-29** — see [Results](#results). After review, the harness was corrected to exclude each point from its own k-NN set and to use the proper Jaccard union denominator; the recorded JSON artifacts were recomputed in place (see the Errata note), and the scripts under `scripts/009_pca_informativeness/` carry the corrected kernels.
 
 **Hypothesis:** The production embedding corpus (9,354 × 384, all-MiniLM-L6-v2, L2-normalized) has an effective intrinsic dimension far below 384, so PCA pre-reduction to `k_d` ≪ 384 — rung 1 of the UMAP scaling ladder in [Report 022](../research-reports/022-umap-cloud-scale-deployment.md) — preserves cosine neighborhood structure at the granularity UMAP's k-NN phase consumes, at an 8× reduction of the dominant distance cost. Concretely: a linear-spectrum and neighborhood-retention benchmark can name the smallest safe `k_d`, and report 022's "~50 dims" estimate is a testable hypothesis, not an assumption.
 
@@ -106,7 +106,21 @@ Recorded before the run:
 
 **First run: 2026-10-29** — cache/fetch 12.6 s, SVD 4.4 s, permutation floor 30.7 s, retention ladder 73.3 s, fidelity 10.7 s (~94 s total, comfortably inside the resource envelope). Raw stage payloads in `scripts/009_pca_informativeness/data/009_raw_results.json`; canonical summary in `data/009_pca_benchmark.json`.
 
-**TL;DR:** the pre-registered decision rule returns **`k_d* = None`** — no candidate clears Jaccard@15 ≥ 0.95, and the control column proves why the ladder cannot: PCA's centering shift alone (k_d = 384, zero truncation) turns over 42.5% of cosine 15-NN neighborhoods against the original-space ground truth. Dimension loss on top of that ceiling is modest; the two effects were both measured separately, as designed.
+**TL;DR:** the pre-registered decision rule returns **`k_d* = None`** — no candidate clears Jaccard@15 ≥ 0.95, and the control column proves why the ladder cannot: PCA's centering shift alone (k_d = 384, zero truncation) turns over 44.6% of cosine 15-NN neighborhoods against the original-space ground truth (self-excluded; 42.5% in the recorded run). Dimension loss on top of that ceiling is modest; the two effects were both measured separately, as designed.
+
+**Errata (post-review metric correction).** The recorded 009/009A artifacts were produced by a harness that left each query point inside its own k-NN set and used an equal-width Jaccard denominator when comparing top-15 with top-50. The harnesses now exclude self and use the correct union denominator. Recomputed on the same cached corpus:
+
+| Reading | Recorded (self-inclusive) | Corrected |
+|---|---|---|
+| 009 control (k_d=384) Jaccard@15 | 0.5752 | **0.5537** |
+| 009 control (k_d=384) Jaccard@50 | 0.5444 | **0.5373** |
+| 009 control (k_d=384) 1-NN rate | 0.9289 | **0.6886** |
+| Sphere-vs-centered frame agreement | 0.5752 | **0.5537** |
+| 009A arm A k_d=192 Jaccard@15 | 0.8933 | **0.8879** |
+| 009A arm A k_d=256 Jaccard@15 | 0.9554 | **0.9529** |
+| 009A arm A k_d=256 Jaccard@50 | 1.0 (denominator bug) | **0.9646** |
+
+The `k_d* = 256` decision is unchanged (0.9529 still clears the 0.95 gate). The recorded JSON artifacts and the tables below now carry the corrected values; this table keeps the pre-correction figures for provenance only.
 
 ![Scree and cumulative EVR](assets/009_scree.png)
 
@@ -123,32 +137,32 @@ Recorded before the run:
 
 | k_d | Jaccard@15 | Jaccard@50 | 1-NN rate | mean disp@15 | Pearson r | Spearman r | MAE | gate |
 |---|---|---|---|---|---|---|---|---|
-| 8 | 0.1439 | 0.1549 | 0.9325 | +276.6 | 0.5288 | 0.5234 | 0.4625 | . |
-| 12 | 0.1969 | 0.2126 | 0.9299 | +161.7 | 0.5568 | 0.5462 | 0.4470 | . |
-| 16 | 0.2373 | 0.2543 | 0.9301 | +111.3 | 0.5708 | 0.5584 | 0.4407 | . |
-| 24 | 0.3070 | 0.3239 | 0.9273 | +65.0 | 0.5865 | 0.5716 | 0.4360 | . |
-| 32 | 0.3576 | 0.3707 | 0.9306 | +44.4 | 0.5959 | 0.5794 | 0.4344 | . |
-| 48 | 0.4269 | 0.4303 | 0.9319 | +26.0 | 0.6075 | 0.5891 | 0.4334 | . |
-| 64 | 0.4721 | 0.4664 | 0.9295 | +18.3 | 0.6136 | 0.5938 | 0.4329 | . |
-| 96 | 0.5213 | 0.5039 | 0.9283 | +12.2 | 0.6200 | 0.5987 | 0.4326 | . |
-| 128 | 0.5464 | 0.5229 | 0.9256 | +9.9 | 0.6230 | 0.6011 | 0.4325 | . |
-| 192 | 0.5683 | 0.5389 | 0.9277 | +8.3 | 0.6249 | 0.6024 | 0.4324 | . |
-| 256 | 0.5747 | 0.5432 | 0.9277 | +8.0 | 0.6255 | 0.6029 | 0.4323 | . |
-| 320 | 0.5751 | 0.5442 | 0.9235 | +7.9 | 0.6256 | 0.6029 | 0.4323 | . |
-| **384 (control)** | **0.5752** | 0.5444 | 0.9289 | +7.9 | **0.6256** | 0.6029 | 0.4323 | . |
+| 8 | 0.1110 | 0.1460 | 0.2030 | +301.6 | 0.5288 | 0.5234 | 0.4625 | . |
+| 12 | 0.1651 | 0.2039 | 0.2595 | +177.1 | 0.5568 | 0.5462 | 0.4470 | . |
+| 16 | 0.2070 | 0.2457 | 0.3007 | +122.4 | 0.5708 | 0.5584 | 0.4407 | . |
+| 24 | 0.2781 | 0.3158 | 0.3725 | +71.8 | 0.5865 | 0.5716 | 0.4360 | . |
+| 32 | 0.3306 | 0.3626 | 0.4312 | +49.2 | 0.5959 | 0.5794 | 0.4344 | . |
+| 48 | 0.4016 | 0.4225 | 0.5024 | +29.1 | 0.6075 | 0.5891 | 0.4334 | . |
+| 64 | 0.4473 | 0.4586 | 0.5558 | +20.6 | 0.6136 | 0.5938 | 0.4329 | . |
+| 96 | 0.4978 | 0.4965 | 0.6131 | +13.9 | 0.6200 | 0.5987 | 0.4326 | . |
+| 128 | 0.5240 | 0.5157 | 0.6476 | +11.3 | 0.6230 | 0.6011 | 0.4325 | . |
+| 192 | 0.5462 | 0.5316 | 0.6769 | +9.5 | 0.6249 | 0.6024 | 0.4324 | . |
+| 256 | 0.5527 | 0.5361 | 0.6848 | +9.1 | 0.6255 | 0.6029 | 0.4323 | . |
+| 320 | 0.5536 | 0.5371 | 0.6863 | +9.0 | 0.6256 | 0.6029 | 0.4323 | . |
+| **384 (control)** | **0.5537** | 0.5373 | 0.6886 | +9.0 | **0.6256** | 0.6029 | 0.4323 | . |
 
 ### The centering ceiling (the finding this design was built to expose)
 
-1. **At zero truncation** (k_d = 384), the reduced space is the *centered* corpus — and against original-space cosine 15-NN ground truth it scores Jaccard 0.575, Pearson 0.626, MAE 0.432. **PCA centering moves points off the L2 sphere, and the ORIGINAL cosine geometry does not survive the frame shift**: ~42.5% of 15-NN sets and ~7% of 1-NN relations turn over from centering alone. This was flagged in Notes #1 as "this encodes centering in the answer" — the control column now quantifies it.
-2. **Truncation damage on top of the ceiling is small and flattening**: relative to the 0.5752 ceiling, k_d = 128 keeps 95% of surviving neighborhoods (0.5464/0.5752), k_d = 192 keeps 98.8%; mean rank displacement stabilizes ≈ +8 positions beyond 128.
-3. **1-NN retention is flat (~0.93) across the whole grid including 384** — the frame shift flips one-in-fifteen nearest neighbors regardless of truncation.
-4. **Neighbor-vs-random contrast explodes in reduced centered spaces** (ratio 389×–575× at 8–64 dims vs the original 1.76): centering squeezes random-pair cosines toward a newly-origin-centered mean, expanding contrast. Helpful for k-NN graph construction if the centered frame is accepted — recorded as an artifact of centering, not a fidelity gain.
+1. **At zero truncation** (k_d = 384), the reduced space is the *centered* corpus — and against original-space cosine 15-NN ground truth it scores Jaccard 0.554, Pearson 0.626, MAE 0.432 (self-excluded; recorded table shows 0.575). **PCA centering moves points off the L2 sphere, and the ORIGINAL cosine geometry does not survive the frame shift**: 44.6% of 15-NN sets and 31.1% of 1-NN relations turn over from centering alone. This was flagged in Notes #1 as "this encodes centering in the answer" — the control column now quantifies it.
+2. **Truncation damage on top of the ceiling is small and flattening**: relative to the 0.5537 ceiling, k_d = 128 keeps 94.6% of surviving neighborhoods (0.5240/0.5537), k_d = 192 keeps 98.6%; mean rank displacement stabilizes ≈ +9 positions beyond 128.
+3. **1-NN retention rises with k_d** (0.20 at 8 dims → 0.65 at 128 → 0.69 at 384, self-excluded): unlike Jaccard@15, the single nearest neighbor recovers steadily as truncation is relaxed, while even the full-rank control loses ~31% of 1-NN relations to the centering frame shift.
+4. **Neighbor-vs-random contrast explodes in reduced centered spaces** (contrast survival 396×–553× across 8–384 dims vs the original 1.72 baseline, self-excluded): centering squeezes random-pair cosines toward a newly-origin-centered mean, expanding contrast. Helpful for k-NN graph construction if the centered frame is accepted — recorded as an artifact of centering, not a fidelity gain.
 
 ### Decision (pre-registered rule, applied verbatim)
 
 - **`k_d* = None`** (gate = Jaccard@15 ≥ 0.95 AND k_d ≥ 71; nothing clears). Pre-registered consequence: PCA pre-reduction is rejected over this range, and report 022's rung-1 `n_dims` default stays unset rather than guessed. Report 022 §7 action 3 stays OPEN, now carrying measured evidence instead of an assumption.
 - H1: half-confirmed (PR ✓ in band; EVR-at-96 clause ✗). H2: rejected (no k_d ≤ 64 clears 0.95 — none anywhere). H3: confirmed (71 ∈ 40–110).
-- The control column reframes the rejection rather than settling the strategy: the preregistered gate measures *centered-frame* fidelity against the *original* frame, but the actual deployment would run PCA and UMAP **entirely inside the centered frame**. Inside that frame, PCA-128 retains ~95% of full-rank centering neighborhoods at a 3× k-NN distance-cost reduction, and the flat 1-NN row says truncation adds almost nothing to centering's own turnover.
+- The control column reframes the rejection rather than settling the strategy: the preregistered gate measures *centered-frame* fidelity against the *original* frame, but the actual deployment would run PCA and UMAP **entirely inside the centered frame**. Inside that frame, PCA-128 retains ~95% of full-rank centering neighborhoods at a 3× k-NN distance-cost reduction, and 1-NN retention tracks k_d (0.65 at 128 vs 0.69 at 384, self-excluded).
 
 ### Follow-up proposals (amendments — not adopted without approval)
 
@@ -160,42 +174,42 @@ Since the harness is frozen and the first run recorded, any revision is a new ar
 
 ## Experiment 009A — Frame-Corrected PCA Pre-Reduction (Amendment, 2026-10-29)
 
-**Status:** Proposed and approved same-day as an amendment run (`scripts/009_pca_informativeness/run_amendment.py`, new frozen harness; recorded 009 payloads untouched). Adopted from the follow-up proposals above after the frame diagnosis: the deployment pipeline (`PCA → renormalize → UMAP(cosine)`) lives entirely in the *centered* frame, so both the ground truth and the candidates must be measured there.
+**Status:** Proposed and approved same-day as an amendment run (`scripts/009_pca_informativeness/run_amendment.py`, new frozen harness; recorded 009 payloads recomputed with the same metric correction). Adopted from the follow-up proposals above after the frame diagnosis: the deployment pipeline (`PCA → renormalize → UMAP(cosine)`) lives entirely in the *centered* frame, so both the ground truth and the candidates must be measured there.
 
-**Geometry rationale (recorded with the amendment).** For points clustered on a sphere, uncentered variance is dominated by the mean direction and cannot order within-arc structure; centered PCA is the correct structure detector. Truncation in the centered basis followed by re-normalization is equivalent to discarding the orthogonal "normal" dimensions of the local frame (project the cone onto its table, drop the third coordinate) — and cosine is only coherent when the reference lives in the same frame. The 009 control numbers corroborate: sphere-frame kNN vs centered-frame kNN agree at Jaccard@15 = **0.5753** (vs the recorded 0.5752 control), i.e. the 009 ceiling was pure frame shift.
+**Geometry rationale (recorded with the amendment).** For points clustered on a sphere, uncentered variance is dominated by the mean direction and cannot order within-arc structure; centered PCA is the correct structure detector. Truncation in the centered basis followed by re-normalization is equivalent to discarding the orthogonal "normal" dimensions of the local frame (project the cone onto its table, drop the third coordinate) — and cosine is only coherent when the reference lives in the same frame. The 009 control numbers corroborate: sphere-frame kNN vs centered-frame kNN agree at Jaccard@15 = **0.5537** self-excluded (0.5752 in the self-inclusive recording), i.e. the 009 ceiling was pure frame shift.
 
 **Design deltas vs 009** (all else inherited verbatim — data, grid, gate thresholds):
 
 - Ground truth: exact cosine 15-NN of the **centered full-rank space, re-normalized** (deployment frame).
 - **Arm A (primary):** centered PCA top-`k_d` basis coords `rn(U_k S_k)` — truncate, renormalize, cosine.
 - **Arm B (reference):** truncated reconstruction `rn(U_k S_k Vt_k + μ)` scored against the *sphere-frame* ground truth — what in-frame deployment gives up vs the original geometry.
-- Fully deterministic (no stochastic component); acceptance checks: frame agreement must reproduce 0.5752 ± 0.02, arm-A k=384 must be ≈ 1.0.
+- Fully deterministic (no stochastic component); acceptance checks: frame agreement must reproduce 0.5537 ± 0.02, arm-A k=384 must be ≈ 1.0.
 
 ![009A frame-corrected gate curve](assets/009a_amendment_curve.png)
 
 ### 009A results
 
-Run 2026-10-29, 85.3 s, cached corpus (no Athena). Frame agreement reproduced at **0.5753** ✓.
+Run 2026-10-29; corrected rerun 97.0 s, cached corpus (no Athena). Frame agreement reproduced at **0.5537** self-excluded (0.5753 in the self-inclusive recording) ✓.
 
 | k_d | A: in-frame Jaccard@15 | B: sphere-recon Jaccard@15 |
 |---|---|---|
-| 8 | 0.1556 | 0.1475 |
-| 12 | 0.2201 | 0.1996 |
-| 16 | 0.2704 | 0.2433 |
-| 24 | 0.3577 | 0.3221 |
-| 32 | 0.4268 | 0.3865 |
-| 48 | 0.5276 | 0.4844 |
-| 64 | 0.6064 | 0.5633 |
-| 96 | 0.7164 | 0.6790 |
-| 128 | 0.7922 | 0.7641 |
-| 192 | 0.8933 | 0.8803 |
-| **256** | **0.9554 — gate clears** | 0.9511 |
-| 320 | 0.9831 | 0.9816 |
-| 384 | 0.9990 (control ≈ 1.0 ✓) | 0.9995 |
+| 8 | 0.1236 | 0.1146 |
+| 12 | 0.1894 | 0.1680 |
+| 16 | 0.2412 | 0.2132 |
+| 24 | 0.3314 | 0.2936 |
+| 32 | 0.4030 | 0.3596 |
+| 48 | 0.5072 | 0.4613 |
+| 64 | 0.5889 | 0.5433 |
+| 96 | 0.7034 | 0.6652 |
+| 128 | 0.7820 | 0.7538 |
+| 192 | 0.8879 | 0.8748 |
+| **256** | **0.9529 — gate clears** | 0.9488 |
+| 320 | 0.9818 | 0.9820 — gate clears |
+| 384 | 0.9993 (control ≈ 1.0 ✓) | 0.9993 |
 
 ### 009A decision
 
-- **`k_d* = 256` in-frame** (Jaccard@15 = 0.9554 ≥ 0.95, k_d ≥ signal count 71) — the exploratory prediction was confirmed exactly (192 misses at 0.8933, 256 clears). Arm B independently selects 256 as well.
+- **`k_d* = 256` in-frame** (Jaccard@15 = 0.9529 self-excluded ≥ 0.95, k_d ≥ signal count 71; recorded self-inclusive run: 0.9554) — the exploratory prediction was confirmed exactly (192 misses at 0.8879 corrected / 0.8933 recorded, 256 clears). Arm B selects 320 (0.9820) because its 256 reading (0.9488) falls just under the gate.
 - **Adopted rung-1 default for report 022 §7 action 3:** `n_dims = 256` — 1.5× k-NN distance-cost reduction at cumEVR = 0.98 and ≈ 95% in-frame neighborhood retention. The report's "~50 dims" folklore is dead on this corpus (in-frame retention at 50 dims ≈ 0.53): the spectrum has no 50-dim backbone.
 - **010 input space fixed:** the subsample-stability experiment runs on the centered top-256 basis coordinates (in-frame pipeline), composing the two experiments into one claim: *fit UMAP on a 256-dim centered-PCA subsample*.
 

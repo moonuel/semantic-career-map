@@ -3,8 +3,8 @@
 Preregistered amendment to the recorded 009 run (see the "Experiment 009A"
 section of ``docs/experiments/009-pca-informativeness.md``). The 009 gate
 measured centered-PCA truncations against the *sphere-frame* cosine ground
-truth, and its k_d=384 control proved the resulting ceiling (Jaccard 0.5752)
-is the centering frame shift, not information loss. 009A measures the same
+truth, and its k_d=384 control proved the resulting ceiling (Jaccard 0.5752
+self-inclusive, 0.5537 self-excluded) is the centering frame shift, not information loss. 009A measures the same
 truncations inside the frame the deployment actually lives in:
 
 * **Ground truth (arm A target):** exact cosine 15-NN of the *centered*
@@ -19,8 +19,8 @@ truncations inside the frame the deployment actually lives in:
 Fully deterministic: exact matmul k-NN in both frames, no stochastic
 component. Gate (inherited verbatim from 009, preregistered): smallest
 ``k_d`` with arm-A Jaccard@15 >= 0.95 AND ``k_d`` >= 009's recorded signal
-count (71). Exploratory check predicted ``k_d* = 256`` (0.9554) with 192
-missing (0.8933); 009A confirms or refutes on the record.
+count (71). Exploratory check with a self-excluded harness: 256 clears
+(0.9529), 192 misses (0.8879); 009A confirms or refutes on the record.
 
 Self-contained: constants re-declared, nothing imported from
 ``run_benchmark.py`` (no-cross-experiment-imports rule). Frozen as an
@@ -49,16 +49,20 @@ DEFAULT_SUMMARY = Path("data/009_pca_benchmark.json")
 
 K_GRID: tuple[int, ...] = (8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 320, 384)
 KNN = 15
+KNN_SECONDARY = 50
 JACCARD_THRESHOLD = 0.95
 SIGNAL_COUNT_009 = 71
 BLOCK_ROWS = 2048
 
+FRAME_AGREEMENT_009 = 0.5537
 FRAME_AGREEMENT_TOLERANCE = 0.02
 SPHERE_KD384_JACCARD_MIN = 0.99
 
 
 def topk_idx(a: np.ndarray, k: int) -> np.ndarray:
     """Exact cosine top-``k`` neighbour indices per row, sorted best-first.
+
+    The query point is excluded from its own row before selection.
 
     Args:
         a: Row-normalized ``(n, d)`` matrix.
@@ -72,6 +76,7 @@ def topk_idx(a: np.ndarray, k: int) -> np.ndarray:
     for start in range(0, n, BLOCK_ROWS):
         stop = min(start + BLOCK_ROWS, n)
         sims = a[start:stop] @ a.T
+        sims[np.arange(stop - start), np.arange(start, stop)] = -np.inf
         part = np.argpartition(-sims, k - 1, axis=1)[:, :k]
         part_sims = np.take_along_axis(sims, part, axis=1)
         order = np.argsort(-part_sims, axis=1)
@@ -85,17 +90,23 @@ def row_normalize(x: np.ndarray) -> np.ndarray:
 
 
 def jaccard_per_row(a_idx: np.ndarray, b_idx: np.ndarray) -> np.ndarray:
-    """Per-row Jaccard similarity of two equal-width index selections."""
-    g = a_idx.shape[1]
+    """Per-row Jaccard similarity of two index selections.
+
+    The union denominator uses the two selection widths, so comparing a
+    top-15 ground truth with a top-50 candidate is valid.
+    """
+    g_a = a_idx.shape[1]
+    g_b = b_idx.shape[1]
     inter = (a_idx[:, :, None] == b_idx[:, None, :]).sum(axis=(1, 2))
-    return inter.astype(np.float64) / (2 * g - inter)
+    return inter.astype(np.float64) / (g_a + g_b - inter)
 
 
-def arm_row(gt: np.ndarray, cand: np.ndarray) -> dict:
+def arm_row(gt15: np.ndarray, gt50: np.ndarray, cand: np.ndarray) -> dict:
     """Compute the inherited 009 retention metrics for one arm/k_d pair.
 
     Args:
-        gt: Ground-truth neighbour indices ``(n, KNN)`` (already top-KNN width).
+        gt15: Ground-truth top-15 neighbour indices ``(n, KNN)``.
+        gt50: Ground-truth top-50 neighbour indices ``(n, 50)``.
         cand: Candidate-space top-50 indices; the top-15 slice carries the
             gate metrics.
 
@@ -103,9 +114,9 @@ def arm_row(gt: np.ndarray, cand: np.ndarray) -> dict:
         Metrics row: Jaccard@15 (gate), Jaccard@50, 1-NN rate.
     """
     top50 = cand
-    jac15 = float(jaccard_per_row(gt, top50[:, :KNN]).mean())
-    jac50 = float(jaccard_per_row(gt, top50).mean()) if top50.shape[1] > KNN else jac15
-    nn1 = float((top50[:, 0] == gt[:, 0]).mean())
+    jac15 = float(jaccard_per_row(gt15, top50[:, :KNN]).mean())
+    jac50 = float(jaccard_per_row(gt50, top50).mean())
+    nn1 = float((top50[:, 0] == gt15[:, 0]).mean())
     return {
         "jaccard_15": round(jac15, 6),
         "jaccard_50": round(jac50, 6),
@@ -145,16 +156,22 @@ def self_check() -> None:
     x = row_normalize(rng.normal(size=(30, 6)))
     top = topk_idx(x, 7)
     for i in (0, 7, 29):
-        brute = np.argsort(-(x @ x[i]), kind="stable")[:7]
+        sims = x @ x[i]
+        sims[i] = -np.inf
+        brute = np.argsort(-sims, kind="stable")[:7]
         assert list(brute) == list(top[i]), f"topk mismatch row {i}"
 
-    # jaccard_per_row: identity, order, disjoint
+    # jaccard_per_row: identity, order, disjoint, unequal widths
     same = np.arange(5)[None, :].repeat(3, axis=0)
     assert np.allclose(jaccard_per_row(same, same), 1.0), "jaccard(A,A) = 1"
     assert np.allclose(jaccard_per_row(same, same[:, ::-1]), 1.0), "order irrelevant"
     left = np.tile(np.arange(3)[None, :], (2, 1))
     right = np.tile(np.arange(3, 6)[None, :], (2, 1))
     assert np.allclose(jaccard_per_row(left, right), 0.0), "disjoint = 0"
+    wide = np.arange(10)[None, :].repeat(3, axis=0)
+    assert np.allclose(jaccard_per_row(same, wide), 5.0 / 10.0), (
+        "unequal-width union denominator"
+    )
 
     # apply_decision: gate semantics incl. the >= signal-count clause
     rows = [
@@ -176,7 +193,7 @@ def self_check() -> None:
     )
     arc = row_normalize(arc)
     mu = arc.mean(axis=0)
-    u_a, s_a, _ = np.linalg.svd(arc - mu, full_matrices=False)
+    u_a, _s_a, _ = np.linalg.svd(arc - mu, full_matrices=False)
     corr_basis = float(np.corrcoef(u_a[:, 0], t)[0, 1])
     assert abs(corr_basis) > 0.99, f"centered top basis traces the arc: {corr_basis}"
     corr_mean = float(np.corrcoef(arc @ (mu / np.linalg.norm(mu)), t)[0, 1])
@@ -215,14 +232,16 @@ def main(argv: list[str] | None = None) -> int:
     u_c, s_c, vt_c = np.linalg.svd(xc, full_matrices=False)
     del x
 
-    gt_sphere = topk_idx(row_normalize(xc + mu), KNN)
-    gt_centered = topk_idx(row_normalize(xc), KNN)
+    gt_sphere50 = topk_idx(row_normalize(xc + mu), KNN_SECONDARY)
+    gt_centered50 = topk_idx(row_normalize(xc), KNN_SECONDARY)
+    gt_sphere = gt_sphere50[:, :KNN]
+    gt_centered = gt_centered50[:, :KNN]
     frame_agreement = float(jaccard_per_row(gt_sphere, gt_centered).mean())
     print(
         f"frame agreement sphere-vs-centered Jaccard@{KNN} = {frame_agreement:.4f} "
-        f"(009 control was 0.5752)"
+        f"(self-excluded 009 control is {FRAME_AGREEMENT_009})"
     )
-    if abs(frame_agreement - 0.5752) > FRAME_AGREEMENT_TOLERANCE:
+    if abs(frame_agreement - FRAME_AGREEMENT_009) > FRAME_AGREEMENT_TOLERANCE:
         raise SystemExit(
             "frame agreement drifted from the 009 control reading; investigate before gating"
         )
@@ -232,8 +251,14 @@ def main(argv: list[str] | None = None) -> int:
     for k_d in K_GRID:
         basis = row_normalize(u_c[:, :k_d] * s_c[:k_d])
         recon = row_normalize((u_c[:, :k_d] * s_c[:k_d]) @ vt_c[:k_d] + mu)
-        row_a = {"k_d": k_d, **arm_row(gt_centered, topk_idx(basis, 50))}
-        row_b = {"k_d": k_d, **arm_row(gt_sphere, topk_idx(recon, 50))}
+        row_a = {
+            "k_d": k_d,
+            **arm_row(gt_centered, gt_centered50, topk_idx(basis, KNN_SECONDARY)),
+        }
+        row_b = {
+            "k_d": k_d,
+            **arm_row(gt_sphere, gt_sphere50, topk_idx(recon, KNN_SECONDARY)),
+        }
         rows_a.append(row_a)
         rows_b.append(row_b)
         print(

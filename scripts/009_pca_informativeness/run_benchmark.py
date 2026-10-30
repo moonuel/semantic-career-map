@@ -378,6 +378,8 @@ def space_pass(
 ) -> tuple[np.ndarray, np.ndarray, float, float]:
     """Exact-cosine pass over one space.
 
+    The query point is excluded from its own similarity row, so every tracked
+    neighbour and candidate selection is a genuine other-point neighbour.
     Per point: the top-``g`` neighbours sorted by similarity (descending), 1-based
     ranks of the tracked neighbours in the full ordering, the mean top-15
     similarity, and the mean similarity to the tracked random others.
@@ -400,6 +402,7 @@ def space_pass(
     for start in range(0, n, BLOCK_ROWS):
         stop = min(start + BLOCK_ROWS, n)
         sims = xn[start:stop] @ xn.T
+        sims[np.arange(stop - start), np.arange(start, stop)] = -np.inf
         tracked_sims = np.take_along_axis(sims, tracked_idx[start:stop], axis=1)
         part = np.argpartition(-sims, topk - 1, axis=1)[:, :topk]
         part_sims = np.take_along_axis(sims, part, axis=1)
@@ -688,6 +691,7 @@ def self_check() -> None:
     top, ranks, mean15, rand_mean = space_pass(xbn, tracked, rand_idx)
     for i in range(n):
         sims = xbn @ xbn[i]
+        sims[i] = -np.inf
         brute = np.argsort(-sims, kind="stable")[:10]
         assert list(brute) == list(top[i]), f"top-k mismatch at row {i}"
         brute_ranks = 1 + np.sum(sims[:, None] > sims[tracked[i]][None, :], axis=0)
