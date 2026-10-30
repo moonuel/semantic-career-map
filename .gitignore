@@ -16,3 +16,4 @@ _build/
 build/
 .kilo/
 data/.*cache*.json
+data/plots/map/

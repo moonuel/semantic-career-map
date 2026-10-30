@@ -94,6 +94,8 @@ Experiment 008 re-measured the variant table on the 39-posting corpus with a han
 
 ---
 
+**Dimensionality / pre-reduction proxies (added by Experiment 009, orthogonal to the proxy table).** For the UMAP-scaling workstream, family metrics were introduced to judge PCA pre-reduction of the production corpus: exact-cosine neighborhood retention (Jaccard@15/@50 vs the original-space ground truth, 1-NN rate, mean rank displacement), sampled-pair distance fidelity (Pearson/Spearman r, MAE), neighbor-vs-random contrast, participation ratio, and a permutation noise-floor signal count. Definitions + production-corpus numbers: [Experiment 009](../experiments/009-pca-informativeness.md). Headlines: participation ratio 57.6, signal count 71, and a measured centering ceiling — PCA's mean-shift alone turns over 44.6% of cosine 15-NN neighborhoods (Jaccard 0.554 at the zero-truncation control, self-excluded; see the experiment errata), so dimension-cut gates must be evaluated inside the frame the deployment actually uses.
+
 ## IR Metrics (Planned — Phase 1.9)
 
 Proper information retrieval evaluation using `pytrec_eval`, the Python interface to TREC's `trec_eval`.

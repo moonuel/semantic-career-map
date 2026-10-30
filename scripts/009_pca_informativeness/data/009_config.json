@@ -1,0 +1,35 @@
+{
+  "git_commit": "e8567e14b2d0393ca55a6dc7d8cbc18d8ab81341",
+  "frozen_note": "run timestamps live in the cache stage payload, not here",
+  "configuration_hash": "a29a35e37a0d7025a961b5241ff278904500ed43edf022ac7304dacdb97e0c98",
+  "full_rows": 9354,
+  "dims": 384,
+  "knn_primary": 15,
+  "knn_secondary": 50,
+  "k_grid": [
+    8,
+    12,
+    16,
+    24,
+    32,
+    48,
+    64,
+    96,
+    128,
+    192,
+    256,
+    320,
+    384
+  ],
+  "jaccard_threshold": 0.95,
+  "pair_count": 200000,
+  "random_others": 94,
+  "permutation_replicas": 10,
+  "seeds": {
+    "permutation": 42,
+    "pairs": 43,
+    "random_others": 44
+  },
+  "block_rows": 2048,
+  "tracked_neighbours": 50
+}

@@ -136,4 +136,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-28**
 
     UMAP's memory grows super-linearly with corpus size (the k-NN graph, not the input, is the killer) and will outgrow this machine before the pipeline is done. Memory maps are staging, not scaling — `numpy.memmap` removes input/output copies but cannot make UMAP's hot loops out-of-core. Sets a CPU-first graduation ladder (float32 → low_memory → PCA pre-reduction → subsample-fit + transform) over memory-optimized EC2, with cuML's MLSys 2026 GPU out-of-core k-NN reserved as the 10⁶+ break-glass.
+
+-   [**023 — Context Engineering for Embeddings**](023-context-engineering-for-embeddings.md){ .md-button }
+
+    **2026-10-29**
+
+    Does rewriting text before embedding help? Compares narrative stories, keyword sets, field-labelled prose, and JSON for sentence similarity. Verdict: short field-aware prose is the safest primary representation, keywords are a complementary view, narratives fit role-function clustering, and JSON syntax usually hurts. Includes a controlled experiment design for this pipeline.
 </div>
