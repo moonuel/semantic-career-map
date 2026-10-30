@@ -22,7 +22,7 @@ Phase/step: Layer 1b, job-map deliverable (plan: ``.kilo/plans/2026-10-29-live-m
 
 Usage:
     python scripts/map.py                          # full corpus, coords + interactive
-    python scripts/map.py --limit 1000             # smoke run
+    python scripts/map.py --limit 1000             # smoke run -> data/plots/map_smoke
     python scripts/map.py --only 2d --no-interactive
 """
 
@@ -58,6 +58,7 @@ RANDOM_STATE = 42
 
 DEFAULT_LIMIT = FULL_ROWS
 DEFAULT_OUT_DIR = Path("data/plots/map")
+SMOKE_OUT_DIR = Path("data/plots/map_smoke")
 HOVER_TEXT_MAX = 80
 
 _VECTORS_SQL = f"""
@@ -129,10 +130,15 @@ def _fetch_vectors_athena(limit: int) -> tuple[list[str], np.ndarray]:
     vectors = np.empty((len(body), EXPECTED_DIMS), dtype=np.float32)
     for i, row in enumerate(body):
         keys.append(row[0])
-        vectors[i] = np.asarray(json.loads(row[1]), dtype=np.float32)
+        dims = json.loads(row[1])
+        if len(dims) != EXPECTED_DIMS:
+            raise SystemExit(f"row {i} has {len(dims)} dims, expected {EXPECTED_DIMS}")
+        vectors[i] = np.asarray(dims, dtype=np.float32)
 
     if len(set(keys)) != len(keys):
         raise SystemExit(f"{len(keys) - len(set(keys))} duplicate source_hash rows")
+    if keys != sorted(keys):
+        raise SystemExit("row order is not ascending source_hash")
     return keys, vectors
 
 
@@ -360,6 +366,8 @@ def write_details(
     Each file ``details/<first two hex chars>.json`` holds
     ``{source_hash: record}`` for the postings sharing that prefix, so the
     page fetches ~330 KB per bucket on demand instead of a 35 MB blob.
+    Existing buckets are cleared first so a bounded rerun cannot leave stale
+    details from a larger run.
 
     Args:
         keys: The run's ``source_hash`` values.
@@ -379,6 +387,8 @@ def write_details(
 
     details_dir = out_dir / "details"
     details_dir.mkdir(parents=True, exist_ok=True)
+    for stale in details_dir.glob("*.json"):
+        stale.unlink()
     written: list[Path] = []
     for prefix, payload in sorted(buckets.items()):
         target = details_dir / f"{prefix}.json"
@@ -389,9 +399,15 @@ def write_details(
     return written
 
 
-_ARROW_ESM = "https://cdn.jsdelivr.net/npm/apache-arrow@20/+esm"
+_ARROW_ESM = "https://cdn.jsdelivr.net/npm/apache-arrow@20.0.0/+esm"
+
+_DECK_GL_SCRIPT = "https://unpkg.com/deck.gl@9.1.14/dist.min.js"
+_DECK_GL_INTEGRITY = (
+    "sha384-9Qz9Vg68oxSJ8alpsDVG3eFNLSZ8P16UxKNQyVheKTcnTlbnueGTD7D0MRd6Na0z"
+)
 
 _DETAILS_JS = """
+    const hoverText = hoverData.getChild('hover_text').toArray();
     const hoverHashes = hoverData.getChild('hash').toArray();
     const detailBuckets = {};
     async function loadDetail(hash) {
@@ -435,14 +451,18 @@ _DETAILS_JS = """
         panel.appendChild(d);
       }
       if (detail.url) {
-        const a = document.createElement('a');
-        a.href = detail.url;
-        a.textContent = 'original posting';
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.style.display = 'block';
-        a.style.margin = '6px 0';
-        panel.appendChild(a);
+        let parsed = null;
+        try { parsed = new URL(detail.url); } catch (e) {}
+        if (parsed && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
+          const a = document.createElement('a');
+          a.href = parsed.href;
+          a.textContent = 'original posting';
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.style.display = 'block';
+          a.style.margin = '6px 0';
+          panel.appendChild(a);
+        }
       }
       panel.appendChild(document.createElement('hr'));
       const body = document.createElement('div');
@@ -455,6 +475,13 @@ _DETAILS_JS = """
 """
 
 _HTML_PATCHES: list[tuple[str, str]] = [
+    (
+        'src="https://unpkg.com/deck.gl@latest/dist.min.js"',
+        (
+            f'src="{_DECK_GL_SCRIPT}" integrity="{_DECK_GL_INTEGRITY}" '
+            'crossorigin="anonymous"'
+        ),
+    ),
     (
         (
             "    import { ArrowLoader } from "
@@ -497,7 +524,7 @@ _HTML_PATCHES: list[tuple[str, str]] = [
     ),
     (
         "({index}) => hoverData.data.hover_text[index]",
-        "({index}) => hoverData.getChild('hover_text').toArray()[index]",
+        "({index}) => hoverText[index]",
     ),
     (
         "autoHighlight: true,",
@@ -643,7 +670,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--only", choices=("2d", "3d", "both"), default="both", help="projection set"
     )
-    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="artifact directory; defaults to data/plots/map for full runs and "
+        "data/plots/map_smoke for bounded --limit runs",
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -672,6 +705,14 @@ def main(argv: list[str] | None = None) -> int:
         help="009A PCA pre-reduction (0 = off; 256 at scale)",
     )
     args = parser.parse_args(argv)
+
+    if args.out_dir is None:
+        args.out_dir = DEFAULT_OUT_DIR if args.limit >= FULL_ROWS else SMOKE_OUT_DIR
+    if args.limit < FULL_ROWS and args.out_dir.resolve() == DEFAULT_OUT_DIR.resolve():
+        raise SystemExit(
+            f"refusing to overwrite the committed full-corpus map in {DEFAULT_OUT_DIR} "
+            f"from a {args.limit}-row run; pass a different --out-dir"
+        )
 
     load_dotenv()
     print(f"region={aws_region()}")
