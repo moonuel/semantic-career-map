@@ -148,4 +148,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-30**
 
     Model-selection research for the clustering pipeline — Sentence Transformers families (MiniLM, BGE, BGE-M3, EmbeddingGemma, Qwen3, Harrier) and Amazon Bedrock (Titan V2, Cohere Embed v3/v4, Nova). Finds the current 256-token window truncates every golden-set posting (mean 539 tokens), recommends proving full-text coverage with MiniLM chunk-pooling before any model migration, and proposes a preregistered eight-arm encoder bake-off.
+
+-   [**025 — Semantic Clustering Methods & Quality Measures**](025-semantic-clustering-methods.md){ .md-button }
+
+    **2026-10-30**
+
+    Algorithm and evaluation survey for the job-posting clustering layer — centroid (spherical K-Means), hierarchical, density (HDBSCAN/EVōC), probabilistic (vMF/GMM), graph (Leiden), and topic pipelines, plus the four-lens quality protocol (internal, external, stability, task/human). Recommends a spherical K-Means baseline, HDBSCAN/EVōC discovery, ARI/AMI/V-measure against function tags, k-NN purity, and bootstrap stability, with explicit noise and multi-label handling.
 </div>
