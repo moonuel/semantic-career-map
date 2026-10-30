@@ -2,7 +2,7 @@
 
 **Date:** October 30, 2026
 
-**Status:** Run complete 2026-10-30 — four maps rendered and awaiting inspection. Addressed to issue #36 and motivated by [Report 024](../research-reports/024-embedding-models-for-semantic-clustering.md) and [Report 023](../research-reports/023-context-engineering-for-embeddings.md).
+**Status:** Run complete 2026-10-30 — maps inspected; B2 and C visually preferred, clustering validity and cleaning follow-ups proposed. Addressed to issue #36 and motivated by [Report 024](../research-reports/024-embedding-models-for-semantic-clustering.md) and [Report 023](../research-reports/023-context-engineering-for-embeddings.md).
 
 This experiment asks a narrower question than issue #36 as written: **does the current MiniLM truncation defect dominate the map, and does full-text coverage or a stronger long-context model change what the semantic map shows?** The production encoder currently embeds only the first 256 MiniLM tokens of `cleaned_text`. With 93% of a random 100-posting sample exceeding that limit, the existing vector space is not a full-text representation and should not be treated as the baseline for model selection. Experiment 011 produces four comparable interactive maps over one fixed 1,000-posting sample. Selection is by direct inspection of those maps, not by an automatic leaderboard score.
 
@@ -228,11 +228,37 @@ Each map contains all 1,000 points, 246 detail buckets, and the patched interact
 
 ### Inspection verdict
 
-Pending user inspection. No automatic winner is declared.
+Visual inspection favors the full-coverage arms. The overlapping MiniLM map (B2) and Titan V2 map (C) appear to produce more meaningful groupings than truncated MiniLM (A); B is a clear improvement over A but appears less coherent than B2. This is a qualitative reading of the maps, not a clustering result. No automatic winner is declared until cluster validity is measured.
 
 ## Discussion
 
-Pending map inspection. The diagnostics already confirm the premise: truncation removes roughly two-thirds of the average posting (A coverage 36.6%), while B, B2, and C cover the full text.
+The diagnostics confirm the original premise: truncation removes roughly two-thirds of the average posting (A coverage 36.6%), while B, B2, and C cover the full text. The visual preference for B2 and C is consistent with the hypothesis that A's missing text matters.
+
+The comparison does not isolate why B2 and C look better. B2 keeps MiniLM and adds boundary overlap; C changes both coverage and model. A clustering-based follow-up is required before choosing a production candidate, and the inspection also exposed cleaning defects that can affect every arm.
+
+### Outliers observed during inspection
+
+These are qualitative observations from the 1,000-posting sample, with lightweight quantitative checks added where the cached sample supports them. They are not a labelled error audit.
+
+| Observed issue | Evidence in the sample | Proposed handling |
+|---|---|---|
+| **Non-English postings** | 34/1,000 postings have English stopword density below 0.03; examples include French and Swedish titles such as `Data Analyst Confirmé - Looker / LookML (H/F)` and `Data Governance Specialist på det medarbetarägda konsultbolaget!` | Compare a SQL token prefilter against a language detector; do not rely on "a/the/to" alone |
+| **Eligibility requirements remain** | Regex surface hits: citizenship 48, security clearance 109, background/criminal check 13, drug test 1 | Revise the cleaning prompt to remove citizenship, visa/employment eligibility, clearance, drug screening, and criminal-background requirements |
+| **Very short postings** | Word count: min 38, p1 92, p5 170; 2 postings ≤45 words, 17 ≤100, 77 ≤200 | Decide on a deterministic floor; evaluate p1/p5 removal against information loss rather than deleting blindly |
+| **Location not removed** | 198/1,000 contain location/remote/relocation language | Revise the cleaning prompt; test city/state/country, remote/hybrid, and relocation phrases |
+| **Cleaned text sometimes appears untrimmed** | 116 postings exceed 800 words, 47 exceed 1,000, 15 exceed 1,200, max 1,588; the sample cache has no raw source text, so original-vs-cleaned reduction cannot be checked directly | Add a deterministic original-vs-cleaned word-count ratio check and flag postings whose cleaning removed too little |
+| **Work terms remain** | 98/1,000 mention hours/schedule/shift; 104 travel; 91 physical/mental requirements | Revise the cleaning prompt to remove schedule, travel, and physical/mental requirement sections |
+
+The regex counts are broad surface indicators, not precision measurements; terms can occur in benefits or boilerplate. They establish that the contamination is present at a non-trivial rate, not its exact cleaned-text impact.
+
+## Follow-up Experiments
+
+These are suggestions, not committed experiment pages.
+
+1. **Experiment 012 — Clustering Validity Bake-Off (suggested).** Run a common clustering procedure on A, B, B2, and C, then compare cluster count, noise fraction, silhouette/DBCV, bootstrap or subsample stability (ARI), and top-cluster coherence by manual inspection. Use the same procedure and parameters across arms. This is the quantitative check needed before trusting the visual preference for B2/C.
+2. **Experiment 013 — Cleaning Prompt v4: Requirements and Logistics (suggested).** Extend the cleaning prompt to remove eligibility, location, schedule/hours, travel, and physical/mental requirements. Evaluate on a hand-labelled golden set with Jaccard and over-deletion, following the Experiment 008 method.
+3. **Experiment 014 — Language Screening (suggested).** Compare a cheap SQL English-token prefilter against a decision-model language detector on the 1,000-posting sample. Measure false removals, missed non-English postings, and cost. The SQL filter is attractive operationally but brittle; a detector is cleaner if its cost and failure modes are acceptable.
+4. **Experiment 015 — Posting-Length and Cleanup Guardrails (suggested).** Characterize the word-count distribution, test a p1/p5 floor, and add deterministic original-vs-cleaned checks. Flag postings that are too short, too long, or barely reduced by cleaning; do not silently drop them before deciding the policy.
 
 ## Limitations
 
@@ -246,9 +272,9 @@ Pending map inspection. The diagnostics already confirm the premise: truncation 
 
 ## Next Steps
 
-1. Inspect the four interactive maps.
-2. Decide whether to keep MiniLM, promote coverage-only pooling, or test a long-context model as a production candidate.
-3. If a candidate wins, design the new embedding configuration and full re-embed separately; this experiment does not change production.
+1. Run the clustering validity bake-off (suggested Experiment 012) on A, B, B2, and C before selecting a production candidate.
+2. Resolve the cleaning outliers through the suggested Experiments 013–015; do not treat the current `cleaned_text` as final.
+3. If B2 or C survives clustering evaluation, design the new embedding configuration and full re-embed separately; this experiment does not change production.
 
 ## References
 

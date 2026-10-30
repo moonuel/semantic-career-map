@@ -98,7 +98,11 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 | # | Title | Variable | Step |
 |---|---|---|---|
 | 010 | UMAP Subsample-Fit Stability | Fit sample size m × seeds; trustworthiness vs full fit | 1.11 (job map) — **deferred 2026-10-29**; preregistration frozen, revive at ~10⁵–10⁶ rows |
-| 011 | Encoder Coverage Bake-Off | Truncated MiniLM vs pooled MiniLM vs normalized Titan V2, visual map inspection | 1.6 (embedding model) — **run 2026-10-30, awaiting map inspection**; [design](011-encoder-coverage-bakeoff.md) |
+| 011 | Encoder Coverage Bake-Off | Truncated MiniLM vs pooled MiniLM vs normalized Titan V2, visual map inspection | 1.6 (embedding model) — **run 2026-10-30; B2/C visually preferred, clustering validation pending**; [result](011-encoder-coverage-bakeoff.md) |
+| 012 | Clustering Validity Bake-Off | Common clustering and stability metrics on A/B/B2/C | 1.6 — **suggested 2026-10-30** |
+| 013 | Cleaning Prompt v4 | Remove eligibility, location, schedule, travel, and physical/mental requirements | 1.6 — **suggested 2026-10-30** |
+| 014 | Language Screening | SQL English-token prefilter vs decision-model language detector | 1.6 — **suggested 2026-10-30** |
+| 015 | Posting-Length Guardrails | Short/long posting floors and original-vs-cleaned word-count checks | 1.6 — **suggested 2026-10-30** |
 | ? | Skill Extraction | spaCy PhraseMatcher with 200-term ML vocabulary | 1.6 |
 | ? | Weighted Concatenation | Title 3×, skills 2×, body 1× vs multi-field fusion | 1.7 |
 | ? | Golden Set Evaluation | pytrec_eval: Precision@5, MRR, NDCG | 1.9 |
