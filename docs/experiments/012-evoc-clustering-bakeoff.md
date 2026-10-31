@@ -294,7 +294,7 @@ Each `<arm>_overlay/index.html` has three mutually exclusive bottom-bar modes:
 - Function button — full alpha for primary matches, partial alpha for secondary tags, dimmed otherwise.
 - `EVōC clusters` — arm-specific primary EVōC clusters, deterministic per-cluster colors, gray noise, and a cluster legend.
 
-Cluster IDs are arm-specific; do not compare the same numeric cluster ID across arms. The overlay is exploratory and does not change the quantitative decision.
+Cluster IDs are arm-specific; do not compare the same numeric cluster ID across arms. The overlay is exploratory and does not change the quantitative decision. In function mode only primary/secondary matches are hoverable and clickable; in cluster mode only clustered points are; dimmed or noise points do not show tooltips, details, or hover highlights.
 
 ## Dependency Gate
 

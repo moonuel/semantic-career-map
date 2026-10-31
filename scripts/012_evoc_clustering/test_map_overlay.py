@@ -73,11 +73,15 @@ MAP_HTML = """<!DOCTYPE html>
             ]
         },
         getLineColor: [250, 250, 250, 128],
+        highlightColor: [170, 0, 0, 187],
         autoHighlight: true,
         onClick: showDetails,
     });
     const labelLayer = new deck.TextLayer({});
-    const deckgl = new deck.DeckGL({layers: [pointLayer, labelLayer]});
+    const deckgl = new deck.DeckGL({
+        layers: [pointLayer, labelLayer],
+        getTooltip: ({index}) => hoverText[index]
+    });
     const hoverHashes = hoverData.getChild('hash').toArray();
     async function showDetails(info) {
       const panel = document.createElement('div');
@@ -167,6 +171,9 @@ def test_patch_html_injects_both_modes() -> None:
         "script": 1,
         "detail": 1,
         "fillColor": 1,
+        "highlight": 1,
+        "onClick": 1,
+        "tooltip": 1,
     }
     for marker in (
         "pointHashes",
@@ -179,9 +186,14 @@ def test_patch_html_injects_both_modes() -> None:
         "EVōC clusters",
         "cluster-legend",
         "getFillColor",
+        "isInteractable",
+        "onHover",
     ):
         assert marker in patched
     assert "data.src.r[index]" not in patched
+    assert "highlightColor: [170, 0, 0, 187]" not in patched
+    assert "onClick: showDetails" not in patched
+    assert "getTooltip: ({index}) => hoverText[index]" not in patched
 
 
 def test_patch_html_rejects_missing_marker() -> None:

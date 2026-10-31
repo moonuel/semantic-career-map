@@ -78,10 +78,15 @@ _MARKER_STYLE_CLOSE = "    </style>"
 _MARKER_BODY_CLOSE = "  </body>"
 _MARKER_SCRIPT_CLOSE = "    </script>"
 _MARKER_DETAIL_HR = "      panel.appendChild(document.createElement('hr'));"
+_MARKER_ON_CLICK = "        onClick: showDetails,"
+_MARKER_TOOLTIP = "      getTooltip: ({index}) => hoverText[index]"
 
 _FILL_COLOR_PATTERN = re.compile(
     r"        getFillColor: \(object, \{index, data\}\) => \{.*?\n        \},",
     re.DOTALL,
+)
+_HIGHLIGHT_PATTERN = re.compile(
+    r"        highlightColor: \[170, 0, 0, 187\],\s*"
 )
 
 _CSS = """
@@ -323,6 +328,22 @@ _UI_JS = r"""
       updateBarState();
       updateClusterLegend();
       refreshColors();
+    }
+
+    function isInteractable(index) {
+      if (!Number.isInteger(index) || index < 0) {
+        return false;
+      }
+      const hash = pointHashes[index];
+      if (selectedMode === 'function') {
+        const label = functionByHash[hash];
+        return Boolean(label) &&
+          (label.primary === selectedFunction || label.tags.includes(selectedFunction));
+      }
+      if (selectedMode === 'clusters') {
+        return clusterByHash[hash] !== -1;
+      }
+      return true;
     }
 
     function appendOverlayDetails(panel, hash) {
@@ -642,6 +663,9 @@ def patch_html(html: str, payload: dict[str, Any]) -> tuple[str, dict[str, int]]
         "script": html.count(_MARKER_SCRIPT_CLOSE),
         "detail": html.count(_MARKER_DETAIL_HR),
         "fillColor": len(_FILL_COLOR_PATTERN.findall(html)),
+        "highlight": len(_HIGHLIGHT_PATTERN.findall(html)),
+        "onClick": html.count(_MARKER_ON_CLICK),
+        "tooltip": html.count(_MARKER_TOOLTIP),
     }
     expected = {key: 1 for key in counts}
     if counts != expected:
@@ -655,6 +679,40 @@ def patch_html(html: str, payload: dict[str, Any]) -> tuple[str, dict[str, int]]
     html, replaced = _FILL_COLOR_PATTERN.subn(_GET_FILL_COLOR_JS, html, count=1)
     if replaced != 1:
         raise ValueError("getFillColor block was not replaced exactly once")
+    html, replaced = _HIGHLIGHT_PATTERN.subn(
+        "        highlightColor: ({index}) => "
+        "isInteractable(index) ? [170, 0, 0, 187] : [0, 0, 0, 0],\n",
+        html,
+        count=1,
+    )
+    if replaced != 1:
+        raise ValueError("highlightColor block was not replaced exactly once")
+    if _MARKER_ON_CLICK not in html:
+        raise ValueError("onClick marker not found")
+    html = html.replace(
+        _MARKER_ON_CLICK,
+        """        onClick: (info) => {
+            if (!isInteractable(info.index)) {
+                return true;
+            }
+            showDetails(info);
+            return true;
+        },
+        onHover: (info) => {
+            document.body.style.cursor = isInteractable(info.index)
+                ? 'pointer'
+                : 'default';
+        },""",
+        1,
+    )
+    if _MARKER_TOOLTIP not in html:
+        raise ValueError("getTooltip marker not found")
+    html = html.replace(
+        _MARKER_TOOLTIP,
+        "      getTooltip: ({index}) => "
+        "(isInteractable(index) ? hoverText[index] : null)",
+        1,
+    )
 
     html = html.replace(_MARKER_STYLE_CLOSE, _CSS + _MARKER_STYLE_CLOSE, 1)
     html = html.replace(_MARKER_BODY_CLOSE, _BAR_HTML + _MARKER_BODY_CLOSE, 1)
