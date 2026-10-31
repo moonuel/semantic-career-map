@@ -409,16 +409,11 @@ With this schema, external metrics later become a join against a label table and
 6. **Audit representative postings per cluster** before calling the result a job-family taxonomy. The product question is whether the groups are useful, not whether a metric is high.
 7. **Persist the run schema in [§7.4](#74-output-schema)** so the evaluation can be repeated after the encoder or cleaning pipeline changes.
 
-### 8.3 Candidate Experiment 012
+### 8.3 Experiment 012
 
-A follow-up experiment can reuse the fixed 1,000-posting sample from Experiment 011 and compare three clusterers on identical vectors:
+[Experiment 012 — EVōC Clustering Validity Bake-Off](../experiments/012-evoc-clustering-bakeoff.md) now fixes EVōC as the clusterer of record and compares the four Experiment 011 embedding arms on the fixed 1,000-posting sample. It uses external weak labels, k-NN purity, EVōC persistence, seed/subsample stability, and a hand audit. A cross-clusterer K-Means/HDBSCAN grid remains a later follow-up if EVōC's embedding ranking is ambiguous.
 
-- **Arms:** spherical K-Means (six values of `k`), agglomerative (average linkage, dendrogram cut at 2–4 levels), HDBSCAN (`min_cluster_size` in a small grid, `min_samples` in a small grid).
-- **Constants:** same encoder, normalization, input variant, PCA setting, sample IDs, and distance metric.
-- **Metrics:** ARI/AMI/V-measure against function tags; k-NN purity; DBCV or DISCO for density arms; Silhouette/CH/DB for centroid arms (comparative only); subsample stability; noise fraction; representative-document audit.
-- **Decision rule:** reject any arm whose ranking does not survive seed/parameter perturbation; choose the simplest method that passes the external and audit criteria.
-
-This experiment should not start until the encoder-coverage decision from Experiment 011 is settled, because a clusterer comparison on truncated vectors answers the wrong question.
+The experiment must not start until the `evoc` dependency is approved and the encoder-coverage decision from Experiment 011 is settled, because a clusterer comparison on truncated vectors answers the wrong question.
 
 ---
 

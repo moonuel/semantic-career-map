@@ -99,7 +99,7 @@ Raw user input baseline → LLM feature engineering → Embedding optimization �
 |---|---|---|---|
 | 010 | UMAP Subsample-Fit Stability | Fit sample size m × seeds; trustworthiness vs full fit | 1.11 (job map) — **deferred 2026-10-29**; preregistration frozen, revive at ~10⁵–10⁶ rows |
 | 011 | Encoder Coverage Bake-Off | Truncated MiniLM vs pooled MiniLM vs normalized Titan V2, visual map inspection | 1.6 (embedding model) — **run 2026-10-30; B2/C visually preferred, clustering validation pending**; [result](011-encoder-coverage-bakeoff.md) |
-| 012 | Clustering Validity Bake-Off | Common clustering and stability metrics on A/B/B2/C | 1.6 — **suggested 2026-10-30** |
+| 012 | EVōC Clustering Validity Bake-Off | EVōC on A/B/B2/C vectors; AMI/ARI/V-measure, k-NN purity, persistence, stability, audit | 1.6 — **run 2026-10-30; C strongest, stability gate and hand audit open**; [result](012-evoc-clustering-bakeoff.md) |
 | 013 | Cleaning Prompt v4 | Remove eligibility, location, schedule, travel, and physical/mental requirements | 1.6 — **suggested 2026-10-30** |
 | 014 | Language Screening | SQL English-token prefilter vs decision-model language detector | 1.6 — **suggested 2026-10-30** |
 | 015 | Posting-Length Guardrails | Short/long posting floors and original-vs-cleaned word-count checks | 1.6 — **suggested 2026-10-30** |

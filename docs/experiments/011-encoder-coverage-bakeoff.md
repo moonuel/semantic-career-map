@@ -2,7 +2,7 @@
 
 **Date:** October 30, 2026
 
-**Status:** Run complete 2026-10-30 — maps inspected; B2 and C visually preferred, clustering validity and cleaning follow-ups proposed. Addressed to issue #36 and motivated by [Report 024](../research-reports/024-embedding-models-for-semantic-clustering.md) and [Report 023](../research-reports/023-context-engineering-for-embeddings.md).
+**Status:** Run complete 2026-10-30 — maps inspected; clustering validation run in Experiment 012 (C strongest, stability/audit open); cleaning follow-ups proposed. Addressed to issue #36 and motivated by [Report 024](../research-reports/024-embedding-models-for-semantic-clustering.md) and [Report 023](../research-reports/023-context-engineering-for-embeddings.md).
 
 This experiment asks a narrower question than issue #36 as written: **does the current MiniLM truncation defect dominate the map, and does full-text coverage or a stronger long-context model change what the semantic map shows?** The production encoder currently embeds only the first 256 MiniLM tokens of `cleaned_text`. With 93% of a random 100-posting sample exceeding that limit, the existing vector space is not a full-text representation and should not be treated as the baseline for model selection. Experiment 011 produces four comparable interactive maps over one fixed 1,000-posting sample. Selection is by direct inspection of those maps, not by an automatic leaderboard score.
 
@@ -272,7 +272,7 @@ These are suggestions, not committed experiment pages.
 
 ## Next Steps
 
-1. Run the clustering validity bake-off (suggested Experiment 012) on A, B, B2, and C before selecting a production candidate.
+1. Review the completed clustering validity bake-off ([Experiment 012](012-evoc-clustering-bakeoff.md)); C led on metrics but did not pass its stability gate.
 2. Resolve the cleaning outliers through the suggested Experiments 013–015; do not treat the current `cleaned_text` as final.
 3. If B2 or C survives clustering evaluation, design the new embedding configuration and full re-embed separately; this experiment does not change production.
 
