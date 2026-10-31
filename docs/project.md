@@ -89,7 +89,7 @@ FastAPI backend + Docker + Cloud deployment
 | # | Deliverable | Status |
 |---|---|---|
 | 1 | Data Ingestion Pipeline | 🟡 Lake live: 9.2k raw postings content-addressed on the dev store + manifest branches (`manifests/runs|datasets|ingestion`); curated 39-posting golden set as the eval-dataset author branch |
-| 2 | Embedding Pipeline | ✅ all-MiniLM-L6-v2, L2-normalized |
+| 2 | Embedding Pipeline | ✅ Amazon Titan V2 (`amazon.titan-embed-text-v2:0`, 1,024-d), L2-normalized — production since 2026-10-31 (exp 012); MiniLM 384-d retained as the rollback generation |
 | 3 | Embedding Optimization & Feature Engineering | 🟡 9 experiments complete — cleaning + eval layers LANDED (exp 008 choice in production): `cleaned_text/variant=llm/version=v1` (65 rows, flush-watermark + artifact-cache) and `cleaning_quality`/`cleaning_golden` eval datasets; PCA pre-reduction named via exp 009/009A (`n_dims=256` in the centered frame, 1.5× distance-cost cut); feature engineering next |
 | 4 | Clustering and Similarity Scoring | 🟡 Cosine distance implemented |
 | 5 | FastAPI Backend | 🔴 Not started (Phase 5 D12 selections pulled forward: Athena catalog + `select_uncleaned` anti-join is the live production selection path) |

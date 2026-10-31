@@ -434,11 +434,11 @@ The maps are ignored by git and can be regenerated with `python scripts/012_evoc
 - **No cross-clusterer proof.** A positive result says EVōC found structure with this embedding; it does not prove EVōC beats K-Means or HDBSCAN. That is a separate experiment.
 - **Layer selection is unstable and consequential.** The highest-persistence layer was coarse (3–9 clusters); finer layers contained 20–26 clusters and sometimes aligned better with labels. Do not choose a layer by external score, but do not assume `labels_` is the product layer either.
 - **Audit gate passed, weakly.** LLM-judge κ is 0.614 against a 0.60 threshold, and tag micro-F1 is 0.623. This validates the labels only as an LLM-comparable signal; it is not a human ground-truth check.
-- **Production rollout is not complete.** C is approved for immediate production, but this experiment did not re-embed the full corpus or change the production pointer. Those remain follow-on operational work.
+- **Production rollout landed separately.** C is approved for immediate production; the full-corpus embed and production config/pointer update are operational work executed by the rollout plan (`feat/titan-v2-production`), not by this experiment. No measurement in this page changed because of it.
 
 ## Next Steps
 
-1. Execute the C production rollout: full-corpus Titan V2 embedding, production config/pointer update, and artifact regeneration.
+1. ✅ Executed — C production rollout: the Titan V2 encoder is production code (`backend/pipeline/embedding/titan.py`), `deploy/embedding-config-titan-v2.json` freezes the generation, and the scheduled `daily-embed` run backfills the corpus. Artifact regeneration (map/clustering) remains follow-on.
 2. Optionally hand-score `data/audit_100_scored.jsonl` to confirm the LLM-judge κ of 0.614; the automatic label gate is already met, but a human pass would firm up the ML-adjacent label boundaries that disagreed most.
 3. Run a stability-focused follow-up on C (for example `n_neighbors=30` and `min_samples=1`) to quantify the risk accepted by the immediate-production decision.
 4. Add a K-Means/HDBSCAN control on C if cluster interpretation remains disputed; this is not a reason to delay the rollout.

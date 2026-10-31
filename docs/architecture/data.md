@@ -188,6 +188,8 @@ source_hash, embedding, model, model_version,
 input_artifact, input_version, embedding_dimension, normalization, created_at
 ```
 
+The live scheduled generation is `model=amazon-titan-embed-text-v2/variant=titan-v2/version=v1/` -- normalized Amazon Titan Text Embeddings V2 over Bedrock, `embedding_dimension=1024`, `normalization=l2` ([experiment 012](../experiments/012-evoc-clustering-bakeoff.md) chose it on 2026-10-31). The generation's identity still runs through the same hashed config: `model_name` carries the Bedrock model family id (`amazon.titan-embed-text-v2`), `model_revision` carries the pinned Bedrock model ID (`amazon.titan-embed-text-v2:0`) exactly as it earlier carried a HuggingFace commit, and the encoder is selected by family (`build_encoder`). Nothing in the row schema, the part keys, or the `configuration_hash` canonicalization changed -- only the values. The MiniLM generation (`model=all-minilm-l6-v2/variant=minilm/version=v1/`, 384-d) stays on disk and in the production pointer as the rollback target; versions add, they never overwrite.
+
 The dataset is the authoritative representation of the vectors. Any vector index (FAISS, or whatever scale eventually demands) is a rebuildable acceleration structure derived from it -- never the source of truth. One `<id>.npy` per posting exits with the legacy layout. (One AWS-native candidate for that acceleration-structure slot -- S3 Vectors' vector buckets, GA 2025-12 -- is evaluated in [research report 019](../research-reports/019-s3-vectors.md): not adopted now; its decision log fixes the Parquet-to-index sync contract should it ever graduate.)
 
 ## 8. Evaluation Data
@@ -282,7 +284,7 @@ It is retrieval-first -- everything about one posting is one prefix away -- whic
 | Posting identity | `<id>` path segment | `source_hash` = identity + join handle; no minted ids (§2.2, D11) |
 | Query interface | key prefix | Glue catalog + Athena tables (§9) — **live for selection** (D12, Phase 5 pulled forward): production cleaning selects via the `select_uncleaned` anti-join |
 | One artifact | one JSON object | one Parquet row (§6) — **live**: `type=cleaned_text/variant=llm/version=v1` (flush-watermark parts + per-run dataset manifests) |
-| One embedding | one `<id>.npy` | vector column (§7) — planned |
+| One embedding | one `<id>.npy` | vector column (§7) — **live**: `model=…/variant=…/version=…` partitions, Titan V2 production generation |
 | Config record | `configs/<hash>.json` | `configuration_hash` + manifests (§3) — **live** (run/dataset manifests in `manifests/runs/`, `manifests/datasets/`) |
 | Eval-set pin | `eval/_current.json` | explicit version pins (§8, §10) — **live**: golden `variant=author/version=v1` + quality results `variant=exp003/version=v1,v2` with per-run manifests |
 

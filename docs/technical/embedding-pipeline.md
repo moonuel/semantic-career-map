@@ -2,7 +2,7 @@
 
 ## Overview
 
-The embedding pipeline converts raw job posting text into dense 384-dimensional vector representations suitable for semantic similarity search.
+The embedding pipeline converts cleaned job posting text into dense 1,024-dimensional vector representations suitable for semantic similarity search. The live production generation is normalized **Amazon Titan Text Embeddings V2** (`amazon.titan-embed-text-v2:0`, called through Bedrock); the earlier `all-MiniLM-L6-v2` 384-d generation remains on disk as the rollback target. The pipeline's stages -- anti-join delta selection, encode, L2 normalization, Parquet parts under a model-first partition -- do not depend on which model fills the encode step.
 
 ```mermaid
 graph LR
@@ -19,7 +19,7 @@ graph LR
 
 - Whitespace collapsing: multiple spaces, tabs, and newlines reduced to single spaces
 - Unicode normalization: NFKC normalization for consistent character encoding
-- Case preservation: `all-MiniLM-L6-v2` is trained on cased text — lowercasing is skipped
+- Case preservation: both production encoders (`all-MiniLM-L6-v2` and Titan V2) are trained on cased text — lowercasing is skipped
 
 ### Boilerplate Removal
 
@@ -41,7 +41,34 @@ A curated vocabulary of ~200 ML/DS/AI domain terms will be extracted using spaCy
 
 ## Embedding Model
 
-### all-MiniLM-L6-v2
+### amazon.titan-embed-text-v2:0 (production)
+
+| Property | Value |
+|---|---|
+| Provider | Amazon Bedrock (`bedrock-runtime` `InvokeModel`, region-local) |
+| Model ID | `amazon.titan-embed-text-v2:0` (the config's `model_revision`) |
+| Dimensions | 1,024 (requested explicitly: `"dimensions": 1024`) |
+| Normalization | Native (`"normalize": true`); the client re-asserts unit norm at 1e-5 |
+| Input bound | 8,192 tokens — enforced per response, never silently truncated |
+| Request shape | one `InvokeModel` per text, serial, retried on throttling/5xx/timeouts |
+| Output geometry | `float32 (N, 1024)`, unit rows |
+
+Implementation: `backend/pipeline/embedding/titan.py` (`TitanEncoder`), selected by
+`build_encoder` from the config's `model_name` family. The request contract, token
+bound, and latency measurements come from
+[experiment 011](../experiments/011-encoder-coverage-bakeoff.md); 012 chose this
+generation for production over the MiniLM baseline.
+
+Per-row postconditions mirror the sentence-transformers path: a zero vector, a
+wrong width, a token count above `max_length`, an embedding that does not
+normalize to within 1e-5, or a deterministic Bedrock fault (`AccessDenied`,
+`ValidationException`, model-access) fails the batch immediately — the driver
+re-raises with the batch index and first `source_hash`. Transient faults
+(throttling, 5xx, connection errors) retry with capped exponential backoff; the
+encoder stays serial because experiment 011's first concurrent pass stalled at
+125 rows.
+
+### all-MiniLM-L6-v2 (rollback generation)
 
 | Property | Value |
 |---|---|
@@ -54,15 +81,24 @@ A curated vocabulary of ~200 ML/DS/AI domain terms will be extracted using spaCy
 | Inference speed | ~20 ms per posting (CPU) |
 | Context window | 256 tokens |
 
+Still baked into the embed image and listed second in the production pointer, so
+rolling back is a pointer flip, not a rebuild. Its vectors are untouched by the
+Titan runs (versions add, never overwrite).
+
 ### Model Selection Rationale
 
 | Model | Dimensions | Size | CPU Latency | Selected? |
 |---|---|---|---|---|
-| all-MiniLM-L6-v2 | 384 | 80 MB | ~20 ms | ✓ |
+| amazon.titan-embed-text-v2:0 | 1,024 | managed (Bedrock) | ~0.56 s per request (p90 1.31 s), serial | ✓ production |
+| all-MiniLM-L6-v2 | 384 | 80 MB | ~20 ms | rollback |
 | bge-small-en-1.5 | 384 | 133 MB | ~28 ms | |
 | mpnet-base-v2 | 768 | 438 MB | ~40 ms | |
 
-A single model was chosen deliberately to reduce scope. Feature engineering (preprocessing, weighting, normalization) was prioritized over multi-model benchmarking.
+The original local-only choice was a single model, deliberately, to reduce scope
+while feature engineering settled. Experiment 011 then measured full-corpus
+encoder coverage including Titan, and experiment 012 measured downstream
+clustering stability; normalized Titan V2 was approved for production on
+2026-10-31 with its stability risk recorded, not resolved.
 
 ## Post-Processing
 
@@ -79,7 +115,10 @@ def l2_normalize(vecs: np.ndarray) -> np.ndarray:
 After normalization, cosine similarity reduces to dot product — the fastest similarity metric. It also prevents magnitude imbalance where longer documents rank above short but highly relevant ones. Applied at both write time (indexing) and query time.
 
 !!! warning "Verify Normalization"
-    Library defaults vary. `sentence_transformers` normalizes only with `normalize_embeddings=True`. Check with `np.linalg.norm(vecs[0])` — should be ~1.0.
+    Library defaults vary. `sentence_transformers` normalizes only with
+    `normalize_embeddings=True`; Titan normalizes only when the request body says
+    `"normalize": true`. Both encoders enforce the 1e-5 postcondition and raise
+    instead of writing a non-unit row.
 
 ### Mean Centering (Planned)
 
@@ -91,16 +130,30 @@ Rotates embeddings into principal-component space and divides by sqrt variance. 
 
 ## Implementation
 
-From `scripts/003_llm_extraction/compare_variants.py:49–54`:
+The driver (`backend/pipeline/embedding/driver.py`) is model-agnostic: it streams
+`(source_hash, text)` rows from the anti-join, slices them into `batch_size`
+windows, and hands each window to whichever `EmbeddingEncoder` the config
+selected. `build_encoder` (`backend/pipeline/embedding/encoder.py`) dispatches by
+model family — Titan to the Bedrock encoder, everything else to the pinned
+sentence-transformers load.
 
 ```python
-def embed_texts(texts: list[str], model: SentenceTransformer) -> np.ndarray:
-    return model.encode(
-        texts,
-        normalize_embeddings=True,
-        show_progress_bar=False,
-    ).astype(np.float32)
+# backend/pipeline/embedding/encoder.py
+def build_encoder(config: EmbeddingConfig) -> EmbeddingEncoder:
+    if is_titan_model(config.model_name):
+        return TitanEncoder(config)   # backend/pipeline/embedding/titan.py
+    return SentenceEncoder(config)
 ```
+
+```python
+# backend/pipeline/embedding/titan.py (per-text request body)
+{"inputText": text, "dimensions": 1024, "normalize": True}
+```
+
+Provenance is unchanged by the model switch: the config's `model_name` /
+`model_revision` pair feed the row's `model` / `model_version` columns, the part
+key's `model=` partition, and the dataset manifest — they now carry a Bedrock
+family id and model ID instead of a HuggingFace id and commit.
 
 ## Section Weighting Strategies (Planned)
 
@@ -135,4 +188,8 @@ emb = emb / np.linalg.norm(emb)
 ```
 
 !!! tip "Token Limit Awareness"
-    Weighted concatenation can exceed MiniLM's 256-token context window. Variant C (multi-field fusion) avoids this by embedding each field separately.
+    Weighted concatenation can exceed a small encoder's context window (MiniLM's
+    256 tokens). Variant C (multi-field fusion) avoids this by embedding each field
+    separately. Titan's 8,192-token bound makes this concern moot at posting
+    length — experiment 011 measured a 2,294-token maximum — but the encoder still
+    fails fast rather than truncates.

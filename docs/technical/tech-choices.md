@@ -5,7 +5,7 @@
 | Decision | Rationale |
 |---|---|
 | Vector search over keyword matching | Captures semantic similarity — "ML engineer" matches "applied scientist" regardless of keyword overlap |
-| Single embedding model (all-MiniLM-L6-v2) | Reduces scope. Model comparison is documented as future work |
+| Single embedding model (all-MiniLM-L6-v2, then Titan V2) | Reduces scope. The comparison the scope cut deferred ran as experiment 011; experiment 012 chose normalized Titan V2 for production |
 | CPU-only inference | ~20 ms per posting, well below user-perceptible threshold |
 | Precomputed embeddings | Generated once at setup. Faster queries, simpler deployment |
 | Stateless API | No user accounts, no persistence. Reduces operational surface area |
@@ -18,7 +18,8 @@ Full survey of semantic search tools, ANN algorithms, and the graduation ladder 
 
 | Choice | Selected | Reason |
 |---|---|---|
-| all-MiniLM-L6-v2 | ✓ | 80 MB, ~20 ms CPU, 384d — smallest viable model |
+| amazon.titan-embed-text-v2:0 | ✓ production | Bedrock-managed, 1,024d, 8k-token bound, native normalization (~0.56 s/request, serial) |
+| all-MiniLM-L6-v2 | rollback | 80 MB, ~20 ms CPU, 384d — smallest viable model |
 | bge-small-en-1.5 | | 133 MB, ~28 ms — slightly better scores but 67% larger |
 | mpnet-base-v2 | | 438 MB, ~40 ms — 2× inference time |
 | NumPy arrays (vector storage) | ✓ (current) | Zero dependencies, sufficient for ≤10K vectors |
@@ -34,7 +35,7 @@ Full survey of semantic search tools, ANN algorithms, and the graduation ladder 
 | Layer | Techniques Applied |
 |---|---|
 | Pre-embedding | Section segmentation, LLM-based boilerplate removal, planned skill extraction |
-| Embedding model | all-MiniLM-L6-v2 selected; model comparison deferred |
+| Embedding model | Titan V2 (`amazon.titan-embed-text-v2:0`, 1,024d) in production since 2026-10-31; MiniLM 384d retained for rollback |
 | Post-embedding | L2 normalization (critical), planned mean centering, PCA whitening deferred |
 | Retrieval | Cosine similarity on NumPy arrays; FAISS planned for scale |
 | Evaluation | Self-retrieval + separation gap (proxy), pytrec_eval planned |
