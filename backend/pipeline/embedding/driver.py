@@ -289,7 +289,19 @@ def run_embedding(
         chunk = usable[start : start + batch_size]
         source_hashes = [pair[0] for pair in chunk]
         texts = [pair[1] for pair in chunk]
-        vectors = encoder.encode(texts)
+        try:
+            vectors = encoder.encode(texts)
+        except Exception as exc:
+            # The encode boundary names the failing row: a Titan token-limit
+            # or contract failure must be actionable from CloudWatch alone.
+            try:
+                wrapped = type(exc)(
+                    f"encode batch {index} (first source_hash "
+                    f"{source_hashes[0]}, {len(chunk)} rows) failed: {exc}"
+                )
+            except Exception:  # noqa: BLE001 — exotic constructor; keep type
+                wrapped = exc
+            raise wrapped from exc
         if vectors.shape[0] != len(chunk):
             raise RuntimeError(
                 f"encoder returned {vectors.shape[0]} rows for {len(chunk)} texts"

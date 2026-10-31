@@ -1,13 +1,17 @@
 """Encoder wrapper: pinned-revision CPU encode with norm postcondition.
 
-The embed step's single identity check lives here: the model is loaded
-against the configuration's pinned ``model_revision``, the actually-resolved
-revision is checked against it (fail fast — ambient resolution is banned
-from provenance), the tokenizer truncation is set to the configuration's
-``max_length``, and encode returns order-preserving float32 rows whose L2
-norm meets the 1e-5 tolerance whenever ``normalize`` is set. The real model
-loads only inside :class:`SentenceEncoder`; tests inject factories and stub
-models, never download weights.
+The embed step's single identity check lives here: a sentence-transformers
+model is loaded against the configuration's pinned ``model_revision``, the
+actually-resolved revision is checked against it (fail fast — ambient
+resolution is banned from provenance), the tokenizer truncation is set to
+the configuration's ``max_length``, and encode returns order-preserving
+float32 rows whose L2 norm meets the 1e-5 tolerance whenever ``normalize``
+is set. The real model loads only inside :class:`SentenceEncoder`; tests
+inject factories and stub models, never download weights.
+
+:func:`build_encoder` dispatches by model family: Titan models
+(``amazon.titan-embed-text*``) encode through Bedrock
+(:mod:`backend.pipeline.embedding.titan`), everything else here.
 """
 
 from __future__ import annotations
@@ -49,8 +53,18 @@ def resolve_pinned_revision(model_name: str) -> str:
         The resolved revision (a commit hash).
 
     Raises:
+        ValueError: for a Titan Bedrock model id — those pin the Bedrock
+            model ID (``…:0``), which the Hub does not serve.
         OSError: propagated from the hub when the model id is unknown.
     """
+    from backend.pipeline.embedding.titan import is_titan_model
+
+    if is_titan_model(model_name):
+        raise ValueError(
+            f"--revision auto does not apply to Bedrock model {model_name!r}; "
+            "pin the Bedrock model ID instead (e.g. "
+            "'amazon.titan-embed-text-v2:0')"
+        )
     from huggingface_hub import model_info
 
     return model_info(model_name).sha
@@ -191,3 +205,27 @@ class StubEncoder(EmbeddingEncoder):
         rows = np.stack([_hash_row(text, self.dimension) for text in texts])
         norms = np.linalg.norm(rows, axis=1)
         return (rows / norms[:, np.newaxis]).astype(np.float32)
+
+
+def build_encoder(config: EmbeddingConfig) -> EmbeddingEncoder:
+    """Select the encoder for a configuration's model family.
+
+    Titan models encode through Bedrock (``model_revision`` is the Bedrock
+    model ID); everything else is a pinned-revision sentence-transformers
+    load. The Titan import is lazy so the local path never imports
+    ``boto3`` and the family dispatch stays testable without a model load.
+
+    Args:
+        config: The embedding configuration.
+
+    Returns:
+        A :class:`TitanEncoder` for the Titan family, else a
+        :class:`SentenceEncoder`.
+    """
+    from backend.pipeline.embedding.titan import is_titan_model
+
+    if is_titan_model(config.model_name):
+        from backend.pipeline.embedding.titan import TitanEncoder
+
+        return TitanEncoder(config)
+    return SentenceEncoder(config)
