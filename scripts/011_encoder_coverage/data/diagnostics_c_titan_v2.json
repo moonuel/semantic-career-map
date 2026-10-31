@@ -1,0 +1,17 @@
+{
+  "arm": "c_titan_v2",
+  "coverage_ratio": 1.0,
+  "dimensions": 1024,
+  "latency_mean_s": 0.562,
+  "latency_p90_s": 1.314,
+  "model_id": "amazon.titan-embed-text-v2:0",
+  "normalize": true,
+  "provider": "amazon-bedrock",
+  "region": "us-east-2",
+  "rows": 1000,
+  "seconds_wall": 836.97,
+  "tokens_max": 2294,
+  "tokens_median": 611.5,
+  "tokens_p90": 1113.1,
+  "tokens_total": 662409
+}

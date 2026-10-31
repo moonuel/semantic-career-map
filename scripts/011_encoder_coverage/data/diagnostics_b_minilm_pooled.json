@@ -1,0 +1,16 @@
+{
+  "arm": "b_minilm_pooled",
+  "coverage_ratio": 1.0,
+  "dimensions": 384,
+  "max_length": 256,
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "overlap_tokens": 0,
+  "rows": 1000,
+  "seconds": 238.21,
+  "tokens_total": 685912,
+  "window_token_incidence": 690925,
+  "windows_per_posting_max": 15,
+  "windows_per_posting_mean": 3.308,
+  "windows_total": 3308
+}

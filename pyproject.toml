@@ -23,6 +23,7 @@ dependencies = [
     "pyarrow",
     "pandas",
     "datamapplot",
+    "evoc",
 ]
 
 [project.optional-dependencies]

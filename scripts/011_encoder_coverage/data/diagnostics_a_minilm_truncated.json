@@ -1,0 +1,17 @@
+{
+  "arm": "a_minilm_truncated",
+  "coverage_ratio": 0.3664347613104888,
+  "dimensions": 384,
+  "max_length": 256,
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "model_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "rows": 1000,
+  "seconds": 68.45,
+  "token_count_max": 2600,
+  "token_count_median": 631.0,
+  "token_count_p90": 1145.1,
+  "tokens_encoded": 251342,
+  "tokens_total": 685912,
+  "truncated_rate": 0.939,
+  "truncated_rows": 939
+}
