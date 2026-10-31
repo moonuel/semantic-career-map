@@ -61,7 +61,8 @@ Field-discipline lakehouse for job postings under construction (see `docs/projec
 | LLM cleaning (boilerplate-only, exp 008) | 🟡 live — `cleaned_text/variant=llm/version=v1` (flush-watermark parts, artifact-cache, `python -m backend.pipeline.cleaning`) |
 | Cleaning evaluation (exp 003 metrics) | 🟡 live — golden + `cleaning_quality` result datasets with run manifests (`python -m backend.pipeline.eval`) |
 | Scrape + clean on AWS | 🟢 live — Lambda ATS tier + Fargate curator/clean tasks, daily EventBridge schedules (04:00/05:00/06:00 UTC), provisioner `python -m scripts.provision_compute_stack`; runbook in `deploy/README.md` |
-| Embeddings → clustering → API → Docker | 🔴 next phases |
+| Embedding tier | 🟡 live — normalized Titan V2 (`amazon.titan-embed-text-v2:0`, 1,024-d) is the scheduled `daily-embed` generation under `embeddings/model=amazon-titan-embed-text-v2/variant=titan-v2/version=v1/`; MiniLM 384-d stays listed for rollback (`python scripts/embed.py`) |
+| Clustering → API → Docker | 🔴 next phases |
 
 ---
 

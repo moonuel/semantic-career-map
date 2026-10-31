@@ -26,7 +26,9 @@ from dataclasses import asdict, dataclass
 
 # Model families are partitioned model-first (data.md §7); the partition
 # segment is derived from the model name's last path component, lowercased —
-# "sentence-transformers/all-MiniLM-L6-v2" -> "all-minilm-l6-v2".
+# "sentence-transformers/all-MiniLM-L6-v2" -> "all-minilm-l6-v2",
+# "amazon.titan-embed-text-v2" -> "amazon.titan-embed-text-v2" (explicit,
+# path-safe segment supplied by the config).
 DEFAULT_INPUT_ARTIFACT = "athena:semantic_career_map/artifacts_cleaned"
 DEFAULT_INPUT_VERSION = "v1"
 
@@ -36,10 +38,14 @@ class EmbeddingConfig:
     """One embedding dataset generation's parameters (all hashed together).
 
     Attributes:
-        model_name: Full sentence-transformers model id.
-        model_revision: Pinned HuggingFace revision; the loader asserts the
-            resolved revision equals it (no ambient resolution in
-            provenance).
+        model_name: The model family id — a full sentence-transformers id
+            (``org/name``) or a Bedrock model family id
+            (``amazon.titan-embed-text-v2``). The family selects the
+            encoder (:func:`backend.pipeline.embedding.encoder.build_encoder`).
+        model_revision: The pinned model version for the family — a
+            HuggingFace commit for sentence-transformers (the loader
+            asserts the resolved revision equals it; no ambient resolution
+            in provenance), or the Bedrock model ID (``…-v2:0``) for Titan.
         model_segment: Lowercased, slash-free model partition segment.
         variant: The output dataset's ``variant`` partition (producing
             method naming, open).
@@ -48,7 +54,9 @@ class EmbeddingConfig:
             missing/empty for a row; ``None`` disables fallback.
         batch_size: Encode batch window (rows per part commit in the
             Layer-2 writer).
-        max_length: Tokenizer truncation length (pins model.max_seq_length).
+        max_length: Tokenizer truncation length for sentence-transformers
+            (pins model.max_seq_length); for Titan, the input-token bound
+            enforced per response (``8192``) — never truncation.
         normalize: L2-normalization contract.
         input_artifact: Input lineage string (recorded in rows/manifests).
         input_version: The pinned input artifact generation.

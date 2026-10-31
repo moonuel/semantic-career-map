@@ -242,9 +242,9 @@ def main() -> None:
 
 
 def _encoder_for(config: EmbeddingConfig):
-    from backend.pipeline.embedding.encoder import SentenceEncoder
+    from backend.pipeline.embedding.encoder import build_encoder
 
-    return SentenceEncoder(config)
+    return build_encoder(config)
 
 
 def summary_json(summary) -> str:
