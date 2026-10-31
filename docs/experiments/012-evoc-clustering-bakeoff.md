@@ -2,7 +2,7 @@
 
 **Date:** October 30, 2026
 
-**Status:** Run complete 2026-10-30 — C strongest on external/internal metrics but fails the pre-registered stability gate; hand audit pending. Uses the fixed 1,000-posting sample from [Experiment 011](011-encoder-coverage-bakeoff.md) and the method guidance in [Report 025](../research-reports/025-semantic-clustering-methods.md) and [Report 012](../research-reports/012-evoc-embedding-clustering.md).
+**Status:** Run complete 2026-10-30 — C strongest on external/internal metrics but fails the pre-registered stability gate; LLM-judge audit κ=0.614 passes the label gate. Uses the fixed 1,000-posting sample from [Experiment 011](011-encoder-coverage-bakeoff.md) and the method guidance in [Report 025](../research-reports/025-semantic-clustering-methods.md) and [Report 012](../research-reports/012-evoc-embedding-clustering.md).
 
 This experiment asks a narrower question than "which clustering algorithm is best": **with EVōC fixed, which embedding representation produces the most coherent, stable, and label-consistent job-family structure?** The four embedding datasets from Experiment 011 already isolate truncation, full-text coverage, window overlap, and a long-context model. Experiment 012 keeps those vectors and the 1,000-posting sample fixed, runs EVōC, and reports internal, external, stability, and audit evidence.
 
@@ -247,17 +247,20 @@ These gates are deliberately conservative. The goal is to avoid promoting a mode
 ```text
 scripts/012_evoc_clustering/
   label_sample.py          # cached weak labels + audit manifest
+  audit_llm.py             # LLM-as-judge audit (GLM 5 via Bedrock) + kappa/micro-F1
   run_clustering.py        # EVōC primary, sensitivity, seed, subsample runs
   clustering_metrics.py    # external, internal, stability, bootstrap, permutation
+  taxonomy.py              # 14-category function taxonomy (copy of 006)
   test_clustering_metrics.py
   data/
     labels_primary_function.jsonl
     label_manifest.json
     audit_100.jsonl
+    audit_100_scored.jsonl
+    audit_summary.json
     runs/
       <arm>/<config>/labels.npy
       <arm>/<config>/summary.json
-    layer_metrics.csv
     metrics.csv
     layer_metrics.csv
     sensitivity_metrics.csv
@@ -271,6 +274,7 @@ scripts/012_evoc_clustering/
 Responsibilities:
 
 - `label_sample.py` owns label generation, validation, cache, and the audit sample.
+- `audit_llm.py` owns the LLM-as-judge audit pass and kappa/micro-F1 scoring.
 - `run_clustering.py` owns all EVōC fits and writes one `summary.json` per run.
 - `clustering_metrics.py` owns metric definitions; it must not import EVōC.
 - Tests use synthetic partitions with known scores, not the real sample.
@@ -289,7 +293,9 @@ If EVōC cannot run on this Python/Numba combination, stop and report the blocke
 
 ## Results
 
-**Run:** 2026-10-30. EVōC `0.3.2`, fixed 1,000-posting sample, four Experiment 011 vectors, 1,000 cached weak labels, 100-posting audit sheet generated but not yet hand-scored. No production artifact changed.
+**Run:** 2026-10-30. EVōC `0.3.2`, fixed 1,000-posting sample, four Experiment 011 vectors, 1,000 cached weak labels, and a 100-posting LLM-as-judge audit (GLM 5 on Bedrock). No production artifact changed.
+
+**Auditor note:** GLM 5.3 (`zai.glm-5.3`) is enterprise-gated on this AWS account and returns `AccessDeniedException` even via the `us.zai.glm-5.3` / `global.zai.glm-5.3` inference profiles. The audit ran on the accessible GLM 5.x model `zai.glm-5` instead, per user decision.
 
 ### Weak labels
 
@@ -311,7 +317,9 @@ If EVōC cannot run on this Python/Numba combination, stop and report the blocke
 | computer-vision | 4 |
 | reinforcement-learning | 3 |
 
-The 18.8% `other` share is large and reduces the discriminating power of the external metrics. The audit gate is **not yet satisfied**: `data/audit_100.jsonl` exists, but no human κ has been measured. External scores below are therefore exploratory.
+The 18.8% `other` share is large and reduces the discriminating power of the external metrics.
+
+**LLM-as-judge audit.** GLM 5 re-scored the 100-posting audit sheet at temperature 0. Against the labeler (`openai/gpt-5.4-nano`): Cohen's κ `0.614`, tag micro-F1 `0.623`, primary-label exact match `65.0%`. κ `0.614` clears the pre-registered 0.60 label gate, so the external metrics are usable, but the labels remain weak and noisy. Disagreement concentrates in the ML-adjacent labels (`mlops-production`, `classical-ml`, `deep-learning`, `research`) and the `other` boundary; `data-engineering` and `analytics-storytelling` are more stable. Scored sheet: `data/audit_100_scored.jsonl`; summary: `data/audit_summary.json`.
 
 ### Primary EVōC results
 
@@ -368,7 +376,7 @@ C remains the strongest external arm across the grid: AMI ranges 0.285–0.308, 
 No arm passes all pre-registered gates.
 
 - **C is the strongest candidate** on AMI, ARI, V-measure, k-NN purity, and stability, and it beats B2 on the primary model contrast.
-- **C fails the stability gate** (0.488 < 0.60), and the hand audit is unfinished, so external scores remain exploratory.
+- **C fails the stability gate** (0.488 < 0.60). The LLM-judge audit passes its label gate (κ 0.614), but a human audit was not run, so label quality is only weakly validated.
 - **The visual preference for B2 is not confirmed quantitatively.** B2 has the lowest AMI of the four arms and the weakest subsample stability. Its high k-NN purity reflects its coarse 3-cluster partition, not better label recovery.
 - **Overlap did not help.** B (no overlap) beats B2 on AMI and V-measure, though B2 has higher ARI and k-NN purity.
 
@@ -384,12 +392,12 @@ C is promising enough for a follow-up, not for production adoption.
 - **Noise policy.** Keeping `-1` is the primary analysis. Noise-excluded scores are a sensitivity check only.
 - **No cross-clusterer proof.** A positive result says EVōC found structure with this embedding; it does not prove EVōC beats K-Means or HDBSCAN. That is a separate experiment.
 - **Layer selection is unstable and consequential.** The highest-persistence layer was coarse (3–9 clusters); finer layers contained 20–26 clusters and sometimes aligned better with labels. Do not choose a layer by external score, but do not assume `labels_` is the product layer either.
-- **Audit gate is open.** The 100-posting audit sheet is generated but unscored. Treat all external metrics as provisional until κ is measured.
+- **Audit gate passed, weakly.** LLM-judge κ is 0.614 against a 0.60 threshold, and tag micro-F1 is 0.623. This validates the labels only as an LLM-comparable signal; it is not a human ground-truth check.
 - **No production change.** Even a clear winner requires a full re-embed and a separate adoption decision.
 
 ## Next Steps
 
-1. Hand-score `data/audit_100.jsonl` and compute Cohen's κ. If κ < 0.60, revise the label prompt before using external scores as a gate.
+1. Optionally hand-score `data/audit_100_scored.jsonl` to confirm the LLM-judge κ of 0.614; the automatic label gate is already met, but a human pass would firm up the ML-adjacent label boundaries that disagreed most.
 2. Run a stability-focused follow-up on C (for example `n_neighbors=30` and `min_samples=1`) to test whether the stronger AMI survives a pre-registered stability configuration.
 3. Add a K-Means/HDBSCAN control on B2 and C if the EVōC ranking remains ambiguous; this is not a reason to delay the audit.
 4. Resolve the cleaning outliers from Experiment 011 before a full-corpus re-cluster; unstable clusters may partly reflect non-English, location, eligibility, and very short/long postings.
