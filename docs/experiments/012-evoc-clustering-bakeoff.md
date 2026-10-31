@@ -2,7 +2,7 @@
 
 **Date:** October 30, 2026
 
-**Status:** Run complete 2026-10-30 — C strongest on external/internal metrics but fails the pre-registered stability gate; LLM-judge audit κ=0.614 passes the label gate. Uses the fixed 1,000-posting sample from [Experiment 011](011-encoder-coverage-bakeoff.md) and the method guidance in [Report 025](../research-reports/025-semantic-clustering-methods.md) and [Report 012](../research-reports/012-evoc-embedding-clustering.md).
+**Status:** Run complete 2026-10-30 — C strongest on external/internal metrics but fails the pre-registered stability gate; LLM-judge audit κ=0.614 passes the label gate. **User approved C for production for immediate results on 2026-10-31**, accepting the unresolved stability risk. Uses the fixed 1,000-posting sample from [Experiment 011](011-encoder-coverage-bakeoff.md) and the method guidance in [Report 025](../research-reports/025-semantic-clustering-methods.md) and [Report 012](../research-reports/012-evoc-embedding-clustering.md).
 
 This experiment asks a narrower question than "which clustering algorithm is best": **with EVōC fixed, which embedding representation produces the most coherent, stable, and label-consistent job-family structure?** The four embedding datasets from Experiment 011 already isolate truncation, full-text coverage, window overlap, and a long-context model. Experiment 012 keeps those vectors and the 1,000-posting sample fixed, runs EVōC, and reports internal, external, stability, and audit evidence.
 
@@ -28,7 +28,7 @@ In scope:
 Out of scope:
 
 - Re-embedding the full corpus.
-- Production configuration, pointer, or prefix changes.
+- Production configuration, pointer, or prefix changes. The C adoption decision is recorded here, but rollout is follow-on work.
 - Cleaning prompt changes, language filtering, or length filtering.
 - A full cross-clusterer benchmark. EVōC is the clusterer of record for this experiment; a K-Means/HDBSCAN comparison is a separate follow-up if EVōC's ranking is ambiguous.
 
@@ -310,7 +310,7 @@ If EVōC cannot run on this Python/Numba combination, stop and report the blocke
 
 ## Results
 
-**Run:** 2026-10-30. EVōC `0.3.2`, fixed 1,000-posting sample, four Experiment 011 vectors, 1,000 cached weak labels, and a 100-posting LLM-as-judge audit (GLM 5 on Bedrock). No production artifact changed.
+**Run:** 2026-10-30. EVōC `0.3.2`, fixed 1,000-posting sample, four Experiment 011 vectors, 1,000 cached weak labels, and a 100-posting LLM-as-judge audit (GLM 5 on Bedrock). No production artifact changed during the experiment; C was approved for production rollout on 2026-10-31.
 
 **Auditor note:** GLM 5.3 (`zai.glm-5.3`) is enterprise-gated on this AWS account and returns `AccessDeniedException` even via the `us.zai.glm-5.3` / `global.zai.glm-5.3` inference profiles. The audit ran on the accessible GLM 5.x model `zai.glm-5` instead, per user decision.
 
@@ -380,7 +380,7 @@ Layer selection matters. For C, layer 2 (4 clusters) had the best AMI; layer 1 (
 | B2 | 0.448 | 0.278 | 2–10 |
 | C | 0.543 | 0.488 | 4–13 |
 
-C is the most stable arm, but no arm meets the pre-registered 0.60 subsample-stability gate. Cluster counts vary widely under seed and subsample perturbation. At `n=1,000`, EVōC's persistence-selected partition is not stable enough to serve as a production taxonomy.
+C is the most stable arm, but no arm meets the pre-registered 0.60 subsample-stability gate. Cluster counts vary widely under seed and subsample perturbation. At `n=1,000`, EVōC's persistence-selected partition does not meet the pre-registered production-readiness gate; the user accepted this risk for immediate results, as recorded below.
 
 ### Sensitivity
 
@@ -397,7 +397,20 @@ No arm passes all pre-registered gates.
 - **The visual preference for B2 is not confirmed quantitatively.** B2 has the lowest AMI of the four arms and the weakest subsample stability. Its high k-NN purity reflects its coarse 3-cluster partition, not better label recovery.
 - **Overlap did not help.** B (no overlap) beats B2 on AMI and V-measure, though B2 has higher ARI and k-NN purity.
 
-C is promising enough for a follow-up, not for production adoption.
+C is the strongest cluster solution in this bake-off and is now approved for immediate production use. The approval is a product decision that accepts the stability risk; it is not a finding that C passed the pre-registered stability gate.
+
+### Production adoption decision — 2026-10-31
+
+The user approved **embedding arm C (normalized Titan V2)** for production for immediate results, based on C producing the best EVōC clusters.
+
+Recorded rationale:
+
+- C leads the primary comparison: AMI `0.286`, ARI `0.269`, V-measure `0.298`, k-NN purity `0.866`.
+- C produces the most coherent and least noisy primary partition: 4 clusters, `12.5%` noise.
+- C has the strongest stability among the arms: seed ARI `0.543`, subsample ARI `0.488`.
+- The user accepts the remaining risks: subsample stability `0.488 < 0.60`, parameter-sensitive cluster counts, weak LLM-derived labels, and no human audit.
+
+This decision does not change the measured results. It supersedes the earlier recommendation to wait for the stability gate before adoption.
 
 ### Interactive overlays
 
@@ -421,15 +434,16 @@ The maps are ignored by git and can be regenerated with `python scripts/012_evoc
 - **No cross-clusterer proof.** A positive result says EVōC found structure with this embedding; it does not prove EVōC beats K-Means or HDBSCAN. That is a separate experiment.
 - **Layer selection is unstable and consequential.** The highest-persistence layer was coarse (3–9 clusters); finer layers contained 20–26 clusters and sometimes aligned better with labels. Do not choose a layer by external score, but do not assume `labels_` is the product layer either.
 - **Audit gate passed, weakly.** LLM-judge κ is 0.614 against a 0.60 threshold, and tag micro-F1 is 0.623. This validates the labels only as an LLM-comparable signal; it is not a human ground-truth check.
-- **No production change.** Even a clear winner requires a full re-embed and a separate adoption decision.
+- **Production rollout is not complete.** C is approved for immediate production, but this experiment did not re-embed the full corpus or change the production pointer. Those remain follow-on operational work.
 
 ## Next Steps
 
-1. Optionally hand-score `data/audit_100_scored.jsonl` to confirm the LLM-judge κ of 0.614; the automatic label gate is already met, but a human pass would firm up the ML-adjacent label boundaries that disagreed most.
-2. Run a stability-focused follow-up on C (for example `n_neighbors=30` and `min_samples=1`) to test whether the stronger AMI survives a pre-registered stability configuration.
-3. Add a K-Means/HDBSCAN control on B2 and C if the EVōC ranking remains ambiguous; this is not a reason to delay the audit.
-4. Resolve the cleaning outliers from Experiment 011 before a full-corpus re-cluster; unstable clusters may partly reflect non-English, location, eligibility, and very short/long postings.
-5. Do not promote C or B2 until the audit and a full-corpus re-cluster are complete.
+1. Execute the C production rollout: full-corpus Titan V2 embedding, production config/pointer update, and artifact regeneration.
+2. Optionally hand-score `data/audit_100_scored.jsonl` to confirm the LLM-judge κ of 0.614; the automatic label gate is already met, but a human pass would firm up the ML-adjacent label boundaries that disagreed most.
+3. Run a stability-focused follow-up on C (for example `n_neighbors=30` and `min_samples=1`) to quantify the risk accepted by the immediate-production decision.
+4. Add a K-Means/HDBSCAN control on C if cluster interpretation remains disputed; this is not a reason to delay the rollout.
+5. Resolve the cleaning outliers from Experiment 011 before a full-corpus re-cluster; unstable clusters may partly reflect non-English, location, eligibility, and very short/long postings.
+6. Revisit the stability gate after the production rollout; keep the C decision explicit if the production partition materially changes.
 
 ## References
 
