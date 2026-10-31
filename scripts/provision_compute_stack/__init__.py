@@ -230,6 +230,18 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
                 f"arn:aws:ssm:{region}:{acct}:parameter/semantic-career-map/*"
             ],
         },
+        {
+            # The production embedding encoder invokes the Titan family
+            # through Bedrock. One exact foundation-model resource, no
+            # wildcard. Account-level *model access* for the same model is a
+            # separate console/API action — IAM alone fails AccessDenied.
+            "Sid": "BedrockTitanInvoke",
+            "Effect": "Allow",
+            "Action": ["bedrock:InvokeModel"],
+            "Resource": [
+                f"arn:aws:bedrock:{region}::foundation-model/amazon.titan-embed-text-v2:0"
+            ],
+        },
     ]
     return {"Version": "2012-10-17", "Statement": statements}
 

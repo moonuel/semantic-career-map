@@ -1,8 +1,8 @@
 """Layer 1b step 1: project the embedded vectors with UMAP, 2D and 3D.
 
 Feature spike for the job-map deliverable (research report 020). Takes the
-vector contract proven by ``scripts/map_sql_probe.py`` — 9354 rows, 384
-dimensions, one row per ``source_hash`` — and produces the two coordinate
+vector contract proven by ``scripts/map_sql_probe.py`` — one row per
+``source_hash``, one dimension count per row — and produces the two coordinate
 artifacts the map renderers need:
 
 * **2D** → DataMapPlot's interactive Deck.GL map (the Stage-1 deliverable).
@@ -39,14 +39,11 @@ import numpy as np
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from map_sql_probe import _athena, _run
+from map_sql_probe import _athena, _resolve_generation, _run
 
 from backend.pipeline.athena import aws_region
 
-CONFIGURATION_HASH = "a29a35e37a0d7025a961b5241ff278904500ed43edf022ac7304dacdb97e0c98"
 DATABASE = "semantic_career_map"
-FULL_ROWS = 9354
-EXPECTED_DIMS = 384
 
 N_NEIGHBORS = 15
 MIN_DIST = 0.1
@@ -56,33 +53,38 @@ RANDOM_STATE = 42
 DEFAULT_LIMIT = 100
 DEFAULT_OUT_DIR = Path("data/plots/map_probe")
 
-_VECTORS_SQL = f"""
+_VECTORS_SQL = """
 SELECT source_hash, embedding
-FROM {DATABASE}.postings_embeddings
-WHERE configuration_hash = '{CONFIGURATION_HASH}'
+FROM {database}.postings_embeddings
+WHERE configuration_hash = '{hash}'
 ORDER BY source_hash
-LIMIT {{limit}}
+LIMIT {limit}
 """
 
 
-def fetch_vectors(limit: int) -> tuple[list[str], np.ndarray]:
+def fetch_vectors(
+    configuration_hash: str, dimensions: int, limit: int
+) -> tuple[list[str], np.ndarray]:
     """Load up to ``limit`` production vectors as ``(hashes, matrix)``.
 
     The query is deterministically ordered so a bounded run selects the same
     postings every time, and every run is a prefix of any larger run.
 
     Args:
-        limit: Maximum rows to pull; clamped to the full dataset size.
+        configuration_hash: The generation to project.
+        dimensions: Expected embedding width.
+        limit: Maximum rows to pull.
 
     Returns:
-        Keys in query order and an ``(n, 384)`` float32 matrix whose row order
-        matches ``keys``.
+        Keys in query order and an ``(n, dimensions)`` float32 matrix whose
+        row order matches ``keys``.
 
     Raises:
-        SystemExit: when the result violates the proven vector contract.
+        SystemExit: when the result violates the vector contract.
     """
-    limit = max(1, min(limit, FULL_ROWS))
-    rows, _ = _run(_athena(), _VECTORS_SQL.format(limit=limit))
+    limit = max(1, limit)
+    sql = _VECTORS_SQL.format(database=DATABASE, hash=configuration_hash, limit=limit)
+    rows, _ = _run(_athena(), sql)
     body = rows[1:]
     if not body:
         raise SystemExit("query returned no vectors")
@@ -90,7 +92,7 @@ def fetch_vectors(limit: int) -> tuple[list[str], np.ndarray]:
         raise SystemExit(f"expected at most {limit} rows, got {len(body)}")
 
     keys: list[str] = []
-    vectors = np.empty((len(body), EXPECTED_DIMS), dtype=np.float32)
+    vectors = np.empty((len(body), dimensions), dtype=np.float32)
     for i, row in enumerate(body):
         keys.append(row[0])
         vectors[i] = np.asarray(json.loads(row[1]), dtype=np.float32)
@@ -132,14 +134,16 @@ def write_coords(keys: list[str], coords: np.ndarray, target: Path) -> Path:
     return target
 
 
-def render_static_2d(keys: list[str], coords: np.ndarray, target: Path) -> Path:
+def render_static_2d(
+    keys: list[str], coords: np.ndarray, model_label: str, target: Path
+) -> Path:
     """Render a static PNG of the 2D projection through DataMapPlot."""
     target.parent.mkdir(parents=True, exist_ok=True)
     fig, _ = datamapplot.create_plot(
         coords,
         np.array([f"{k[:8]}…" for k in keys]),
         title="Job map — 2D UMAP (no labels yet)",
-        sub_title=f"{len(keys)} postings · all-MiniLM-L6-v2 · cosine · seed {RANDOM_STATE}",
+        sub_title=f"{len(keys)} postings · {model_label} · cosine · seed {RANDOM_STATE}",
     )
     fig.savefig(target, dpi=160, bbox_inches="tight")
     return target
@@ -156,8 +160,10 @@ def main(argv: list[str] | None = None) -> int:
         "--limit",
         type=int,
         default=DEFAULT_LIMIT,
-        help=f"max postings to project (default {DEFAULT_LIMIT}, {FULL_ROWS} = all)",
+        help=f"max postings to project (default {DEFAULT_LIMIT})",
     )
+    parser.add_argument("--configuration-hash", default=None)
+    parser.add_argument("--dimensions", type=int, default=None)
     parser.add_argument(
         "--no-static", action="store_true", help="skip the 2D PNG preview"
     )
@@ -166,7 +172,11 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     print(f"region={aws_region()}")
 
-    keys, vectors = fetch_vectors(args.limit)
+    configuration_hash, dimensions, model_label = _resolve_generation(
+        args.configuration_hash, args.dimensions
+    )
+    print(f"generation={configuration_hash[:12]}… model={model_label}")
+    keys, vectors = fetch_vectors(configuration_hash, dimensions, args.limit)
     print(f"vectors={vectors.shape[0]} dims={vectors.shape[1]} (limit={args.limit})")
 
     if args.only in ("2d", "both"):
@@ -178,7 +188,9 @@ def main(argv: list[str] | None = None) -> int:
             f"-> {path}"
         )
         if not args.no_static:
-            png = render_static_2d(keys, coords_2d, args.out_dir / "umap_2d.png")
+            png = render_static_2d(
+                keys, coords_2d, model_label, args.out_dir / "umap_2d.png"
+            )
             print(f"static preview -> {png} ({png.stat().st_size} bytes)")
 
     if args.only in ("3d", "both"):

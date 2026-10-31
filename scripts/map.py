@@ -12,7 +12,8 @@ research report 022 §7.1). Produces, per run:
   (title + employer) resolved from the raw lake (unless ``--no-interactive``).
 
 Vector source: Athena ``semantic_career_map.postings_embeddings`` filtered by
-the frozen configuration hash. Locally, the 009 vector cache
+a resolved configuration hash (the production pointer's first entry, or an
+explicit ``--configuration-hash``). Locally, the 009 vector cache
 (``scripts/009_pca_informativeness/data/``) is reused when it matches the
 configuration hash and covers the requested limit — cloud runs have no cache
 and always fetch. Optional PCA pre-reduction (``--n-dims 256``) applies the
@@ -44,32 +45,50 @@ from backend.pipeline.athena import aws_region
 from backend.storage.raw import parse_raw_key
 from backend.storage.store import ObjectStore
 
-CONFIGURATION_HASH = "a29a35e37a0d7025a961b5241ff278904500ed43edf022ac7304dacdb97e0c98"
 DATABASE = "semantic_career_map"
 WORKGROUP = "semantic_career_map"
-FULL_ROWS = 9354
-EXPECTED_DIMS = 384
 CACHE_DIR = Path("scripts/009_pca_informativeness/data")
+# The 009 cache was produced for exactly this generation (MiniLM, 384-d); any
+# other configuration hash bypasses it rather than mis-declaring the shape.
+CACHE_CONFIGURATION_HASH = (
+    "a29a35e37a0d7025a961b5241ff278904500ed43edf022ac7304dacdb97e0c98"
+)
+CACHE_DIMS = 384
+# Model geometry for the generation's label; the hash identity is unique per
+# model, so the name is a sound key.
+EXPECTED_DIMS = {
+    "sentence-transformers/all-MiniLM-L6-v2": 384,
+    "amazon.titan-embed-text-v2": 1024,
+}
 
 N_NEIGHBORS = 15
 MIN_DIST = 0.1
 METRIC = "cosine"
 RANDOM_STATE = 42
 
-DEFAULT_LIMIT = FULL_ROWS
 DEFAULT_OUT_DIR = Path("data/plots/map")
 SMOKE_OUT_DIR = Path("data/plots/map_smoke")
 HOVER_TEXT_MAX = 80
 
-_VECTORS_SQL = f"""
+_VECTORS_SQL = """
 SELECT source_hash, embedding
-FROM {DATABASE}.postings_embeddings
-WHERE configuration_hash = '{CONFIGURATION_HASH}'
+FROM {database}.postings_embeddings
+WHERE configuration_hash = '{configuration_hash}'
 ORDER BY source_hash
-LIMIT {{limit}}
+LIMIT {limit}
+"""
+
+_COUNT_SQL = """
+SELECT count(*) AS rows
+FROM {database}.postings_embeddings
+WHERE configuration_hash = '{configuration_hash}'
 """
 
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+class GenerationError(Exception):
+    """The requested production generation cannot be named (CLI-level fault)."""
 
 
 def _athena():
@@ -103,23 +122,52 @@ def _run(athena, sql: str) -> list[list[str]]:
     return list(iter_query_results(athena, execution_id))
 
 
-def _fetch_vectors_athena(limit: int) -> tuple[list[str], np.ndarray]:
+def _vectors_sql(configuration_hash: str, limit: int) -> str:
+    """The bounded, deterministically ordered production-vector query."""
+    return _VECTORS_SQL.format(
+        database=DATABASE, configuration_hash=configuration_hash, limit=limit
+    )
+
+
+def _count_sql(configuration_hash: str) -> str:
+    """The live row count for one configuration (replaces a frozen total)."""
+    return _COUNT_SQL.format(database=DATABASE, configuration_hash=configuration_hash)
+
+
+def _count_rows(configuration_hash: str) -> int:
+    """The live row count for a configuration — the generation's full size.
+
+    Args:
+        configuration_hash: The generation to measure.
+
+    Returns:
+        The total row count (at least 1).
+    """
+    rows = _run(_athena(), _count_sql(configuration_hash))
+    return max(1, int(rows[1][0]))
+
+
+def _fetch_vectors_athena(
+    configuration_hash: str, dimensions: int, limit: int
+) -> tuple[list[str], np.ndarray]:
     """Pull up to ``limit`` vectors from Athena as ``(hashes, matrix)``.
 
     The query is deterministically ordered so a bounded run selects the same
     postings every time, and every run is a prefix of any larger run.
 
     Args:
-        limit: Maximum rows to pull; clamped to the full dataset size.
+        configuration_hash: The generation to project.
+        dimensions: Expected embedding width (the generation's geometry).
+        limit: Maximum rows to pull.
 
     Returns:
-        Keys in query order and an ``(n, 384)`` float32 matrix whose row
-        order matches ``keys``.
+        Keys in query order and an ``(n, dimensions)`` float32 matrix whose
+        row order matches ``keys``.
 
     Raises:
-        SystemExit: when the result violates the proven vector contract.
+        SystemExit: when the result violates the vector contract.
     """
-    rows = _run(_athena(), _VECTORS_SQL.format(limit=limit))
+    rows = _run(_athena(), _vectors_sql(configuration_hash, limit))
     body = rows[1:]
     if not body:
         raise SystemExit("query returned no vectors")
@@ -127,12 +175,12 @@ def _fetch_vectors_athena(limit: int) -> tuple[list[str], np.ndarray]:
         raise SystemExit(f"expected at most {limit} rows, got {len(body)}")
 
     keys: list[str] = []
-    vectors = np.empty((len(body), EXPECTED_DIMS), dtype=np.float32)
+    vectors = np.empty((len(body), dimensions), dtype=np.float32)
     for i, row in enumerate(body):
         keys.append(row[0])
         dims = json.loads(row[1])
-        if len(dims) != EXPECTED_DIMS:
-            raise SystemExit(f"row {i} has {len(dims)} dims, expected {EXPECTED_DIMS}")
+        if len(dims) != dimensions:
+            raise SystemExit(f"row {i} has {len(dims)} dims, expected {dimensions}")
         vectors[i] = np.asarray(dims, dtype=np.float32)
 
     if len(set(keys)) != len(keys):
@@ -142,19 +190,26 @@ def _fetch_vectors_athena(limit: int) -> tuple[list[str], np.ndarray]:
     return keys, vectors
 
 
-def _load_cache(limit: int) -> tuple[list[str], np.ndarray] | None:
+def _load_cache(
+    configuration_hash: str, limit: int
+) -> tuple[list[str], np.ndarray] | None:
     """Reuse the 009 vector cache when it matches the run's contract.
 
     The cache is ``(n, 384)`` float32 rows aligned with a sorted
     ``source_hashes.json`` — the same order as ``ORDER BY source_hash`` — so
-    any ``limit`` slice is the identical prefix Athena would return.
+    any ``limit`` slice is the identical prefix Athena would return. The
+    cache is valid for exactly one generation: a different configuration
+    hash (e.g. Titan, 1,024-d) bypasses it and fetches from Athena.
 
     Args:
+        configuration_hash: The generation to project.
         limit: Requested row count.
 
     Returns:
         ``(hashes, matrix)`` when usable, else ``None``.
     """
+    if configuration_hash != CACHE_CONFIGURATION_HASH:
+        return None
     hashes_path = CACHE_DIR / "source_hashes.json"
     matrix_path = CACHE_DIR / "vectors_cache.npy"
     config_path = CACHE_DIR / "009_config.json"
@@ -164,11 +219,11 @@ def _load_cache(limit: int) -> tuple[list[str], np.ndarray] | None:
         config = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return None
-    if config.get("configuration_hash") != CONFIGURATION_HASH:
+    if config.get("configuration_hash") != CACHE_CONFIGURATION_HASH:
         return None
     hashes = json.loads(hashes_path.read_text(encoding="utf-8"))
     matrix = np.load(matrix_path)
-    if matrix.dtype != np.float32 or matrix.shape != (len(hashes), EXPECTED_DIMS):
+    if matrix.dtype != np.float32 or matrix.shape != (len(hashes), CACHE_DIMS):
         return None
     if hashes != sorted(hashes):
         return None
@@ -180,22 +235,107 @@ def _load_cache(limit: int) -> tuple[list[str], np.ndarray] | None:
     return hashes, np.ascontiguousarray(matrix[:limit])
 
 
-def fetch_vectors(limit: int) -> tuple[list[str], np.ndarray]:
-    """Load up to ``limit`` production vectors as ``(hashes, matrix)``.
+def resolve_generation(
+    configuration_hash: str | None, dimensions: int | None = None
+) -> tuple[str, int, str]:
+    """Resolve the generation to project to ``(hash, dims, model_label)``.
+
+    The production pointer's first embeddings entry names the scheduled
+    generation; its stored config supplies the hash and the model label. An
+    explicit ``--configuration-hash`` selects a pointer-listed generation by
+    its full hash or model segment, and ``--dimensions`` overrides the known
+    model width. Without a pointer (a hash-only run over a smoke or legacy
+    generation) the flags must carry both the hash and the width.
+
+    This is the single resolver: ``scripts/map_sql_probe.py`` and
+    ``scripts/map_umap_probe.py`` import it rather than duplicating it, so the
+    probes and the graduated script cannot disagree about which generation a
+    hash names. Callers keep their own error policy (:func:`_fail` in the
+    probes, :class:`SystemExit` here) by catching :class:`GenerationError`.
 
     Args:
-        limit: Maximum rows; clamped to the full dataset size.
+        configuration_hash: Explicit hash or model segment, or ``None``.
+        dimensions: Explicit embedding width, or ``None``.
 
     Returns:
-        Keys in deterministic order and an ``(n, 384)`` float32 matrix.
+        The configuration hash, the embedding width, and the model name.
+
+    Raises:
+        GenerationError: when the generation cannot be named (no pointer
+            without an explicit width, a hash the pointer does not list, or
+            an unknown model width).
+        RuntimeError: propagated from :func:`resolve_production` when the
+            pointer/claim/config chain is broken.
     """
-    limit = max(1, min(limit, FULL_ROWS))
-    cached = _load_cache(limit)
+    from backend.pipeline.production import resolve_production
+    from backend.storage import keys
+    from backend.storage.store import ObjectStore
+
+    store = ObjectStore.from_env()
+    if configuration_hash is not None and not store.exists(keys.state_pointer()):
+        if dimensions is None:
+            raise GenerationError(
+                "--configuration-hash requires --dimensions without a pointer"
+            )
+        return configuration_hash, dimensions, configuration_hash[:12]
+    production = resolve_production(store)
+    entries = production.embeddings
+    entry = entries[0]
+    if configuration_hash is not None:
+        entry = next(
+            (
+                e
+                for e in entries
+                if e.configuration_hash == configuration_hash
+                or e.stack.split("/")[0] == configuration_hash
+            ),
+            None,
+        )
+        if entry is None:
+            raise GenerationError(
+                f"{configuration_hash!r} is not a production embeddings entry "
+                f"(pointer lists {[e.stack for e in entries]})"
+            )
+    width = dimensions or EXPECTED_DIMS.get(entry.config.model_name)
+    if width is None:
+        raise GenerationError(
+            f"unknown embedding width for {entry.config.model_name!r}; "
+            "pass --dimensions"
+        )
+    return entry.configuration_hash, width, entry.config.model_name
+
+
+def _resolve_or_exit(
+    configuration_hash: str | None, dimensions: int | None
+) -> tuple[str, int, str]:
+    """The CLI's error policy around :func:`resolve_generation`."""
+    try:
+        return resolve_generation(configuration_hash, dimensions)
+    except GenerationError as exc:
+        raise SystemExit(str(exc)) from exc
+
+
+def fetch_vectors(
+    configuration_hash: str, dimensions: int, limit: int | None
+) -> tuple[list[str], np.ndarray]:
+    """Load production vectors for one generation as ``(hashes, matrix)``.
+
+    Args:
+        configuration_hash: The generation to project.
+        dimensions: Expected embedding width.
+        limit: Maximum rows; ``None`` uses the live row count (full corpus).
+
+    Returns:
+        Keys in deterministic order and an ``(n, dimensions)`` matrix.
+    """
+    cached = _load_cache(configuration_hash, limit) if limit else None
     if cached is not None:
         print(f"vector source=cache rows={len(cached[0])}")
         return cached
+    if limit is None:
+        limit = _count_rows(configuration_hash)
     print(f"vector source=athena rows<={limit}")
-    return _fetch_vectors_athena(limit)
+    return _fetch_vectors_athena(configuration_hash, dimensions, limit)
 
 
 def pre_reduce(vectors: np.ndarray, n_dims: int) -> np.ndarray:
@@ -568,6 +708,7 @@ def render_interactive(
     keys: list[str],
     coords_2d: np.ndarray,
     meta: dict[str, dict[str, str]],
+    model_label: str,
     target: Path,
 ) -> Path | None:
     """Render the interactive Deck.GL map with hover data.
@@ -576,6 +717,7 @@ def render_interactive(
         keys: Row-order ``source_hash`` values.
         coords_2d: ``(n, 2)`` coordinates.
         meta: Per-hash metadata from :func:`fetch_metadata`.
+        model_label: The generation's model name (subtitle provenance).
         target: HTML file to write.
 
     Returns:
@@ -612,7 +754,7 @@ def render_interactive(
             inline_data=True,
             title="Semantic job map",
             sub_title=(
-                f"{len(keys)} postings · all-MiniLM-L6-v2 · UMAP(cosine) · "
+                f"{len(keys)} postings · {model_label} · UMAP(cosine) · "
                 f"seed {RANDOM_STATE}"
             ),
         )
@@ -641,6 +783,7 @@ def render_static_2d(
     keys: list[str],
     coords: np.ndarray,
     meta: dict[str, dict[str, str]],
+    model_label: str,
     target: Path,
 ) -> Path:
     """Render a static PNG preview through DataMapPlot's matplotlib renderer."""
@@ -658,7 +801,7 @@ def render_static_2d(
         coords,
         np.array([label(h) for h in keys]),
         title="Job map — 2D UMAP",
-        sub_title=f"{len(keys)} postings · all-MiniLM-L6-v2 · cosine · seed {RANDOM_STATE}",
+        sub_title=f"{len(keys)} postings · {model_label} · cosine · seed {RANDOM_STATE}",
     )
     fig.savefig(target, dpi=160, bbox_inches="tight")
     return target
@@ -680,8 +823,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--limit",
         type=int,
-        default=DEFAULT_LIMIT,
-        help=f"max postings to project (default {DEFAULT_LIMIT} = all)",
+        default=None,
+        help="max postings to project (default: the live row count = all)",
+    )
+    parser.add_argument(
+        "--configuration-hash",
+        default=None,
+        help="explicit generation hash (default: the production pointer's "
+        "first embeddings entry)",
+    )
+    parser.add_argument(
+        "--dimensions",
+        type=int,
+        default=None,
+        help="expected embedding width (default: inferred from the first row)",
     )
     parser.add_argument(
         "--static",
@@ -706,19 +861,35 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.out_dir is None:
-        args.out_dir = DEFAULT_OUT_DIR if args.limit >= FULL_ROWS else SMOKE_OUT_DIR
-    if args.limit < FULL_ROWS and args.out_dir.resolve() == DEFAULT_OUT_DIR.resolve():
-        raise SystemExit(
-            f"refusing to overwrite the committed full-corpus map in {DEFAULT_OUT_DIR} "
-            f"from a {args.limit}-row run; pass a different --out-dir"
-        )
-
     load_dotenv()
     print(f"region={aws_region()}")
 
-    keys, vectors = fetch_vectors(args.limit)
-    print(f"vectors={vectors.shape[0]} dims={vectors.shape[1]} (limit={args.limit})")
+    configuration_hash, dimensions, model_label = _resolve_or_exit(
+        args.configuration_hash, args.dimensions
+    )
+    print(f"generation={configuration_hash[:12]}… model={model_label}")
+    keys, vectors = fetch_vectors(configuration_hash, dimensions, args.limit)
+    print(
+        f"vectors={vectors.shape[0]} dims={vectors.shape[1]} "
+        f"generation={configuration_hash[:12]}… model={model_label}"
+    )
+
+    # The generation's live size, not the fetched prefix: ``len(keys)`` is
+    # capped by the SQL limit, so the smoke/full routing must compare against
+    # the count query's coverage truth.
+    total = _count_rows(configuration_hash) if args.limit is not None else len(keys)
+
+    if args.out_dir is None:
+        bounded = args.limit is not None and args.limit < total
+        args.out_dir = SMOKE_OUT_DIR if bounded else DEFAULT_OUT_DIR
+    elif args.out_dir.resolve() == DEFAULT_OUT_DIR.resolve():
+        full = args.limit is None or args.limit >= total
+        if not full:
+            raise SystemExit(
+                f"refusing to overwrite the committed full-corpus map in "
+                f"{DEFAULT_OUT_DIR} from a {args.limit}-row run; pass a "
+                "different --out-dir"
+            )
     if args.n_dims:
         vectors = pre_reduce(vectors, args.n_dims)
         print(f"pre-reduced dims={vectors.shape[1]} (009A)")
@@ -749,11 +920,13 @@ def main(argv: list[str] | None = None) -> int:
             f"-> {path}"
         )
         if args.static:
-            png = render_static_2d(keys, coords_2d, meta, args.out_dir / "umap_2d.png")
+            png = render_static_2d(
+                keys, coords_2d, meta, model_label, args.out_dir / "umap_2d.png"
+            )
             print(f"static preview -> {png} ({png.stat().st_size} bytes)")
         if not args.no_interactive:
             html = render_interactive(
-                keys, coords_2d, meta, args.out_dir / "index.html"
+                keys, coords_2d, meta, model_label, args.out_dir / "index.html"
             )
             if html is not None:
                 print(f"interactive map -> {html} ({html.stat().st_size} bytes)")
