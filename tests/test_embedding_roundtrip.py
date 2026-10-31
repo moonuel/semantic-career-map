@@ -229,3 +229,104 @@ def test_config_object_write_is_idempotent(journal: JournalSink) -> None:
     second = driver.ensure_config_object(journal, config)
     assert first == second == configuration_hash(config)
     assert journal.journal.count(keys.config(first)) == 1
+
+
+class TitanStub(StubEncoder):
+    """Deterministic 1,024-d double standing in for :class:`TitanEncoder`."""
+
+    def __init__(self) -> None:
+        super().__init__(dimension=1024)
+
+
+def _titan_config(**kw) -> EmbeddingConfig:
+    defaults = {
+        "model_name": "amazon.titan-embed-text-v2",
+        "model_revision": "amazon.titan-embed-text-v2:0",
+        "model_segment": "amazon-titan-embed-text-v2",
+        "variant": "titan-v2",
+        "text_variant": "variant_text",
+        "batch_size": 2,
+        "max_length": 8192,
+        "normalize": True,
+        "version": "v1",
+        "sql_text": _config().sql_text,
+    }
+    defaults.update(kw)
+    return EmbeddingConfig(**defaults)
+
+
+def test_titan_generation_writes_titan_prefix(memory_sink: MemorySink) -> None:
+    """The Titan config lands parts under its own prefix with 1,024 dims."""
+    athena = FakeAthena(_page("titan one", "titan two"))
+    config = _titan_config()
+    summary = driver.run_embedding(
+        memory_sink, athena, TitanStub(), config, pipeline_version="dev"
+    )
+    assert summary.embedded == 2 and not summary.zero_delta
+    (part_key,) = summary.part_keys
+    assert part_key == keys.embedding_part(
+        "amazon-titan-embed-text-v2", "titan-v2", "v1", summary.run_id, 1
+    )
+    assert (
+        "lake/embeddings/model=amazon-titan-embed-text-v2/variant=titan-v2/version=v1/"
+        in part_key
+    )
+
+    table = _read_part(memory_sink, part_key)
+    assert table["embedding_dimension"].to_pylist() == [1024, 1024]
+    assert table["normalization"].to_pylist() == ["l2", "l2"]
+    assert table["model"].to_pylist() == ["amazon.titan-embed-text-v2"] * 2
+    assert table["model_version"].to_pylist() == ["amazon.titan-embed-text-v2:0"] * 2
+    assert table["configuration_hash"].to_pylist() == [configuration_hash(config)] * 2
+    vectors = np.stack(table["embedding"].to_pylist())
+    assert vectors.shape == (2, 1024)
+    assert np.allclose(np.linalg.norm(vectors, axis=1), 1.0, atol=1e-5)
+
+    manifest = json.loads(memory_sink.get(summary.dataset_manifest_key))
+    assert manifest["model"] == "amazon.titan-embed-text-v2"
+    assert manifest["outputs"] == {
+        "model_segment": "amazon-titan-embed-text-v2",
+        "variant": "titan-v2",
+        "version": "v1",
+    }
+
+
+def test_titan_second_run_is_zero_delta(memory_sink: MemorySink) -> None:
+    """The MiniLM prefix is untouched and the Titan prefix is generation-scoped."""
+    first = driver.run_embedding(
+        memory_sink, FakeAthena(_page("a", "b")), TitanStub(), _titan_config()
+    )
+    assert first.embedded == 2
+    second = driver.run_embedding(
+        memory_sink,
+        FakeAthena([["source_hash", "variant_text"]]),
+        TitanStub(),
+        _titan_config(),
+    )
+    assert second.zero_delta and second.part_keys == []
+    assert second.configuration_hash == first.configuration_hash
+    titan_parts = [
+        k
+        for k in memory_sink.objects
+        if "/embeddings/model=amazon-titan-embed-text-v2/" in k and "/part-" in k
+    ]
+    assert titan_parts == first.part_keys
+    assert not [k for k in memory_sink.objects if "/model=all-minilm-l6-v2/" in k]
+
+
+def test_encoder_failure_names_batch_and_source_hash(
+    memory_sink: MemorySink,
+) -> None:
+    class ExplodingEncoder(StubEncoder):
+        def encode(self, texts):
+            raise ValueError("token count 9000 exceeds bound")
+
+    page = _page("ok", "bad")
+    with pytest.raises(ValueError) as excinfo:
+        driver.run_embedding(
+            memory_sink, FakeAthena(page), ExplodingEncoder(8), _config(batch_size=2)
+        )
+    message = str(excinfo.value)
+    assert "encode batch 1" in message
+    assert H1 in message
+    assert "token count 9000" in message

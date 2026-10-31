@@ -589,3 +589,16 @@ def test_render_task_definitions_rejects_unresolved_placeholders(
     )
     with pytest.raises(ValueError, match="UNREPLACED"):
         pcs.render_task_definitions(ACCT, REGION_OK)
+
+
+def test_pipeline_policy_grants_bedrock_titan_invoke(env, region=REGION_OK) -> None:
+    """The embedding tier's Bedrock call needs one exact foundation model."""
+    policy = pcs.pipeline_policy(ACCT, region)
+    by_sid = {s["Sid"]: s for s in policy["Statement"]}
+    statement = by_sid["BedrockTitanInvoke"]
+    assert statement["Effect"] == "Allow"
+    assert statement["Action"] == ["bedrock:InvokeModel"]
+    assert statement["Resource"] == [
+        f"arn:aws:bedrock:{region}::foundation-model/amazon.titan-embed-text-v2:0"
+    ]
+    assert "*" not in "".join(statement["Resource"])

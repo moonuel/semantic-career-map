@@ -302,3 +302,69 @@ class TestEmbedEntryPath:
         # The build path never resolves segments from the pointer: explicit
         # flags mint their own generation.
         assert config.model_segment == "all-minilm-l6-v2"
+
+
+# --- 5. Encoder family dispatch ---------------------------------------------
+
+
+def _titan_config() -> EmbeddingConfig:
+    return dataclasses.replace(
+        run_config(),
+        model_name="amazon.titan-embed-text-v2",
+        model_revision="amazon.titan-embed-text-v2:0",
+        model_segment="amazon-titan-embed-text-v2",
+        variant="titan-v2",
+        max_length=8192,
+    )
+
+
+class TestBuildEncoderDispatch:
+    """Family dispatch is import-lazy: no model load, no Bedrock call."""
+
+    def test_titan_config_builds_titan_encoder(self) -> None:
+        import sys
+
+        from backend.pipeline.embedding.encoder import build_encoder
+
+        encoder = build_encoder(_titan_config())
+        assert type(encoder).__name__ == "TitanEncoder"
+        assert encoder._client is None  # no Bedrock client at build time
+        assert "backend.pipeline.embedding.titan" in sys.modules
+
+    def test_titan_encoder_is_the_embedding_protocol(self) -> None:
+        from backend.pipeline.embedding.encoder import EmbeddingEncoder, build_encoder
+
+        assert isinstance(build_encoder(_titan_config()), EmbeddingEncoder)
+
+    def test_sentence_config_builds_sentence_encoder_without_loading(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import backend.pipeline.embedding.encoder as encoder_module
+
+        calls: list[tuple[str, str]] = []
+
+        def factory(name: str, revision: str) -> object:
+            calls.append((name, revision))
+            return object()
+
+        original = encoder_module.SentenceEncoder
+
+        class Recording(original):
+            def __init__(self, config, *, model_factory=None):
+                super().__init__(config, model_factory=model_factory or factory)
+
+        monkeypatch.setattr(encoder_module, "SentenceEncoder", Recording)
+        encoder = encoder_module.build_encoder(run_config())
+        assert isinstance(encoder, original)
+        assert calls == [
+            (
+                "sentence-transformers/all-MiniLM-L6-v2",
+                "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+            )
+        ]
+
+    def test_revision_auto_refuses_titan(self) -> None:
+        from backend.pipeline.embedding.encoder import resolve_pinned_revision
+
+        with pytest.raises(ValueError, match="Bedrock model ID"):
+            resolve_pinned_revision("amazon.titan-embed-text-v2")
