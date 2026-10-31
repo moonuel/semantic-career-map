@@ -21,3 +21,4 @@ scripts/011_encoder_coverage/data/sample_1000.jsonl
 scripts/011_encoder_coverage/data/titan_v2_cache.jsonl
 scripts/011_encoder_coverage/plots/
 scripts/012_evoc_clustering/data/
+scripts/012_evoc_clustering/plots/
