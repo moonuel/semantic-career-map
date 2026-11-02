@@ -233,8 +233,11 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
         {
             # The production embedding encoder invokes the Titan family
             # through Bedrock. One exact foundation-model resource, no
-            # wildcard. Account-level *model access* for the same model is a
-            # separate console/API action — IAM alone fails AccessDenied.
+            # wildcard. This IAM allow is the whole grant: Bedrock retired
+            # the per-model "Model access" console step (and the
+            # PutFoundationModelEntitlement permission) in 2025, so standard
+            # IAM control replaces it (Amazon models need no Marketplace
+            # subscription). Any SCP denying bedrock:InvokeModel still wins.
             "Sid": "BedrockTitanInvoke",
             "Effect": "Allow",
             "Action": ["bedrock:InvokeModel"],
