@@ -8,7 +8,7 @@ Cloud-compute packaging for the three AWS tiers that run repo code
 |---|---|---|---|
 | `scrape` | `Dockerfile.scrape` | `scripts/scrape.py` | Lambda `pipeline-ats-scrape` (ATS tier via image `CMD`), Fargate task definition (curator via command override) |
 | `clean` | `Dockerfile.clean` | `python -m backend.pipeline.cleaning.daily` | Fargate task definition (daily driver: Athena select → manifest → runner) |
-| `embed` | `Dockerfile.embed` | `python scripts/embed.py --config-file /app/embedding-config.json` | Fargate task definition under schedule `daily-embed` (07:00 UTC): the pinned production config baked (own `configuration_hash`) — currently the normalized Titan V2 generation (`deploy/embedding-config.json`; the same bytes as `deploy/embedding-config-titan-v2.json`, the frozen rollout record), encoded through Bedrock (`bedrock:InvokeModel` on the exact foundation-model ARN, granted by `pipeline_policy` on the task role — the retired "Model access" console step and `PutFoundationModelEntitlement` are not needed; Amazon models require no Marketplace subscription); CPU torch + MiniLM weights stay baked so a pointer flip back to MiniLM needs no rebuild |
+| `embed` | `Dockerfile.embed` | `python scripts/embed.py --config-file /app/embedding-config.json` | Fargate task definition under schedule `daily-embed` (07:00 UTC): the pinned production config baked (own `configuration_hash`) — currently the normalized Titan V2 generation (`deploy/embedding-config.json`; the same bytes as `deploy/embedding-config-titan-v2.json`, the frozen rollout record), encoded through Bedrock (`bedrock:InvokeModel` on the exact foundation-model ARN, granted by `pipeline_policy` on the task role — the retired "Model access" console step and `PutFoundationModelEntitlement` are not needed; Amazon models require no Marketplace subscription); the image is Titan-only (no torch/sentence-transformers stack), so rolling back to MiniLM redeploys the previous `:embed` image tag rather than a pointer flip |
 
 Provisioned by `python -m scripts.provision_compute_stack` (T1/T4 of the
 plan); images are built and pushed here, then every consumer references the
@@ -33,11 +33,12 @@ docker buildx build --platform linux/arm64 -f deploy/Dockerfile.embed \
   -t $$PIPELINE_ECR$$/pipeline-images:embed --push .
 ```
 
-`Dockerfile.embed` layers the model bake (CPU torch, then the pinned
-`sentence-transformers/all-MiniLM-L6-v2` revision) **under** the `COPY` of
-`backend/`, `scripts/embed.py`, and the baked config — layer cache keeps the
-torch/weights trunk ~free across routine rebuilds, so only the config and
-code layers re-run on a normal change.
+`Dockerfile.embed` is Titan-only: it installs just the Bedrock/lake surface
+(`boto3`, `botocore`, `python-dotenv`, `httpx`, `numpy`, `pyarrow`) — no
+`torch`/`sentence-transformers`, since the encoder's local-model imports are
+lazy and only a MiniLM rollback needs them (that rollback redeploys an earlier
+`:embed` image). Only the `COPY` layers (backend, `scripts/embed.py`, config)
+change on a normal edit.
 
 Pin the tags per-iteration (`:scrape-$(git rev-parse --short HEAD)`) when
 promoting a new pipeline version; the moving tags stay for schedule targets.
@@ -236,8 +237,10 @@ not repository dependencies. The scrape path pulls `requests` + `boto3` +
 `pyarrow` + `awslambdaric` (the Lambda Runtime Interface Client that makes
 the image invokable); the clean path pulls `httpx` + `boto3` + `pyarrow`
 (no pandas — deliberately nowhere in either image); the embed path is the
-one CPU-torch image: `torch` from the PyPI aarch64 wheel (CPU build) +
-`sentence-transformers` + the same `boto3`/`pyarrow`/`python-dotenv` set.
+lean Titan-only image: `boto3` + `botocore` + `httpx` (imported transitively
+via the cleaning driver's `llm_client`) + `numpy` + `pyarrow` +
+`python-dotenv` — no `torch`/`sentence-transformers`, since Titan encodes
+through Bedrock.
 
 ## Security posture note (accepted residual risk)
 

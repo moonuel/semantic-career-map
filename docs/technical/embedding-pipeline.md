@@ -81,9 +81,10 @@ encoder stays serial because experiment 011's first concurrent pass stalled at
 | Inference speed | ~20 ms per posting (CPU) |
 | Context window | 256 tokens |
 
-Still baked into the embed image and listed second in the production pointer, so
-rolling back is a pointer flip, not a rebuild. Its vectors are untouched by the
-Titan runs (versions add, never overwrite).
+Listed second in the production pointer. The `:embed` image is Titan-only (no
+`torch`/`sentence-transformers`), so rolling back to MiniLM redeploys the
+previous `:embed` image tag rather than a code-free pointer flip. Its vectors
+are untouched by the Titan runs (versions add, never overwrite).
 
 ### Model Selection Rationale
 
