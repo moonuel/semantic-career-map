@@ -59,10 +59,15 @@ docker build -f deploy/Dockerfile.embed --platform linux/arm64 -t pipeline-embed
 docker run --platform linux/arm64 --rm pipeline-embed python scripts/embed.py --help
 ```
 
+On an x86 host without arm64 emulation installed (the smoke fails with
+`exec format error`), build and run these with `--platform linux/amd64`
+instead — none of the Dockerfiles has architecture-specific steps, so the
+native build is functionally identical.
+
 Every `--help` must exit 0 without any `KILO_API_KEY` or `STORE_S3_*`
 set (`daily.py` fetches the secret and constructs the gateway client
 inside `main()`; the scrape handler imports the batch CLI lazily; the
-embed CLI only touches the model and the store in `run_embedding`).
+embed CLI only touches Bedrock and the store in `run_embedding`).
 
 ## Redeploy after changes (the routine)
 
@@ -182,6 +187,10 @@ python scripts/claim_embedding_version.py \
   --configuration-hash <production configuration_hash> --apply
 ```
 
+A brand-new generation prefix (e.g. the Titan `variant=titan-v2` rollout) needs
+no backfill — it has no prior rows, so its first run claims the prefix itself.
+The backfill exists only for prefixes written before the registry existed.
+
 Gate 5 prints this command per unclaimed prefix. The dry run (no `--apply`)
 prints the current claim state first.
 
@@ -191,10 +200,10 @@ prints the current claim state first.
 |---|---|
 | Only scraper code (`backend/ingestion/`, `scripts/scrape.py`) | rebuild+push `:scrape`; then `--create` (Lambda re-point) + `--reregister` (curator revision refresh) |
 | Only cleaning code (`backend/pipeline/`, `backend/storage/`) | rebuild+push `:clean`; then `--create --reregister` |
-| Only embedding code (`backend/pipeline/embedding/`, `scripts/embed.py`) | rebuild+push `:embed` (trunk cache makes it cheap) — no re-registration needed: the schedule's revision pins the moving `:embed` tag, so the next fire runs the new digest |
+| Only embedding code (`backend/pipeline/embedding/`, `scripts/embed.py`) | rebuild+push `:embed` (trunk cache makes it cheap) — no re-registration needed: the schedule's revision pins the moving `:embed` tag, so the next fire runs the new digest. If the change also edits `scripts/provision_compute_stack` (e.g. the Bedrock IAM policy), run `--create --reregister` too |
 | Prompts / model / `configuration.py` | **beware**: `configuration_hash` changes → the Athena anti-join re-selects the FULL raw lake → the next clean run is a full backfill (~9.3k rows, ~50 min, ~$3.40 LLM). Bump the run's evaluation version and read the eval gate before promoting |
 | Embedding config (`deploy/embedding-config.json` or the sample) | a new hash is a NEW generation: rebuild `:embed` (config is baked), and remember rows embedded under the old hash stay there — the selection excludes only same-hash pairs. Record both hashes (production + the 100-row validation sample) with the image tag |
-| Dependencies changed in venv | update the pinned `pip install` versions inside the two Dockerfiles to `pip list` reality first, then the scrape-row flow above |
+| Dependencies changed in venv | update the pinned `pip install` versions inside the three Dockerfiles to `pip list` reality first, then the scrape-row flow above |
 
 ## Rollback
 
