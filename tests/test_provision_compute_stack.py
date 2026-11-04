@@ -591,6 +591,25 @@ def test_render_task_definitions_rejects_unresolved_placeholders(
         pcs.render_task_definitions(ACCT, REGION_OK)
 
 
+def test_pipeline_policy_grants_reconcile_deletes(env) -> None:
+    """Reconcile deletes superseded parts and their checkpoint books.
+
+    Part deletion lives under the embeddings prefix; the paired checkpoint
+    delete lives under the run manifests. Both must be granted or a
+    duplicate-cleanup pass aborts with AccessDenied (2026-11-04 incident).
+    """
+    policy = pcs.pipeline_policy(ACCT, REGION_OK)
+    by_sid = {s["Sid"]: s for s in policy["Statement"]}
+    statement = by_sid["LakeReconcileDelete"]
+    bucket = pcs.bucket_name()
+    assert statement["Effect"] == "Allow"
+    assert statement["Action"] == ["s3:DeleteObject"]
+    assert statement["Resource"] == [
+        f"{pcs.bucket_arn(bucket)}/lake/embeddings/*",
+        f"{pcs.bucket_arn(bucket)}/lake/manifests/runs/*",
+    ]
+
+
 def test_pipeline_policy_grants_bedrock_titan_invoke(env, region=REGION_OK) -> None:
     """The embedding tier's Bedrock call needs one exact foundation model."""
     policy = pcs.pipeline_policy(ACCT, region)
