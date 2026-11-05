@@ -117,6 +117,7 @@ The architecture section is multi-page (like the Technical Details section): `ar
 | Plan | Where Documented |
 |---|---|
 | Section weighting strategies (Variants A/B/C) | `technical/embedding-pipeline.md:106-138`, `research-reports/001-embedding-optimization-research.md:137-179` |
+| Feature-engineering operator ladder, capability-profile enrichment, keyphrase/summary evidence, experiment 016 proposal | `research-reports/026-feature-engineering-for-semantic-clustering.md` |
 | Mean centering | `technical/embedding-pipeline.md:84-87`, `research-reports/001-embedding-optimization-research.md:98-105` |
 | PCA whitening (deferred) | `technical/embedding-pipeline.md:89-90`, `research-reports/001-embedding-optimization-research.md:107-131` |
 | HDBSCAN cluster validation | `technical/evaluation.md:123-135`, `research-reports/002-tutte-institute-tool-review.md:83-103` |

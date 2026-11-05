@@ -8,7 +8,7 @@ Cloud-compute packaging for the three AWS tiers that run repo code
 |---|---|---|---|
 | `scrape` | `Dockerfile.scrape` | `scripts/scrape.py` | Lambda `pipeline-ats-scrape` (ATS tier via image `CMD`), Fargate task definition (curator via command override) |
 | `clean` | `Dockerfile.clean` | `python -m backend.pipeline.cleaning.daily` | Fargate task definition (daily driver: Athena select → manifest → runner) |
-| `embed` | `Dockerfile.embed` | `python scripts/embed.py --config-file /app/embedding-config.json` | Fargate task definition under schedule `daily-embed` (07:00 UTC): the pinned production config baked (own `configuration_hash`) — currently the normalized Titan V2 generation (`deploy/embedding-config.json`; the same bytes as `deploy/embedding-config-titan-v2.json`, the frozen rollout record), encoded through Bedrock (`bedrock:InvokeModel` on the exact foundation-model ARN, granted by `pipeline_policy` on the task role — the retired "Model access" console step and `PutFoundationModelEntitlement` are not needed; Amazon models require no Marketplace subscription); CPU torch + MiniLM weights stay baked so a pointer flip back to MiniLM needs no rebuild |
+| `embed` | `Dockerfile.embed` | `python scripts/embed.py --config-file /app/embedding-config.json` | Fargate task definition under schedule `daily-embed` (07:00 UTC): the pinned production config baked (own `configuration_hash`) — currently the normalized Titan V2 generation (`deploy/embedding-config.json`; the same bytes as `deploy/embedding-config-titan-v2.json`, the frozen rollout record), encoded through Bedrock (`bedrock:InvokeModel` on the exact foundation-model ARN, granted by `pipeline_policy` on the task role — the retired "Model access" console step and `PutFoundationModelEntitlement` are not needed; Amazon models require no Marketplace subscription); the image is Titan-only (no torch/sentence-transformers stack), so rolling back to MiniLM redeploys the previous `:embed` image tag rather than a pointer flip |
 
 Provisioned by `python -m scripts.provision_compute_stack` (T1/T4 of the
 plan); images are built and pushed here, then every consumer references the
@@ -33,11 +33,12 @@ docker buildx build --platform linux/arm64 -f deploy/Dockerfile.embed \
   -t $$PIPELINE_ECR$$/pipeline-images:embed --push .
 ```
 
-`Dockerfile.embed` layers the model bake (CPU torch, then the pinned
-`sentence-transformers/all-MiniLM-L6-v2` revision) **under** the `COPY` of
-`backend/`, `scripts/embed.py`, and the baked config — layer cache keeps the
-torch/weights trunk ~free across routine rebuilds, so only the config and
-code layers re-run on a normal change.
+`Dockerfile.embed` is Titan-only: it installs just the Bedrock/lake surface
+(`boto3`, `botocore`, `python-dotenv`, `httpx`, `numpy`, `pyarrow`) — no
+`torch`/`sentence-transformers`, since the encoder's local-model imports are
+lazy and only a MiniLM rollback needs them (that rollback redeploys an earlier
+`:embed` image). Only the `COPY` layers (backend, `scripts/embed.py`, config)
+change on a normal edit.
 
 Pin the tags per-iteration (`:scrape-$(git rev-parse --short HEAD)`) when
 promoting a new pipeline version; the moving tags stay for schedule targets.
@@ -58,10 +59,15 @@ docker build -f deploy/Dockerfile.embed --platform linux/arm64 -t pipeline-embed
 docker run --platform linux/arm64 --rm pipeline-embed python scripts/embed.py --help
 ```
 
+On an x86 host without arm64 emulation installed (the smoke fails with
+`exec format error`), build and run these with `--platform linux/amd64`
+instead — none of the Dockerfiles has architecture-specific steps, so the
+native build is functionally identical.
+
 Every `--help` must exit 0 without any `KILO_API_KEY` or `STORE_S3_*`
 set (`daily.py` fetches the secret and constructs the gateway client
 inside `main()`; the scrape handler imports the batch CLI lazily; the
-embed CLI only touches the model and the store in `run_embedding`).
+embed CLI only touches Bedrock and the store in `run_embedding`).
 
 ## Redeploy after changes (the routine)
 
@@ -181,6 +187,10 @@ python scripts/claim_embedding_version.py \
   --configuration-hash <production configuration_hash> --apply
 ```
 
+A brand-new generation prefix (e.g. the Titan `variant=titan-v2` rollout) needs
+no backfill — it has no prior rows, so its first run claims the prefix itself.
+The backfill exists only for prefixes written before the registry existed.
+
 Gate 5 prints this command per unclaimed prefix. The dry run (no `--apply`)
 prints the current claim state first.
 
@@ -190,10 +200,10 @@ prints the current claim state first.
 |---|---|
 | Only scraper code (`backend/ingestion/`, `scripts/scrape.py`) | rebuild+push `:scrape`; then `--create` (Lambda re-point) + `--reregister` (curator revision refresh) |
 | Only cleaning code (`backend/pipeline/`, `backend/storage/`) | rebuild+push `:clean`; then `--create --reregister` |
-| Only embedding code (`backend/pipeline/embedding/`, `scripts/embed.py`) | rebuild+push `:embed` (trunk cache makes it cheap) — no re-registration needed: the schedule's revision pins the moving `:embed` tag, so the next fire runs the new digest |
+| Only embedding code (`backend/pipeline/embedding/`, `scripts/embed.py`) | rebuild+push `:embed` (trunk cache makes it cheap) — no re-registration needed: the schedule's revision pins the moving `:embed` tag, so the next fire runs the new digest. If the change also edits `scripts/provision_compute_stack` (e.g. the Bedrock IAM policy), run `--create --reregister` too |
 | Prompts / model / `configuration.py` | **beware**: `configuration_hash` changes → the Athena anti-join re-selects the FULL raw lake → the next clean run is a full backfill (~9.3k rows, ~50 min, ~$3.40 LLM). Bump the run's evaluation version and read the eval gate before promoting |
 | Embedding config (`deploy/embedding-config.json` or the sample) | a new hash is a NEW generation: rebuild `:embed` (config is baked), and remember rows embedded under the old hash stay there — the selection excludes only same-hash pairs. Record both hashes (production + the 100-row validation sample) with the image tag |
-| Dependencies changed in venv | update the pinned `pip install` versions inside the two Dockerfiles to `pip list` reality first, then the scrape-row flow above |
+| Dependencies changed in venv | update the pinned `pip install` versions inside the three Dockerfiles to `pip list` reality first, then the scrape-row flow above |
 
 ## Rollback
 
@@ -236,8 +246,10 @@ not repository dependencies. The scrape path pulls `requests` + `boto3` +
 `pyarrow` + `awslambdaric` (the Lambda Runtime Interface Client that makes
 the image invokable); the clean path pulls `httpx` + `boto3` + `pyarrow`
 (no pandas — deliberately nowhere in either image); the embed path is the
-one CPU-torch image: `torch` from the PyPI aarch64 wheel (CPU build) +
-`sentence-transformers` + the same `boto3`/`pyarrow`/`python-dotenv` set.
+lean Titan-only image: `boto3` + `botocore` + `httpx` (imported transitively
+via the cleaning driver's `llm_client`) + `numpy` + `pyarrow` +
+`python-dotenv` — no `torch`/`sentence-transformers`, since Titan encodes
+through Bedrock.
 
 ## Security posture note (accepted residual risk)
 

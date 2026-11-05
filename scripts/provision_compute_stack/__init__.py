@@ -161,13 +161,17 @@ def pipeline_policy(acct: str, region: str) -> dict[str, Any]:
         },
         {
             # The embedding tier's reconcile heals aged-out orphan parts
-            # (part written but never booked via its checkpoint) by deleting
-            # them. Deletion is confined to the embeddings prefix — the only
-            # lake slice the reconcile pass ever mutates.
-            "Sid": "LakeEmbeddingsDelete",
+            # (part written but never booked via its checkpoint) and
+            # superseded parts by deleting them. A deleted part's checkpoint
+            # book goes with it, so the grant must cover both the embeddings
+            # prefix and the run-checkpoint prefix under manifests.
+            "Sid": "LakeReconcileDelete",
             "Effect": "Allow",
             "Action": ["s3:DeleteObject"],
-            "Resource": [f"{bucket_arn(bucket)}/lake/embeddings/*"],
+            "Resource": [
+                f"{bucket_arn(bucket)}/lake/embeddings/*",
+                f"{bucket_arn(bucket)}/lake/manifests/runs/*",
+            ],
         },
         {
             "Sid": "LakeBucketList",

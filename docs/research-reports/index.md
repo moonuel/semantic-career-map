@@ -154,4 +154,10 @@ Research log for exploratory reports that fuel experiments and the final design.
     **2026-10-30**
 
     Algorithm and evaluation survey for the job-posting clustering layer — centroid (spherical K-Means), hierarchical, density (HDBSCAN/EVōC), probabilistic (vMF/GMM), graph (Leiden), and topic pipelines, plus the four-lens quality protocol (internal, external, stability, task/human). Recommends a spherical K-Means baseline, HDBSCAN/EVōC discovery, ARI/AMI/V-measure against function tags, k-NN purity, and bootstrap stability, with explicit noise and multi-label handling.
+
+-   [**026 — Feature Engineering for Semantic Clustering**](026-feature-engineering-for-semantic-clustering.md){ .md-button }
+
+    **2026-11-02**
+
+    Pre-embedding operator survey for clustering — denoising, field construction, keyphrase extraction, summarization, ESCO skill tagging, grounded capability profiles, decomposition, late chunking, and multi-view fusion. Distinguishes content reduction from semantic enrichment; finds summaries and keyword-only inputs are weak defaults, while a grounded capability profile (skills, methods, tasks, domain, role context) and multi-view fusion are the best-supported next steps. Proposes a staged ladder and a pre-registered eight-arm experiment with leakage and stability gates.
 </div>
