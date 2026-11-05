@@ -33,73 +33,76 @@ theme:
         name: Switch to light mode
 
 plugins:
-  # - search
+  - search
   - sitemap
 
 nav:
   - Home: index.md
-  - Project Overview: project.md
   - Demo: demo.md
-  - Architecture:
-    - Overview: architecture/overview.md
-    # - Design Decisions: architecture/design-decisions.md
-    - Data Architecture: architecture/data.md
-    - AWS Migration Roadmap: architecture/aws-migration-roadmap.md
-    - Cleaning & Ingestion Automation: architecture/cleaning-automation-report.md
-  - Technical Details:
-    - Overview: technical/overview.md
-    - Favourite Resources: technical/resources.md
-    # - Embedding Pipeline: technical/embedding-pipeline.md
-    # - Data Processing: technical/data-processing.md
-    # - Evaluation: technical/evaluation.md
-    # - Technology Choices: technical/tech-choices.md
-  - Results: results.md
-  - Experiment Log:
-    - Overview: experiments/index.md
-    - "001 - Baseline Embedding": experiments/001-baseline-embedding.md
-    - "002 - Boilerplate Removal": experiments/002-boilerplate-removal.md
-    - "003 - LLM Extraction": experiments/003-llm-extraction.md
-    - "004 - GPT vs DeepSeek Speed": experiments/004-gpt-deepseek-benchmark.md
-    - "005 - Semantic Partitioning": experiments/005-semantic-partitioning.md
-    - "006 - Taxonomy-Driven Role Labeling": experiments/006-taxonomy-role-labeling.md
-    - "007 - LLM Latency Benchmark": experiments/007-llm-latency-benchmark.md
-    - "008 - Boilerplate-Only LLM Cleaning": experiments/008-boilerplate-only-cleaning.md
-    - "009 - PCA Informativeness": experiments/009-pca-informativeness.md
-    # - "010 - UMAP Subsample-Fit Stability": experiments/010-umap-subsample-fit.md # deferred until optimization necessary
-    - "011 - Encoder Coverage Bake-Off": experiments/011-encoder-coverage-bakeoff.md
-    - "012 - EVōC Clustering Validity Bake-Off": experiments/012-evoc-clustering-bakeoff.md
-  - Research Reports:
-    - Overview: research-reports/index.md
-    - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md
-    - "002 - Tutte Institute Visualization Tools": research-reports/002-tutte-institute-tool-review.md
-    - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
-    - "004 - LLM Evaluations": research-reports/004-llm-evals-report.md
-    - "005 - Object Storage Naming Conventions": research-reports/005-object-storage-naming-conventions.md
-    - "006 - Proposed System Architecture": research-reports/006-proposed-system-architecture.md
-    - "007 - AnyJev & Jev: Calibrated LLM Classification": research-reports/007-anyjev-calibrated-classification.md
-    - "008 - Contextual Retrieval": research-reports/008-contextual-retrieval.md
-    - "009 - Data Lake Design & Best Practices": research-reports/009-data-lake-design-best-practices.md
-    - "010 - Data Warehouse Design & Best Practices": research-reports/010-data-warehouse-design-best-practices.md
-    - "011 - Object Store Metadata Design": research-reports/011-object-store-metadata-design.md
-    - "012 - EVōC Embedding Clustering": research-reports/012-evoc-embedding-clustering.md
-    - "013 - Job Board API Scrapers": research-reports/013-job-board-api-scrapers.md
-    - "014 - Semantic Search Tools & Architecture": research-reports/014-semantic-search-tools-architecture.md
-    - "015 - HiringCafe MCP": research-reports/015-hiringcafe-mcp.md
-    - "016 - ESCO EU Jobs Taxonomy": research-reports/016-esco-eu-jobs-taxonomy.md
-    - "017 - Near-Duplicate Text Detection": research-reports/017-near-duplicate-text-detection.md
-    - "018 - spaCy & spaCy-LLM": research-reports/018-spacy-and-spacy-llm.md
-    - "019 - AWS S3 Vectors": research-reports/019-s3-vectors.md
-    - "020 - Job Map Visualization Tools": research-reports/020-job-map-visualization-tools.md
-    - "021 - Clustering Metrics at Scale": research-reports/021-clustering-metrics-at-scale.md
-    - "022 - Scaling UMAP to Cloud Hardware": research-reports/022-umap-cloud-scale-deployment.md
-    - "023 - Context Engineering for Embeddings": research-reports/023-context-engineering-for-embeddings.md
-    - "024 - Embedding Models for Semantic Clustering": research-reports/024-embedding-models-for-semantic-clustering.md
-    - "025 - Semantic Clustering Methods & Quality Measures": research-reports/025-semantic-clustering-methods.md
-    - "026 - Feature Engineering for Semantic Clustering": research-reports/026-feature-engineering-for-semantic-clustering.md
-  - Developer Log:
-    - Overview: dev-log/index.md
-    - "2026": dev-log/2026.md
-  - Backlog: TODO.md
+  - Docs:
+      - Overview: docs.md
+      - Project:
+          - Project Overview: project.md
+          - Results: results.md
+          - Backlog: TODO.md
+      - Architecture:
+          - Overview: architecture/overview.md
+          # - Design Decisions: architecture/design-decisions.md
+          - Data Architecture: architecture/data.md
+          - AWS Migration Roadmap: architecture/aws-migration-roadmap.md
+          - Cleaning & Ingestion Automation: architecture/cleaning-automation-report.md
+      - Technical:
+          - Overview: technical/overview.md
+          - Favourite Resources: technical/resources.md
+          # - Embedding Pipeline: technical/embedding-pipeline.md
+          # - Data Processing: technical/data-processing.md
+          # - Evaluation: technical/evaluation.md
+          # - Technology Choices: technical/tech-choices.md
+      - Experiments:
+          - Overview: experiments/index.md
+          - "001 - Baseline Embedding": experiments/001-baseline-embedding.md
+          - "002 - Boilerplate Removal": experiments/002-boilerplate-removal.md
+          - "003 - LLM Extraction": experiments/003-llm-extraction.md
+          - "004 - GPT vs DeepSeek Speed": experiments/004-gpt-deepseek-benchmark.md
+          - "005 - Semantic Partitioning": experiments/005-semantic-partitioning.md
+          - "006 - Taxonomy-Driven Role Labeling": experiments/006-taxonomy-role-labeling.md
+          - "007 - LLM Latency Benchmark": experiments/007-llm-latency-benchmark.md
+          - "008 - Boilerplate-Only LLM Cleaning": experiments/008-boilerplate-only-cleaning.md
+          - "009 - PCA Informativeness": experiments/009-pca-informativeness.md
+          # - "010 - UMAP Subsample-Fit Stability": experiments/010-umap-subsample-fit.md # deferred until optimization necessary
+          - "011 - Encoder Coverage Bake-Off": experiments/011-encoder-coverage-bakeoff.md
+          - "012 - EVōC Clustering Validity Bake-Off": experiments/012-evoc-clustering-bakeoff.md
+      - Research:
+          - Overview: research-reports/index.md
+          - "001 - Embedding optimization": research-reports/001-embedding-optimization-research.md
+          - "002 - Tutte Institute Visualization Tools": research-reports/002-tutte-institute-tool-review.md
+          - "003 - Taxonomy of AI/ML Roles": research-reports/003-ml-ai-responsibility-taxonomy.md
+          - "004 - LLM Evaluations": research-reports/004-llm-evals-report.md
+          - "005 - Object Storage Naming Conventions": research-reports/005-object-storage-naming-conventions.md
+          - "006 - Proposed System Architecture": research-reports/006-proposed-system-architecture.md
+          - "007 - AnyJev & Jev: Calibrated LLM Classification": research-reports/007-anyjev-calibrated-classification.md
+          - "008 - Contextual Retrieval": research-reports/008-contextual-retrieval.md
+          - "009 - Data Lake Design & Best Practices": research-reports/009-data-lake-design-best-practices.md
+          - "010 - Data Warehouse Design & Best Practices": research-reports/010-data-warehouse-design-best-practices.md
+          - "011 - Object Store Metadata Design": research-reports/011-object-store-metadata-design.md
+          - "012 - EVōC Embedding Clustering": research-reports/012-evoc-embedding-clustering.md
+          - "013 - Job Board API Scrapers": research-reports/013-job-board-api-scrapers.md
+          - "014 - Semantic Search Tools & Architecture": research-reports/014-semantic-search-tools-architecture.md
+          - "015 - HiringCafe MCP": research-reports/015-hiringcafe-mcp.md
+          - "016 - ESCO EU Jobs Taxonomy": research-reports/016-esco-eu-jobs-taxonomy.md
+          - "017 - Near-Duplicate Text Detection": research-reports/017-near-duplicate-text-detection.md
+          - "018 - spaCy & spaCy-LLM": research-reports/018-spacy-and-spacy-llm.md
+          - "019 - AWS S3 Vectors": research-reports/019-s3-vectors.md
+          - "020 - Job Map Visualization Tools": research-reports/020-job-map-visualization-tools.md
+          - "021 - Clustering Metrics at Scale": research-reports/021-clustering-metrics-at-scale.md
+          - "022 - Scaling UMAP to Cloud Hardware": research-reports/022-umap-cloud-scale-deployment.md
+          - "023 - Context Engineering for Embeddings": research-reports/023-context-engineering-for-embeddings.md
+          - "024 - Embedding Models for Semantic Clustering": research-reports/024-embedding-models-for-semantic-clustering.md
+          - "025 - Semantic Clustering Methods & Quality Measures": research-reports/025-semantic-clustering-methods.md
+          - "026 - Feature Engineering for Semantic Clustering": research-reports/026-feature-engineering-for-semantic-clustering.md
+      - Developer Log:
+          - Overview: dev-log/index.md
+          - "2026": dev-log/2026.md
 markdown_extensions:
   - abbr
   - admonition
