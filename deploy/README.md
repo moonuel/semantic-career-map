@@ -205,6 +205,37 @@ prints the current claim state first.
 | Embedding config (`deploy/embedding-config.json` or the sample) | a new hash is a NEW generation: rebuild `:embed` (config is baked), and remember rows embedded under the old hash stay there — the selection excludes only same-hash pairs. Record both hashes (production + the 100-row validation sample) with the image tag |
 | Dependencies changed in venv | update the pinned `pip install` versions inside the three Dockerfiles to `pip list` reality first, then the scrape-row flow above |
 
+## Job map artifacts → GitHub Pages
+
+`scripts/map.py` writes the interactive map to `data/plots/map/` (gitignored).
+The docs workflow does not regenerate it; it pulls the published copy from S3
+into `_build/map/` before uploading the Pages artifact.
+
+Publish or refresh after a map run:
+
+```bash
+aws s3 sync data/plots/map/ \
+  "s3://semantic-career-map-data-dev-760852635093-us-east-2-an/lake/artifacts/type=job_map/variant=umap/version=v1/objects/" \
+  --delete --no-progress
+```
+
+The Pages build assumes `github-pages-job-map-read` through GitHub OIDC
+(`token.actions.githubusercontent.com`). That role is read-only on the
+`lake/artifacts/type=job_map/` prefix; the bucket itself stays private.
+`job_map` is a presentation artifact branch (HTML/JSON, not Parquet): it is
+read by the Pages workflow only and is not exposed as an Athena table.
+
+Preview locally after a build (the detail panel uses `fetch`, so serve over
+HTTP — do not open the HTML from `file://`):
+
+```bash
+zensical build --clean
+aws s3 sync \
+  "s3://semantic-career-map-data-dev-760852635093-us-east-2-an/lake/artifacts/type=job_map/variant=umap/version=v1/objects/" \
+  _build/map/ --no-progress
+python -m http.server 8000 -d _build
+```
+
 ## Rollback
 
 ```bash
