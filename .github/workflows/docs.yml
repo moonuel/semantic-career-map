@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - main
+  workflow_dispatch:
 permissions:
   contents: read
   pages: write
@@ -22,6 +23,20 @@ jobs:
           python-version: 3.x
       - run: pip install zensical
       - run: zensical build --clean
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::760852635093:role/github-pages-job-map-read
+          role-session-name: github-pages-job-map
+          aws-region: us-east-2
+      - name: Fetch job map artifacts
+        run: |
+          aws s3 sync \
+            "s3://semantic-career-map-data-dev-760852635093-us-east-2-an/lake/artifacts/type=job_map/variant=umap/version=v1/objects/" \
+            _build/map/ --no-progress --only-show-errors
+          test -f _build/map/index.html || { echo "Error: _build/map/index.html not found"; exit 1; }
+          test -d _build/map/details || { echo "Error: _build/map/details not found"; exit 1; }
+          echo "Job map artifacts present"
       - name: Verify build output
         run: |
           test -f _build/sitemap.xml || { echo "Error: sitemap.xml not found"; exit 1; }
