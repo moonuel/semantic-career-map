@@ -1,8 +1,8 @@
 # AWS Migration Roadmap
 
-> Status: **Phases 0-2 and 5 in use; Garage retired 2026-10-28.** The object store, the scraper tiers, and the query layer run on AWS. This document is kept as the migration record and the plan for the phases still open (3b, 4). Each phase names the primitives it teaches, the repo files it touches, a verification gate, and its cost.
+> Status: **Phases 0-5 live; Phase 6 deferred.** The object store, scraper tiers, scheduling, cleaning, embedding, and query layer run on AWS. The cleaning and embedding tiers landed after the initial migration and are documented in the [Cleaning Automation report](cleaning-automation-report.md) and [Embedding Pipeline](../technical/embedding-pipeline.md). This document remains the migration record and the plan for the deferred application layer.
 
-**Companion documents:** [Data Architecture](data.md) (the lake layout this migration preserves), [Athena Lakehouse Proposal](proposed-athena-layout.md) (the Phase 5 query layer), Research Report [013](../research-reports/013-job-board-api-scrapers.md) (why polling is daily, whole-board, key-free).
+**Companion documents:** [Data Architecture](data.md) (the lake layout this migration preserves), [Athena Lakehouse Layout](athena-layout.md) (the live Phase 5 query layer), Research Report [013](../research-reports/013-job-board-api-scrapers.md) (why polling is daily, whole-board, key-free).
 
 ---
 
@@ -10,12 +10,14 @@
 
 | Component | Today | Target on AWS |
 |---|---|---|
-| Object store | ~~Garage v2.4.1 container~~ **retired 2026-10-28** | S3 bucket, same key namespace, zero file-format changes |
-| Store client | `backend/storage/store.py` via `STORE_S3_*` env (`STORE_S3_ENDPOINT` empty/absent → AWS S3, default credential chain, static keys refused) | Same `ObjectStore`, IAM role instead of static keys in AWS contexts |
-| Scraper run | `python scripts/scrape.py`, manually, `SOURCE_BOARDS` registry | Same script, **two compute tiers**: Lambda for ATS boards (seconds), Fargate task for the dataroles curator (> Lambda's 15-min ceiling; politeness-paced, wall-time grows with the sitemap) |
-| Scheduling | none (manual) | EventBridge Scheduler, `rate(1 day)`, two targets (Lambda + ECS RunTask) — scraping stays **daily per Report 013 §5** |
-| Failure visibility | run summary + manifest | SQS dead-letter queue + CloudWatch alarm → email |
-| Query layer | none | Glue Data Catalog + Athena (Phase 5) |
+| Object store | ~~Garage v2.4.1 container~~ **retired 2026-10-28** | S3 bucket, same key namespace, zero file-format changes — **live** |
+| Store client | `backend/storage/store.py` via `STORE_S3_*` env (`STORE_S3_ENDPOINT` empty/absent → AWS S3, default credential chain, static keys refused) | Same `ObjectStore`, IAM role instead of static keys in AWS contexts — **live** |
+| Scraper run | ATS Lambda at 04:00 UTC; dataroles curator Fargate task at 05:00 UTC | Lambda for ATS boards (seconds); Fargate for the dataroles curator — **live** |
+| Cleaning | Gemini 2.5 Flash Lite Fargate task at 06:00 UTC, Athena anti-join selection | Daily delta cleaning with flush-watermark parts and run manifests — **live** |
+| Embedding | Titan V2 over Bedrock Fargate task at 07:00 UTC | Daily delta embedding with version claims and a production pointer — **live** |
+| Scheduling | Four EventBridge schedules in the `pipeline` group | Daily scrape, curator, clean, and embed runs — **live** |
+| Failure visibility | SQS DLQ + CloudWatch alarm → SNS; ECS failure rule | DLQ depth and non-zero task exits alert the operator — **live** |
+| Query layer | Glue Data Catalog + Athena workgroup | Raw, manifest, cleaned, and embedding tables — **live** |
 | Local dev | AWS S3 (dev bucket) | Same dev bucket; no local store |
 
 The migration principle: **S3 is a drop-in endpoint swap, not a redesign.** Keys are already content-addressed (`sha256=<hash>.json`), validated through `backend/storage/keys.py`, and the scrape run is a single process with the manifest as the observable record — that contract survives unchanged.
@@ -87,8 +89,8 @@ The registry has two workload shapes (Report 013's two-tier landscape, now in co
 **Learns:** ECR, Lambda from container image, execution roles, function env config, DLQ.
 
 **Tasks:**
-- `deploy/Dockerfile` (Lambda base image + handler) wrapping the repo (new `deploy/` directory — flag: introduces a top-level dir; decide vs `scripts/` at review).
-- Push to ECR; create Lambda from the image (ARM64/Graviton is cheapest), memory 1024 MB, timeout suite: 300 s (ATS tier: 4 boards, seconds of work).
+- `deploy/Dockerfile.scrape` (Lambda base image + handler) wrapping the repo. The same image is reused by the curator task with a plain CLI entrypoint.
+- Push to ECR; create Lambda from the image (ARM64/Graviton is cheapest), memory 1024 MB, timeout suite: 300 s (ATS tier: Ashby, Greenhouse, Lever boards, seconds of work).
 - Attach the Phase 2 role as execution role; store config via function env vars (non-secret); SQS dead-letter queue, retry 2.
 - Manual invoke runs the registry's ATS tier: `script entry --source ashby --source greenhouse --source lever`.
 
@@ -99,14 +101,14 @@ The registry has two workload shapes (Report 013's two-tier landscape, now in co
 **Learns:** ECS task definitions, Fargate launch type, task networking (public subnet, no NAT), ECR image with a plain CLI entrypoint.
 
 **Tasks:**
-- `deploy/Dockerfile.fargate` — same repo, plain `python:3.x-slim` base, `CMD ["python", "scripts/scrape.py", "--source", "dataroles"]`; push to a second ECR repo.
+- `deploy/Dockerfile.scrape` — same repo and image, plain `python:3.14-slim` base, `CMD ["python", "scripts/scrape.py", "--source", "dataroles"]`; the same ECR repo serves both tiers.
 - Fargate task: 0.25 vCPU ARM / 0.5 GB (cheapest legal task size) in the default VPC public subnet, auto-assigned public IP, the Phase 2 role as task role, CloudWatch Logs group.
 - Task must **exit when the scrape completes** — Fargate bills wall-clock; a finished task that lingers is the classic leak.
 - Manual run: `aws ecs run-task` → full curator walk, object-level dedup makes duration the only cost.
 
 **Gate:** one standalone task completes the corpus end-to-end, exits 0, writes objects + manifest; task transitions to STOPPED on its own.
 
-**Repo touchpoints:** `deploy/Dockerfile`, `deploy/Dockerfile.fargate`, task-definition JSON in `deploy/`; possibly a `--max-workers` default note (Lambda has fewer cores than the dev box; politeness gates already bound per-host concurrency).
+**Repo touchpoints:** `deploy/Dockerfile.scrape`, task-definition JSON in `deploy/`, and the provisioner's schedule wiring.
 
 ---
 
@@ -115,11 +117,11 @@ The registry has two workload shapes (Report 013's two-tier landscape, now in co
 **Learns:** EventBridge Scheduler, CloudWatch metrics/alarms, SNS email.
 
 **Tasks:**
-- EventBridge Scheduler: `rate(1 day)` → two targets — the Lambda ARN (ATS tier) and an ECS RunTask target (curator tier, Phase 3b's task definition).
-- CloudWatch alarm on DLQ depth (not empty → ATS tier failed) → SNS → email; an EventBridge rule on ECS task `STOPPED` events with non-zero exit code → same SNS topic (curator tier failed).
-- Dashboard: invocations, errors, duration, approximate S3 object growth per day (`list_objects` is fine — or track manifest sizes).
+- EventBridge Scheduler: four daily targets — ATS Lambda (04:00 UTC), curator Fargate (05:00), cleaning Fargate (06:00), and embedding Fargate (07:00).
+- CloudWatch alarm on DLQ depth (not empty → ATS tier failed) → SNS → email; an EventBridge rule on ECS task `STOPPED` events with non-zero exit code → the same SNS topic (curator, cleaning, and embedding tiers).
+- Dashboard: invocations, errors, duration, approximate S3 object growth per day (`list_objects` is fine — or track median sizes).
 
-**Gate:** two consecutive scheduled days produce both manifests (ATS run + curator run); day 2 records duplicates only (content-addressed dedup observable in the cloud) — this is the idempotence proof.
+**Gate:** two consecutive scheduled days produce the expected manifests (ATS + curator) and a no-op cleaning/embedding run; duplicates are observable instead of accumulating new objects.
 
 **Repo touchpoints:** `README.md` current-status section.
 
@@ -151,13 +153,15 @@ These exist on AWS but are **out of scope** until [implementation priorities](..
 | S3 Standard | ~1 GB/yr growth, content-deduped | < $0.10 |
 | S3 requests | ~7 boards/day + manifests | < $0.50 |
 | Lambda | ~1 invocation/day, seconds, inside always-free | $0 |
-| ECS Fargate (curator tier) | ~1 task/day, 0.25 vCPU ARM / 0.5 GB, wall-clock ≈ corpus walk (~$0.01/hr at that size) | ~$0.30 |
-| ECR | 2 images, < 1 GB stored | ~$0.10 |
+| ECS Fargate (curator tier) | ~1 task/day, 0.25 vCPU ARM / 0.5 GB, wall-clock ≈ corpus walk | ~$0.30 |
+| ECS Fargate (cleaning tier) | ~1 task/day, 1 vCPU / 2 GB, delta-scale work | ~$0.15–0.30 |
+| ECS Fargate (embedding tier) | ~1 task/day, 2 vCPU / 4 GB, delta-scale work | ~$0.10–0.25 |
+| ECR | 3 images, < 1 GB stored | ~$0.10 |
 | EventBridge Scheduler | 2 rules | $0 |
 | SQS | DLQ trickle | $0 |
 | CloudWatch Logs | ~10 MB/mo | <$0.10 |
 | Glue catalog + Athena | occasional queries | pennies |
-| **Total** | | **≈ $1.50/mo** |
+| **Total** | | **≈ $2.00/mo** |
 
 Stays inside the $200 free-tier credits from signup; nothing in phases 0-5 risks the credits unless a guardrail in §2 is ignored.
 
@@ -166,6 +170,6 @@ Stays inside the $200 free-tier credits from signup; nothing in phases 0-5 risks
 ## 5. Verification Trail (what proves each layer survived the move)
 
 1. **Storage identity:** `sha256=` keys re-hash identically in S3 — content-addressing intact.
-2. **Dedup idempotence:** day-2 scheduled run writes a manifest of duplicates and zero new objects.
-3. **Provenance:** each run's `lake/manifests/ingestion/` manifest is byte-stable for identical data (byte-identical manifests for identical inputs — already a scrape-run property).
+2. **Dedup idempotence:** day-2 scheduled runs record duplicates and write zero new raw objects; cleaning and embedding report zero new rows.
+3. **Provenance:** each run's ingestion manifest, run record, and dataset manifest reconstruct inputs, configuration, code version, and outputs. Re-running identical content is stable in row order, not byte-identical as a file (timestamps, run ids, and writer metadata vary).
 4. **Least privilege:** policy simulator + a negative test (attempt an out-of-scope action, expect deny).

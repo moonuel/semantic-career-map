@@ -1,12 +1,11 @@
 # Data Architecture
 
-!!! info "Data architecture under construction!"
-  Currently migrating from the legacy object-per-posting store to the lakehouse layout described below. The [`keys.py`](../../backend/storage/keys.py) raw branch has migrated: `raw_payload` emits content-addressed keys (§2.1) with a governed `source` allowlist and no time partition. The `artifacts/`, `embeddings/`, `eval/`, and `manifests/` builders still emit legacy keys (§11) until their branches land.
-
+!!! info "Lakehouse is live"
+  The lakehouse layout below is the production layout. Raw JSON, cleaned artifacts, Titan embeddings, eval datasets/results, ingestion manifests, run/dataset manifests, and embedding-version claims all live under their lakehouse prefixes. The legacy object-per-posting layout is retained in §11 as migration history only.
 
 The lakehouse is the immutable, versioned source of truth for raw job-posting data, and the layer every derived dataset is reproducibly built from.
 
-The design targets **S3 + Glue Data Catalog + Athena**: raw data is preserved verbatim as **JSON**, everything queryable becomes **Parquet**, and directories use **Hive-style partitioning** so Athena prunes scans instead of reading the whole lake. A single bucket is used for now (until scope justifies expansion into separate buckets), with the branches below as prefixes.
+The design targets **S3 + Glue Data Catalog + Athena**: raw data is preserved as canonical JSON, everything queryable becomes **Parquet**, and directories use **Hive-style partitioning** so Athena prunes scans instead of reading the whole lake. A single lake bucket is used for now (until scope justifies expansion into separate buckets), with the branches below as prefixes. A separate `state/` bucket holds the mutable production pointer.
 
 The core principle:
 
@@ -14,7 +13,7 @@ The core principle:
 
 The object keys stop being the query interface. They carry the physical layout; identity, provenance, and configuration move into row metadata and manifests; queries hit tables instead of prefixes.
 
-Full rationale: [Athena Lakehouse Proposal](proposed-athena-layout.md). Storage-side and metadata-side research: reports [009](../research-reports/009-data-lake-design-best-practices.md), [010](../research-reports/010-data-warehouse-design-best-practices.md), and [011](../research-reports/011-object-store-metadata-design.md).
+Full rationale: [Athena Lakehouse Layout](athena-layout.md). Storage-side and metadata-side research: reports [009](../research-reports/009-data-lake-design-best-practices.md), [010](../research-reports/010-data-warehouse-design-best-practices.md), and [011](../research-reports/011-object-store-metadata-design.md).
 
 ## 1. Branches
 
@@ -29,10 +28,10 @@ Data is organized into five top-level branches -- one immutable source layer, th
 | `manifests/` | Dataset provenance, ingestion events, pipeline runs | JSON | Append-only |
 
 ```
-lake/                          # the single bucket, for now
+lake/                          # the lake bucket
   raw/
     source=<source>/
-      sha256=<content-hash>.json       # verbatim payload, content-addressed, stored once
+      sha256=<content-hash>.json       # canonical payload, content-addressed, stored once
   artifacts/
     type=<artifact-type>/
       variant=<variant>/
@@ -56,9 +55,12 @@ lake/                          # the single bucket, for now
             part-00000.parquet          # machine output over a dataset
   manifests/
     datasets/                           # one manifest per dataset generation
-    ingestion/                          # one entry per ingestion event
-    runs/                               # pipeline-run records
+    ingestion/                          # one Parquet manifest per ingestion run
+    runs/                               # one record per pipeline run
     versions/embeddings/                # version-ownership claims (§2.4)
+
+state/                         # separate control-plane bucket
+  production.json              # mutable pointer to the active generations
 ```
 
 The former `eval`/`live` split survives as the `eval/` prefix -- authored ground truth never crosses with generated data. The former `configs/` branch is absorbed into `manifests/` (§3).
@@ -69,11 +71,11 @@ Keys carry what must be **listed and pruned by prefix** -- everything else is me
 
 ### 2.1 Content identity
 
-Raw objects are named by content, not by arrival: `sha256=<hash>.json` is the identity of the *received payload*, while the *ingestion event* gets its own identity (`ingestion_id`, recorded in raw metadata and `manifests/ingestion/`). The same content observed repeatedly is therefore not a new document version -- the object already exists, and only gains another observation.
+Raw objects are named by content, not by arrival: `sha256=<hash>.json` hashes the **canonical JSON payload**, while the *ingestion event* gets its own identity (`ingestion_id`, recorded in the ingestion manifest). The same content observed repeatedly is therefore not a new document version -- the object already exists, and only gains another observation.
 
 The raw key therefore carries only `source=` plus the hash leaf. There is deliberately no `ingested_on=` partition: a date in the path would give identical re-ingested payloads different keys on different runs and accumulate copies, defeating content-addressing. Objects are never rewritten, so the object's S3 `Last-Modified` is its first-ingestion time, and provenance dates for Athena range queries live in `manifests/ingestion/` (§3) instead of the key namespace.
 
-Exact-byte hashing is sometimes too exact -- a trailing space should not mint a new identity. Once canonicalization rules exist, keep both a `raw_hash` (exact received bytes, the address) and a `canonical_content_hash` (semantically equivalent canonicalized content).
+Hashing the canonical payload rather than the exact received bytes keeps insignificant serialization differences from minting a new identity. The ingestion layer strips source-specific wrapper fields, normalizes whitespace and Unicode, and drops null/empty values before hashing and storage; every ingest still emits a new manifest row with the action (`stored` or `duplicate`) and the run's ingestion id.
 
 ### 2.2 Posting identity
 
@@ -141,7 +143,7 @@ A content hash still won't catch the same job posting collected twice but posted
 Every derived artifact should identify its inputs and transformation. The chain is:
 
 ```
-raw posting ──► normalized posting ──► responsibility text ──► embedding
+raw posting ──► canonical payload ──► cleaned text ──► embedding
 ```
 
 Row-level metadata reconstructs each hop:
@@ -151,7 +153,7 @@ artifact_id, source_hash, input_artifact, input_version,
 pipeline_version, configuration_hash, created_at
 ```
 
-The per-posting `metadata.json` sidecar (still written by today's legacy ingestion) is what this grows out of -- provenance moves from one sidecar per posting into row columns and dataset manifests, which is the shape a relational catalog can actually query (§9).
+The per-posting `metadata.json` sidecar was the legacy ingestion's provenance record. Current ingestion writes provenance into row columns, the raw payload, and the ingestion/run/dataset manifests instead; legacy sidecars may remain for objects created before the migration but are not part of the live path.
 
 ## 6. Queryable Datasets (Parquet)
 
@@ -171,7 +173,7 @@ pipeline_version, created_at` (plus the run-id naming the producing run)
 -- the artifact hash *is* the join handle (§2.2); there is no `artifact_id`
 and no minted posting id to collide with it.
 
-Raw data stays JSON -- verbatim source preservation beats columnar convenience.
+Raw data stays JSON -- canonical payload preservation beats columnar convenience.
 
 ## 7. Embeddings
 
@@ -185,7 +187,8 @@ with rows of:
 
 ```
 source_hash, embedding, model, model_version,
-input_artifact, input_version, embedding_dimension, normalization, created_at
+input_artifact, input_version, embedding_dimension, normalization,
+created_at, configuration_hash, run_id
 ```
 
 The live scheduled generation is `model=amazon-titan-embed-text-v2/variant=titan-v2/version=v1/` -- normalized Amazon Titan Text Embeddings V2 over Bedrock, `embedding_dimension=1024`, `normalization=l2` ([experiment 012](../experiments/012-evoc-clustering-bakeoff.md) chose it on 2026-10-31). The generation's identity still runs through the same hashed config: `model_name` carries the Bedrock model family id (`amazon.titan-embed-text-v2`), `model_revision` carries the pinned Bedrock model ID (`amazon.titan-embed-text-v2:0`) exactly as it earlier carried a HuggingFace commit, and the encoder is selected by family (`build_encoder`). Nothing in the row schema, the part keys, or the `configuration_hash` canonicalization changed -- only the values. The MiniLM generation (`model=all-minilm-l6-v2/variant=minilm/version=v1/`, 384-d) stays on disk and in the production pointer as the rollback target; versions add, they never overwrite.
@@ -224,21 +227,20 @@ The same evaluation set can therefore be evaluated repeatedly under different as
 The Glue Data Catalog provides the logical schema over the physical datasets, and Athena tables are the stable interface:
 
 ```
-raw.job_postings
-artifacts.responsibility_text
-artifacts.skills
-embeddings.job_posting_embeddings
-eval.career_relevance
-eval.career_relevance_results
+raw_ashby, raw_dataroles, raw_greenhouse, raw_lever,
+raw_hiringcafe, raw_linkedin
+manifests_ingestion
+artifacts_cleaned
+postings_embeddings
 ```
 
-A logical table maps onto S3 locations regardless of how they are partitioned underneath, so a physical repartition never breaks a query -- nothing downstream references the prefixes in §1. The directory structure is not the primary API; the tables are.
+A logical table maps onto S3 locations regardless of how they are partitioned underneath, so a physical repartition never breaks a query -- nothing downstream references the prefixes in §1. The directory structure is not the primary API; the tables are. The `artifacts_cleaned` registration is currently pinned to `variant=llm/version=v1`, so a new cleaning version needs a table re-registration before it is queryable.
 
 The object store remains the system of record; Athena is the query and serving layer over it (reports 009/010 draw this boundary in detail).
 
 ## 10. Serving Snapshots
 
-The application should not consume the bucket directly -- it consumes a coherent, rebuildable **snapshot** of lakehouse datasets, pinned by a publication manifest:
+The application should not consume the bucket directly -- it consumes a coherent, rebuildable **snapshot** of lakehouse datasets. The production control plane already pins the active cleaning and embedding generations in `state/production.json`; a broader publication manifest for the serving layer is still future work:
 
 ```json
 {
@@ -251,11 +253,11 @@ The application should not consume the bucket directly -- it consumes a coherent
 }
 ```
 
-Indexes and serving objects are disposable, and are rebuilt from whichever datasets the manifest pins.
+Indexes and serving objects are disposable, and are rebuilt from whichever datasets the manifest pins. Today the map sidesteps this by publishing its own `index.html`, coordinates, and detail buckets under the `job_map` artifact prefix.
 
 ## 11. Legacy Layout
 
-Everything this page described before the lakehouse rewrite -- and everything [`keys.py`](../../backend/storage/keys.py) still implements today -- is the legacy object-per-posting store:
+Everything this page described before the lakehouse rewrite is retained here as migration history. [`keys.py`](../../backend/storage/keys.py) still carries the legacy builders and validators so old objects remain addressable, but the live pipeline writes the lakehouse prefixes above:
 
 ```
 live/
@@ -280,12 +282,13 @@ It is retrieval-first -- everything about one posting is one prefix away -- whic
 
 | Concept | Legacy | Lakehouse |
 |---|---|---|
-| Raw address | `live/raw/<id>/source.md` | content-addressed JSON (§2.1) — **live** (9.2k objects) |
+| Raw address | `live/raw/<id>/source.md` | content-addressed JSON (§2.1) — **live** |
 | Posting identity | `<id>` path segment | `source_hash` = identity + join handle; no minted ids (§2.2, D11) |
 | Query interface | key prefix | Glue catalog + Athena tables (§9) — **live for selection** (D12, Phase 5 pulled forward): production cleaning selects via the `select_uncleaned` anti-join |
 | One artifact | one JSON object | one Parquet row (§6) — **live**: `type=cleaned_text/variant=llm/version=v1` (flush-watermark parts + per-run dataset manifests) |
 | One embedding | one `<id>.npy` | vector column (§7) — **live**: `model=…/variant=…/version=…` partitions, Titan V2 production generation |
 | Config record | `configs/<hash>.json` | `configuration_hash` + manifests (§3) — **live** (run/dataset manifests in `manifests/runs/`, `manifests/datasets/`) |
 | Eval-set pin | `eval/_current.json` | explicit version pins (§8, §10) — **live**: golden `variant=author/version=v1` + quality results `variant=exp003/version=v1,v2` with per-run manifests |
+| Production pointer | implicit "latest" | `state/production.json` immutable generation pointer — **live** |
 
 Legacy objects aren't converted -- derived data is supposed to be regenerable, so only raw payloads are re-addressed by content hash and everything else re-generates as Parquet when its pipeline stage is formalized. Migration is branch-by-branch, key builders first. The old §A.1 hunch -- that the metadata sidecar may eventually expand into an Athena SQL database -- is answered by §9.

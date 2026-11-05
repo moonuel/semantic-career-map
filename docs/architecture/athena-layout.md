@@ -1,4 +1,6 @@
-# Athena Lakehouse Proposal
+# Athena Lakehouse Layout
+
+> Status: **live.** The layout below is the implemented lakehouse and query layer. The document originated as a proposal; the live page keeps the design rationale and records the amendments made during implementation.
 
 The lakehouse is an immutable, versioned source of truth for raw job-posting data and reproducible derived datasets.
 
@@ -49,7 +51,7 @@ The core principle is:
 ## 2. S3 layout
 
 !!! warning "Amendment — no `ingested_on` in raw keys"
-  As adopted in [data.md](data.md §2.1), the raw layer drops the `ingested_on=<YYYY-MM-DD>/` level shown below: a date in the path would give identical re-ingested payloads different keys and accumulate copies, defeating content-addressing within a source. Objects are never rewritten, so S3 `Last-Modified` is the first-ingestion time, and provenance dates for date-range queries live in manifests instead. The tree below is the original proposal text, kept verbatim.
+  As adopted in [data.md §2.1](data.md#21-content-identity), the raw layer drops the `ingested_on=<YYYY-MM-DD>/` level shown below: a date in the path would give identical re-ingested payloads different keys and accumulate copies, defeating content-addressing within a source. Objects are never rewritten, so S3 `Last-Modified` is the first-ingestion time, and provenance dates for date-range queries live in manifests instead. The tree below is the original design tree, kept for migration history.
 
 ```text
 lake/
@@ -175,7 +177,7 @@ event_date
 Avoid partitioning on high-cardinality identifiers such as:
 
 ```text
-posting_id
+source_hash
 uuid
 content_hash
 ```
@@ -188,11 +190,11 @@ The partition hierarchy should also avoid excessive partition counts. The purpos
 
 Derived artifacts should generally be stored as **Parquet datasets**, rather than one JSON file per artifact.
 
-For example:
+For example, the live cleaning artifact:
 
 ```text
 artifacts/
-└── type=responsibility_text/
+└── type=cleaned_text/
     └── variant=llm/
         └── version=v1/
             ├── part-00000.parquet
@@ -203,13 +205,11 @@ artifacts/
 The individual artifact is represented as a row:
 
 ```text
-artifact_id
 source_hash
-posting_id
-artifact_type
 variant
 version
-responsibility_text
+cleaned_text
+configuration_hash
 pipeline_version
 created_at
 ```
@@ -228,19 +228,18 @@ For example:
 raw posting
     │
     ▼
-normalized posting
+canonical payload
     │
     ▼
-responsibility text
+cleaned text
     │
     ▼
 embedding
 ```
 
-A derived dataset should contain enough metadata to reconstruct this lineage:
+A derived dataset contains enough metadata to reconstruct this lineage:
 
 ```text
-artifact_id
 source_hash
 input_artifact
 input_version
@@ -252,7 +251,7 @@ created_at
 The artifact path identifies the dataset class:
 
 ```text
-type=responsibility_text/
+type=cleaned_text/
 variant=llm/
 version=v1/
 ```
@@ -265,17 +264,16 @@ Embeddings are stored as Parquet datasets:
 
 ```text
 embeddings/
-└── model=all-MiniLM-L6-v2/
-    └── variant=responsibility_text/
-        └── version=v3/
+└── model=amazon-titan-embed-text-v2/
+    └── variant=titan-v2/
+        └── version=v1/
             ├── part-00000.parquet
             └── ...
 ```
 
-A record might contain:
+A record contains:
 
 ```text
-posting_id
 source_hash
 embedding
 model
@@ -285,6 +283,8 @@ input_version
 embedding_dimension
 normalization
 created_at
+configuration_hash
+run_id
 ```
 
 The embedding dataset is the authoritative representation of the embeddings.
@@ -311,49 +311,52 @@ eval/
 └── results/
 ```
 
-For example:
+For example, the live cleaning golden set:
 
 ```text
 eval/datasets/
-└── type=career_relevance/
+└── type=cleaning_golden/
     └── variant=author/
         └── version=v1/
             └── part-00000.parquet
 ```
 
-An evaluation dataset might contain:
+The dataset contains:
 
 ```text
-posting_id
-query
-expected_relevance
-annotation
+source
+source_hash
+source_id
+golden_text
 annotator
+created_at
 ```
 
-Results might be stored as:
+Results are stored separately:
 
 ```text
 eval/results/
-└── type=career_relevance/
-    └── variant=llm_judge/
-        └── version=v3/
+└── type=cleaning_quality/
+    └── variant=exp003/
+        └── version=v2/
             └── part-00000.parquet
 ```
 
 with:
 
 ```text
-posting_id
-prediction
-score
-judge_model
-prompt_version
+source_hash
+jaccard
+boilerplate_hits
+hallucination_count
+over_deletion_pct
+over_deletion_flagged
+evaluation_configuration_hash
 evaluation_version
 created_at
 ```
 
-This allows the same evaluation set to be evaluated repeatedly with different models or evaluation procedures.
+A future relevance-judging dataset would use the same dataset/result split with `query`, `expected_relevance`, `score`, and `judge_model` columns. This allows the same evaluation set to be evaluated repeatedly with different models or evaluation procedures.
 
 ## 9. Glue Data Catalog
 
@@ -362,12 +365,11 @@ The Glue Data Catalog provides the logical schema over the physical S3 datasets.
 Example Athena tables:
 
 ```text
-raw.job_postings
-artifacts.responsibility_text
-artifacts.skills
-embeddings.job_posting_embeddings
-eval.career_relevance
-eval.career_relevance_results
+raw_ashby, raw_dataroles, raw_greenhouse, raw_lever,
+raw_hiringcafe, raw_linkedin
+manifests_ingestion
+artifacts_cleaned
+postings_embeddings
 ```
 
 The catalog maps these logical tables to S3 locations.
@@ -375,10 +377,10 @@ The catalog maps these logical tables to S3 locations.
 For example:
 
 ```text
-artifacts.responsibility_text
+artifacts_cleaned
         │
         ▼
-s3://<bucket>/artifacts/type=responsibility_text/
+s3://<bucket>/artifacts/type=cleaned_text/
         │
         ├── variant=llm/
         │     └── version=v1/
@@ -422,9 +424,11 @@ Example:
 ```json
 {
   "dataset_id": "embeddings-v17",
-  "input_dataset": "responsibility-text-v12",
-  "model": "all-MiniLM-L6-v2",
-  "model_version": "...",
+  "input_dataset": "cleaned-text-v1",
+  "model": "amazon-titan-embed-text-v2",
+  "model_version": "amazon.titan-embed-text-v2:0",
+  "variant": "titan-v2",
+  "version": "v1",
   "pipeline_version": "git-sha",
   "configuration_hash": "sha256:...",
   "record_count": 18234,
@@ -454,17 +458,17 @@ Versions identify the transformation or dataset definition, not individual recor
 For example:
 
 ```text
-responsibility_text/v1
-responsibility_text/v2
+cleaned_text/v1
+cleaned_text/v2
 ```
 
-may represent different extraction methods.
+may represent different cleaning prompts or models.
 
 Likewise:
 
 ```text
-embeddings/model=A/version=v1
-embeddings/model=A/version=v2
+embeddings/model=all-minilm-l6-v2/variant=minilm/version=v1
+embeddings/model=amazon-titan-embed-text-v2/variant=titan-v2/version=v1
 ```
 
 may represent different model or preprocessing configurations.

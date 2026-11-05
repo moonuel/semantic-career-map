@@ -21,11 +21,11 @@ The underlying hypothesis of this work is that **rigorous use of LLMs** for data
 <!-- ### Primary -->
 
 - [ ] Build an end-to-end **semantic search system** for navigating AI/ML career opportunities
-- [ ] Develop a **robust data pipeline** to improve embedding quality and downstream unsupervised learning performance
+- [x] Develop a **robust data pipeline** to improve embedding quality and downstream unsupervised learning performance
 - [x] Establish a **rigorous experimental workflow** with documented hypotheses, evaluations, results, and design decisions
 - [ ] Deploy the system through a secure API layer using FastAPI while protecting proprietary implementation details
-- [ ] Containerize the application and deploy the service to a cloud environment
-- [ ] Publish an accessible demo for others to verify quality of work
+- [ ] Containerize the web application and deploy the query service to a cloud environment
+- [x] Publish an accessible demo for others to verify quality of work
 - [x] Provide **comprehensive documentation** of research and development, system architecture, and engineering decisions
 
 <!-- ### Non-Goals
@@ -70,36 +70,38 @@ The underlying hypothesis of this work is that **rigorous use of LLMs** for data
 
 --- -->
 
-<!-- ## Planned Evolution
-
-```
-Research prototype: baseline embedding + visualization (2026-07-22)
-        ↓
-Experiment loop: text extraction, feature engineering, clustering [current]
-        ↓
-Production pipeline: pre-processing, embedding, similarity ranking, classification
-        ↓
-FastAPI backend + Docker + Cloud deployment
-```
-
---- -->
-
 ## Current Status
 
-| # | Deliverable | Status |
+Last code audit: **2026-11-05**. This table is an implementation index, not a live AWS probe.
+
+| # | Deliverable | Status | Implemented surface |
+|---|---|---|---|
+| 1 | Data Ingestion & Lakehouse | ✅ Live | Ashby, Greenhouse, Lever, and dataroles registry; HiringCafe MCP and LinkedIn import are manual paths. Content-addressed raw JSON, ingestion manifests, and append-only run/dataset records. ATS Lambda runs at 04:00 UTC; curator Fargate task at 05:00 UTC. |
+| 2 | Query Layer | ✅ Live | Glue database + Athena workgroup; `raw_<source>` tables, `manifests_ingestion`, `artifacts_cleaned`, and `postings_embeddings`; 256 MiB per-query scan cap; provision/gate commands in `scripts/provision_query_layer/`. |
+| 3 | Cleaning & Evaluation | ✅ Live | Boilerplate-only Gemini 2.5 Flash Lite cleaning at 06:00 UTC; Athena anti-join selection bounded to 3 days / 5,000 rows; flush-watermark Parquet parts, artifact cache, orphan healing, fail-fast, and run records. Evaluation is a manual 39-reference golden gate over the exp-003 metrics. |
+| 4 | Embedding Pipeline | ✅ Live | Amazon Titan V2 over Bedrock, 1,024-d and L2-normalized, scheduled at 07:00 UTC. One configuration per stable version via claims; `state/production.json` is the immutable-generation pointer; reconciliation heals duplicates and orphan checkpoints. MiniLM 384-d remains the rollback generation. |
+| 5 | Clustering & Similarity | 🟡 Experimental | Cosine distance and the EVōC bake-off are implemented. Experiment 012 selected normalized Titan V2 and accepted its stability risk. There is no production clustering dataset or served cluster/label layer yet. |
+| 6 | Map & Demo | ✅ Live | Interactive UMAP map, 3D coordinates, and lazy detail buckets are live. The published artifact contains **10,010 Titan V2 1,024-d** postings, generated from the production pointer's first embedding entry. |
+| 7 | FastAPI Backend | 🔴 Not started | No resume upload, query, similarity-search, or jobs API. |
+| 8 | Pipeline Containerization & AWS Deployment | ✅ Live | Three ARM64 images (`scrape`, `clean`, `embed`), Lambda ATS tier, three Fargate task definitions, four EventBridge schedules, SNS alerts, SQS DLQ, ECR, SSM secret, and IAM roles. This covers the pipeline, not a user-facing API. |
+| 9 | Frontend & Documentation | 🟡 Partial | Docs site and embedded map are live. Resume-to-role search UI is not started. |
+| 10 | CI/CD | 🟡 Partial | GitHub Actions runs `ruff` and `pytest` on Python 3.14, and docs builds/publishes to Pages. Image builds and AWS deployments remain manual. |
+
+### System Index
+
+| Subsystem | Primary code | Canonical docs |
 |---|---|---|
-| 1 | Data Ingestion Pipeline | 🟡 Lake live: 9.2k raw postings content-addressed on the dev store + manifest branches (`manifests/runs|datasets|ingestion`); curated 39-posting golden set as the eval-dataset author branch |
-| 2 | Embedding Pipeline | ✅ Amazon Titan V2 (`amazon.titan-embed-text-v2:0`, 1,024-d), L2-normalized — production since 2026-10-31 (exp 012); MiniLM 384-d retained as the rollback generation |
-| 3 | Embedding Optimization & Feature Engineering | 🟡 9 experiments complete — cleaning + eval layers LANDED (exp 008 choice in production): `cleaned_text/variant=llm/version=v1` (65 rows, flush-watermark + artifact-cache) and `cleaning_quality`/`cleaning_golden` eval datasets; PCA pre-reduction named via exp 009/009A (`n_dims=256` in the centered frame, 1.5× distance-cost cut); feature engineering next |
-| 4 | Clustering and Similarity Scoring | 🟡 Cosine distance implemented |
-| 5 | FastAPI Backend | 🔴 Not started (Phase 5 D12 selections pulled forward: Athena catalog + `select_uncleaned` anti-join is the live production selection path) |
-| 6 | Docker Containerization | 🔴 Not started |
-| 7 | Cloud Deployment | 🔴 Not started |
-| 8 | Frontend + Documentation | 🟡 Documentation site in progress |
-| 9 | CI/CD Pipeline | 🔴 Not started |
+| Ingestion and raw storage | `backend/ingestion/`, `backend/storage/raw.py`, `scripts/scrape.py` | [Data Architecture](architecture/data.md), [AWS Migration Roadmap](architecture/aws-migration-roadmap.md) |
+| Cleaning and evaluation | `backend/pipeline/cleaning/`, `backend/pipeline/eval/` | [Cleaning Automation](architecture/cleaning-automation-report.md), [Data Processing](technical/data-processing.md) |
+| Embedding and production control | `backend/pipeline/embedding/`, `backend/pipeline/production.py`, `scripts/embed.py` | [Embedding Pipeline](technical/embedding-pipeline.md), [Data Architecture](architecture/data.md) |
+| Query layer | `backend/pipeline/athena.py`, `scripts/provision_query_layer/` | [Data Architecture](architecture/data.md), [Athena Lakehouse Layout](architecture/athena-layout.md) |
+| Map and demo | `scripts/map.py`, `docs/demo.md`, `.github/workflows/docs.yml` | [Results](results.md), [Experiment 012](experiments/012-evoc-clustering-bakeoff.md) |
+| Deployment | `scripts/provision_compute_stack/`, `deploy/` | [Deploy README](https://github.com/moonuel/semantic-career-map/blob/main/deploy/README.md) |
 
-<!-- ## Data Status
+### Current Gaps
 
-- **Real job postings collected:** 27 (in `data/selected-job-postings/`)
-- **Role breakdown:** Data Scientist (8), ML Engineer (5), AI Engineer (3), Applied Researcher (2), plus 9 additional roles
-- **Target with augmentation:** ~350+ postings -->
+- Build the **FastAPI retrieval layer** and resume-to-role query surface.
+- Turn the EVōC results into a production clustering/label dataset and serving contract.
+- Make the cleaning **eval-before-promote gate** enforced rather than runbook prose ([#15](https://github.com/moonuel/semantic-career-map/issues/15)).
+- Add automated map publication and provenance checks; the S3 sync is currently manual and the Pages workflow only checks that `index.html` and `details/` exist.
+- The Glue `artifacts_cleaned` table is pinned to `version=v1`; changing the cleaning version requires re-registering the table.

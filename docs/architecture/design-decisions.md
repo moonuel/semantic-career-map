@@ -14,9 +14,9 @@ Each decision records a deliberate trade-off with measurable justification.
 
 **Context:** Modern embedding models span dense and sparse architectures with quality benchmarks heavily favoring larger models.
 
-**Decision:** Use a dense sentence-transformer model as the embedding backbone.
+**Decision:** Use a dense embedding model as the embedding backbone. The production generation is normalized Amazon Titan Text Embeddings V2 (1,024-d) through Bedrock; the original all-MiniLM-L6-v2 (384-d) remains the rollback generation.
 
-**Rationale:** Dense embeddings encode semantic structure — postings with similar responsibilities cluster together regardless of title differences. The current model (all-MiniLM-L6-v2, 384 dimensions, 80 MB) was chosen for three practical constraints: (1) CPU-only deployment — encodes a posting in ~20 ms, well below any user-perceptible threshold; (2) small model fits anywhere — no model registry, no GPU infrastructure, no container sprawl; (3) proven generalization — trained on 1B+ sentence pairs, it captures semantic similarity reliably on domains it wasn't explicitly fine-tuned for. The embedding model is a configuration choice, not an architectural commitment — swapping to a different dense model is a one-line change.
+**Rationale:** Dense embeddings encode semantic structure — postings with similar responsibilities cluster together regardless of title differences. MiniLM was the initial choice for three practical constraints: CPU-only local inference (~20 ms per posting), a small 80 MB model, and proven generalization. Experiment 011 measured full-corpus encoder coverage, and Experiment 012 selected normalized Titan V2 for clustering quality while accepting its subsample-stability risk. Titan moves inference to a managed service, removes local model packaging from the embedding image, and uses an 8,192-token bound; MiniLM remains a reversible fallback because versions add rather than overwrite. The embedding model is a configuration choice, not an architectural commitment.
 
 ### L2 normalization with dot product over raw cosine similarity
 
@@ -32,7 +32,7 @@ Each decision records a deliberate trade-off with measurable justification.
 
 **Decision:** Precompute embeddings during the data pipeline, load the matrix into memory at startup.
 
-**Rationale:** Job postings are static — re-embedding them at query time adds latency with no benefit. The embedding matrix (27 postings × 384 dimensions) occupies under 50 KB — trivially loaded and queried. Precomputation also enables batch inference optimization (GPU throughput on build, CPU dot-product on query) if the pipeline moves to GPU in the future. At tens of thousands of postings, approximate nearest neighbor indices would replace brute-force dot product, but precomputation remains the correct pattern — the index is built once, not per query.
+**Rationale:** Job postings are static — re-embedding them at query time adds latency with no benefit. At the last snapshot the embedding matrix is roughly 10k postings × 1,024 dimensions (tens of MB as float32) — trivially loaded and queried. Precomputation also enables batch inference optimization on build and cheap dot-product retrieval at query time. At larger scale, approximate nearest neighbor indices would replace brute-force dot product, but precomputation remains the correct pattern — the index is built once, not per query.
 
 ### Stateless API over session state
 
@@ -65,7 +65,7 @@ Each decision records a deliberate trade-off with measurable justification.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Pipeline architecture | Composable stages | Single-variable isolation; swappable components |
-| Embedding model type | Dense sentence-transformer | Semantic similarity encoding; configuration, not commitment |
+| Embedding model type | Dense model; Titan V2 production, MiniLM rollback | Semantic similarity encoding; configuration, not commitment |
 | Similarity metric | L2 norm + dot product | Eliminates magnitude bias; fastest operation |
 | Embedding strategy | Precomputed | Static data; zero query-time latency |
 | API design | Stateless | Simplest deployment; no persistence needed |

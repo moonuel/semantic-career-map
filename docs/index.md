@@ -11,11 +11,11 @@ A semantic search tool for mapping your interests and experience to actual job f
 </div>
 
 !!! info "Currently working on:"
-    
-    - Lakehouse data architecture on AWS S3 to support eventual Athena SQL querying for more efficient data ingestion and analysis.
-    - Job posting scraper from Lever, Greenhouse, and Ashby to enrich the dataset.
-    - Handwritten architecture docs to solidify the concepts in my brain after implementation is done. 
-    - Deployed slice of the base pipeline, complete with light (AnyJev?) evals for data monitoring. 
+
+    - RAG context engineering tools for better semantic clustering
+    - Benchmarking of clustering methods and metrics 
+    - Evaluation and data monitoring layers
+    - Personality quiz for the user, supporting interactive retrieval based on interests
 
 <!-- --- -->
 
@@ -63,50 +63,13 @@ A semantic search tool for mapping your interests and experience to actual job f
 
 <div style="text-align: center; padding: 0 0 2em;" markdown="1">
 
-![Python](https://img.shields.io/badge/Python-3.12+-blue)
-![Sentence Transformers](https://img.shields.io/badge/Sentence%20Transformers-all--MiniLM--L6--v2-green)
-![Scikit-learn](https://img.shields.io/badge/-scikit--learn-%23F7931E?logo=scikit-learn&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.14+-blue)
+![Amazon Titan V2](https://img.shields.io/badge/Embeddings-Amazon%20Titan%20V2-green)
+![Amazon Bedrock](https://img.shields.io/badge/Inference-Amazon%20Bedrock-orange)
+![AWS](https://img.shields.io/badge/Pipeline-S3%20%2B%20Glue%20%2B%20Athena-232F3E?logo=amazonaws&logoColor=white)
 ![UMAP-learn](https://img.shields.io/badge/UMAP--learn-green)
+![Docker](https://img.shields.io/badge/Pipeline-Docker-blue?logo=docker&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-planned-lightgrey)
-![Docker](https://img.shields.io/badge/Docker-planned-lightgrey)
-![CPU-only](https://img.shields.io/badge/Inference-CPU--only-orange)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-black?logo=githubactions&logoColor=white)
 
 </div>
-<!-- 
----
-
-## Architecture Preview
-
-```mermaid
-graph LR
-A[Documents] --> B[Preprocessing]
-B --> C[Embedding Model<br/>all-MiniLM-L6-v2]
-C --> D[Vector Storage<br/>numpy arrays]
-D --> E[Query API<br/>FastAPI]
-E --> F[Ranked Results]
-```
-
-[:material-arrow-right: Full architecture documentation](architecture/overview.md)
-
----
-
-## Current Status
-
-| Phase | Description | Status |
-|---|---|---|
-| 1 | Preprocessing & Embedding Optimization | :material-progress-check: Baseline embedding + visualization complete (27-posting curated corpus). Experiment loop (001–008) complete — deploy-ready cleaning + eval layers landed on the lake. |
-| 2 | Data Collection & Ingestion | :material-progress-check: Lake live — 9.2k raw postings content-addressed on the dev store; manifests (runs/datasets/ingestion) live. |
-| 3 | Embedding Pipeline & Similarity Engine | :material-close: Not started |
-| 4 | FastAPI Backend | :material-close: Not started |
-| 5 | Docker Containerization | :material-close: Not started |
-| 6 | Cloud Deployment | :material-close: Not started |
-| 7 | Frontend | :material-close: Not started |
-| 8 | CI/CD Pipeline | :material-close: Not started |
-| 9 | Documentation & Polish | :material-close: Not started |
-
-### Phase 1 Progress
-
-- ✅ Steps 1.0–1.2: Parsed → embedded (all-MiniLM-L6-v2, L2-normalized) → PCA + UMAP visualized
-- ✅ Steps 1.4–1.7: Experiment loop — baseline, boilerplate removal, LLM extraction, latency benchmark (007) + 8-arm cleaning benchmark (008) complete; cleaning + eval LAYER landed (see [data.md](architecture/data.md) migration table)
-- 🔜 Step 1.3: Proxy metrics formalization, nearest-neighbor audit
-- 🔜 Steps 1.6–1.7: Skill extraction, weighted concatenation experiments -->

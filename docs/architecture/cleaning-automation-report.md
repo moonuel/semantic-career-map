@@ -1,21 +1,28 @@
 # Automating Ingestion & Cleaning on AWS — Gap Report
 
-> Status: **implemented — 2026-10-23.** Answers: what is needed to (a) run the cleaning pipeline on AWS compute, and (b) make continual ingestion + cleaning fully automated. Basis: git history through `d09cd1f`, the [AWS Migration Roadmap](aws-migration-roadmap.md), the archived `add-cleaning-and-eval-layer` change (D1–D12), and the [Data Architecture](data.md) layout. The §3–8 plan landed 2026-10-23/24 (PRs #13/#14).
+> Status: **implemented and scheduled — code audit 2026-11-05.** The cleaning tier landed 2026-10-23/24 (PRs #13/#14) and now runs daily at 06:00 UTC. The embedding tier followed at 07:00 UTC, consuming the cleaned dataset. This page remains the gap analysis and design record; the work-item checkboxes track what landed.
 
 ---
 
-## 1. Where things stand (from recent git history)
+## 1. Where things stand
 
-The last ten commits landed the entire cleaning-and-eval layer and moved selection onto the cloud query layer:
-
-| Landed | Evidence |
-|---|---|
-| Cleaning stage: `backend/pipeline/cleaning/` (runner, normalization, configuration hash, artifact-row cache, flush-watermark writer, run records, CLI) | commits `1114e8d` → `4baf84e` → `e9d584a`; tasks §3 all verified live |
-| Evaluation layer: `backend/pipeline/eval/` (exp-003 metrics verbatim, golden migrated to `eval/datasets/`, results Parquet with lineage) | commits `86081a9`, `ec46008`, `517f416` |
-| Query layer pulled forward (roadmap Phase 5): Glue tables over six raw shapes, Athena workgroup with scan cap, `select_uncleaned` anti-join as the **production selection path** (D12) | commits `4fb8590`, `e9d584a`, `25bd7d3`; `scripts/provision_query_layer/` |
-| Change archived today (2026-10-23) | `openspec/changes/archive/2026-10-23-add-cleaning-and-eval-layer/` |
+| Layer | Current state | Evidence |
+|---|---|---|
+| Cleaning stage | `backend/pipeline/cleaning/` runs on Fargate from the `:clean` image; Athena anti-join selection, Gemini 2.5 Flash Lite, flush-watermark Parquet parts, artifact cache, orphan healing, fail-fast, run and dataset manifests | `deploy/Dockerfile.clean:12`, `backend/pipeline/cleaning/daily.py` |
+| Selection | Production path is the `select_uncleaned` anti-join; scheduled runs are bounded to 3 days / 5,000 rows unless `--backfill` is explicit | `backend/pipeline/selection.py`, `backend/pipeline/cleaning/daily.py` |
+| Evaluation | Manual gate over 39 golden references using the exp-003 rubric; results are versioned Parquet | `backend/pipeline/eval/`, `docs/results.md` |
+| Query layer | Glue tables over six raw shapes, ingestion manifests, cleaned artifacts, and embeddings; Athena workgroup with a 256 MiB scan cap | `scripts/provision_query_layer/` |
+| Scheduling | Four EventBridge schedules: ATS 04:00, curator 05:00, clean 06:00, embed 07:00 UTC | `scripts/provision_compute_stack/__init__.py:69-95` |
+| Observability | DLQ alarm + non-zero ECS exit rule → SNS email; per-run records and logs | `scripts/provision_compute_stack/__init__.py` |
 
 What the cleaning stage needs at runtime: S3 (raw + artifacts + manifests), one Athena query (selection), and one LLM API key (`KILO_API_KEY`, Kilo Gateway). All state lives in the lake — compute is stateless.
+
+### Remaining operational gaps
+
+- The eval-before-promote rule is still runbook prose, not an enforced gate ([#15](https://github.com/moonuel/semantic-career-map/issues/15)).
+- The local single-runner flock is host-scoped; a manual and scheduled cloud task can overlap ([#19](https://github.com/moonuel/semantic-career-map/issues/19)).
+- A hard `SIGKILL` still leaves a part plus checkpoint without a completed run record; the data is reconstructible, not fully recorded.
+- The Glue `artifacts_cleaned` table is registered at `variant=llm/version=v1`; a new cleaning version requires re-registration.
 
 ## 2. Gap analysis
 
@@ -49,45 +56,45 @@ Eval stays a **manual gate**: it runs when a cleaning configuration changes (`--
 
 ## 4. Work items
 
-### 4.1 Prerequisites (existing roadmap phases — unexecuted)
+### 4.1 Prerequisites (existing roadmap phases — landed)
 
-- [ ] Phase 0: account, billing alarm ($1), budget ($2/mo), region in `.env` comments.
+- [x] Phase 0: account, billing alarm ($1), budget ($2/mo), region in `.env` comments.
 - [x] Phase 1: S3 `lake` bucket live; `ObjectStore` is backend-neutral (`STORE_S3_*`). The local Garage store was retired 2026-10-28 — the stores had diverged, and the Garage-only payloads were retired with it rather than migrated.
-- [ ] Phase 2: pipeline execution role — `s3:GetObject/PutObject/ListBucket`, CloudWatch Logs. Verified in the IAM Policy Simulator.
+- [x] Phase 2: pipeline execution role — `s3:GetObject/PutObject/ListBucket`, CloudWatch Logs. Verified in the IAM Policy Simulator.
 
 ### 4.2 IAM extension for the cleaning tier
 
-- [ ] Add to the Phase 2 role: `athena:StartQueryExecution/GetQueryResults/StopQueryExecution`, `glue:GetDatabase/GetTable/GetPartitions`, and S3 read/write on the Athena results prefix (defined in task 2.3's workgroup config).
-- [ ] Negative-test: Athena writes only to its workgroup results prefix, not artifact branches.
+- [x] Add to the Phase 2 role: `athena:StartQueryExecution/GetQueryResults/StopQueryExecution`, `glue:GetDatabase/GetTable/GetPartitions`, and S3 read/write on the Athena results prefix (defined in task 2.3's workgroup config).
+- [x] Negative-test: Athena writes only to its workgroup results prefix, not artifact branches.
 
 ### 4.3 SSM Parameter Store for the LLM key
 
-- [ ] One `SecureString` (e.g. `/semantic-career-map/KILO_API_KEY`). **SSM, not Secrets Manager** — standard tier is free vs $0.40/secret/month.
-- [ ] Fargate task role grants `ssm:GetParameter*` on that one path. All non-secret config (bucket, dataset, model, workers, flush triggers) rides task-definition environment variables — the CLIs are already env/flag driven.
-- [ ] Roadmap §2 note: "no long-lived access keys" gains the one non-IAM secret and its handling.
+- [x] One `SecureString` (e.g. `/semantic-career-map/KILO_API_KEY`). **SSM, not Secrets Manager** — standard tier is free vs $0.40/secret/month.
+- [x] Fargate task role grants `ssm:GetParameter*` on that one path. All non-secret config (bucket, dataset, model, workers, flush triggers) rides task-definition environment variables — the CLIs are already env/flag driven.
+- [x] Roadmap §2 note: "no long-lived access keys" gains the one non-IAM secret and its handling.
 
 ### 4.4 Image + task definitions (extend Phase 3b's artifacts)
 
-- [ ] One Fargate image covering both non-Lambda tiers (scrape curator + cleaning). Dependencies are disjoint-ish but small (pyarrow, pandas, boto3, httpx, the scraper's requests stack); one ECR repo, multi-entrypoint `CMD` via command override per task. Split images later only if size bites (ECR free tier has room).
-- [ ] `deploy/` gains the Dockerfile, task-definition JSONs, and an SSM-parameter task role. Fargate 0.25 vCPU ARM / 0.5 GB, auto-assign public IP, default VPC, **no NAT** (egress is public Kilo Gateway + S3/Athena — the guardrail-4 exception already cited for the scraper applies identically).
+- [x] Three separate Fargate images on one ECR repo: `:scrape` (curator), `:clean` (cleaning), and `:embed` (Titan-only, no torch). The split keeps the embedding image small and avoids shipping unrelated dependencies.
+- [x] `deploy/` gains the Dockerfiles, task-definition JSONs, and an SSM-parameter task role. Curator: 0.25 vCPU / 0.5 GB. Cleaning: 1 vCPU / 2 GB. Embedding: 2 vCPU / 4 GB. All use auto-assign public IP, default VPC, and **no NAT** (egress is public Kilo Gateway/Bedrock + S3/Athena — the guardrail-4 exception already cited for the scraper applies identically).
 
 ### 4.5 Daily driver (the only new code)
 
-- [ ] New `backend/pipeline/cleaning/daily.py` (module docstring + CLI): Athena query → manifest render → runner, then exit-code mapping (`completed` → 0; `interrupted`/`failed` → 1). Sizing: under ~150 lines; reuses `selection.py`, `runs.py`, runner CLI as libraries.
-- [ ] Add `--max-run-hours` guard: at the deadline the driver sets the existing stop event (flush-on-stop path), so an over-long run lands `interrupted` durably and the next run replays the remainder via cache hits. This is the Fargate substitute for a task timeout — wall-clock billing makes "must exit" (Phase 3b invariant) a first-class requirement.
-- [ ] Unit tests: driver over stubbed Athena client (fixture rows → manifest byte-identical to `selection.py`'s), stop-event fired at deadline path.
-- [ ] Backfill policy: run the 9,316-row full-lake clean **locally first** (~35–50 min at 8 workers, ~$3.40 LLM, D8's measured basis), then confirm the cloud tier idempotent (0 new LLM calls). Either host produces identical artifacts — rows are content-identical by design. A cloud full-lake run is the explicit `daily --backfill` invocation (both deployment bounds off).
+- [x] New `backend/pipeline/cleaning/daily.py` (module docstring + CLI): Athena query → manifest render → runner, then exit-code mapping (`completed` → 0; `interrupted`/`failed` → 1). Sizing: under ~150 lines; reuses `selection.py`, `runs.py`, runner CLI as libraries.
+- [x] Add `--max-run-hours` guard: at the deadline the driver sets the existing stop event (flush-on-stop path), so an over-long run lands `interrupted` durably and the next run replays the remainder via cache hits. This is the Fargate substitute for a task timeout — wall-clock billing makes "must exit" (Phase 3b invariant) a first-class requirement.
+- [x] Unit tests: driver over stubbed Athena client (fixture rows → manifest byte-identical to `selection.py`'s), stop-event fired at deadline path.
+- [x] Backfill policy: run the 9,316-row full-lake clean **locally first** (~35–50 min at 8 workers, ~$3.40 LLM, D8's measured basis), then confirm the cloud tier idempotent (0 new LLM calls). Either host produces identical artifacts — rows are content-identical by design. A cloud full-lake run is the explicit `daily --backfill` invocation (both deployment bounds off).
 
 ### 4.6 Scheduling + observability (small extension of Phase 4)
 
-- [ ] Third EventBridge Scheduler target: `rate(1 day)` at an offset ~2 h after the scrape targets (e.g. scraps at 04:00, cleaning at 06:00) — an offset, not a chain.
-- [ ] Alarms are already Phase 4's: ECS task `STOPPED` with non-zero exit → SNS email; no new alarm needed. CloudWatch Logs groups per tier; the run record's latency/usage/cost aggregates (D9/D10) can be surfaced via a dashboard later.
+- [x] Third and fourth EventBridge Scheduler targets: cleaning at 06:00 UTC and embedding at 07:00 UTC, after the 04:00 ATS and 05:00 curator scrape runs — offsets, not chains.
+- [x] Alarms reuse Phase 4's: ECS task `STOPPED` with non-zero exit → SNS email. CloudWatch Logs groups per tier; the run record's latency/usage/cost aggregates (D9/D10) can be surfaced via a dashboard later.
 - [ ] Optional watchers: `lens on run.json status` via a weekly Athena query over `manifests/runs` (cheap; only if operator trust in exit codes proves insufficient).
 
 ### 4.7 Roadmap + docs
 
-- [ ] Roadmap gains the new phase (insert as **Phase 4.5 — cleaning tier**, between scheduling and query) mirroring the 3a/3b format: what it teaches (SSM, IAM extension, idempotence-as-orchestration), touchpoints, gate, cost.
-- [ ] `data.md` migration table gains the automation row; README status after landing.
+- [x] Roadmap status and current-state table updated for the cleaning and embedding tiers; the detailed design remains here rather than inserted as a separate Phase 4.5 section.
+- [x] `data.md` migration table gains the automation row; README status after landing.
 
 ## 5. Gate (verification trail for the new phase)
 
@@ -97,7 +104,7 @@ Eval stays a **manual gate**: it runs when a cleaning configuration changes (`--
 4. **Recovery kill test:** `docker stop` mid-run locally against the cloud store → `interrupted` status, durable flushes, next run replays remainder via cache hits.
 5. **Lineage:** manifests alone reconstruct dataset → run → eval-results edges exactly as task 5.1 verified locally, now computing from cloud-hosted parts.
 
-## 6. Cost delta (steady state, after Phase 4's ~$1.50/mo)
+## 6. Cost delta (steady state, after the scrape/scheduler baseline)
 
 | Service | Driver | Monthly |
 |---|---|---|
@@ -111,7 +118,7 @@ One-off: full-lake backfill ~$3.40 LLM + ~$0.02 compute. Everything above stays 
 
 ## 7. Risks and open decisions
 
-- **Kilo Gateway rate limits / availability** — the client already retries 429/5xx with backoff (D6 fail-fast preserved); a persistent outage fails the run visibly and replays free tomorrow. No fallback model is configured; decide whether `gpt-5.4-nano` stays a config-only control.
+- **Kilo Gateway rate limits / availability** — the client already retries 429/5xx with backoff (D6 fail-fast preserved); a persistent outage fails the run visibly and replays free tomorrow. No fallback model is configured; decide whether a second model becomes a config-only control.
 - **Hard-kill window** (documented in tasks §5.1): in-flight calls lost on `SIGKILL` are exactly the loss window; on-demand (non-Spot) Fargate reduces kill probability, cache bounds the cost. Do not enable Fargate Spot for the cleaning tier.
 - **Fargate wall-clock creep** — the curator tier's crawl grows with the sitemap; the cleaner's runtime grows with uncleaned backlog. `--max-run-hours` bounds both; articulate the alarm threshold if backlog lags growth for a week (backlog growth is faster than daily cleanup ⇒ investigation, not retry).
 - **Single-region, single-account** stands; nothing here adds cross-region state.
@@ -122,7 +129,7 @@ One-off: full-lake backfill ~$3.40 LLM + ~$0.02 compute. Everything above stays 
 1. Phases 0–1 (account + S3 migration) — gating everything.
 2. Phase 2 + §4.2/§4.3 (role, Athena/SSM extensions) — one IAM edit instead of two.
 3. Phases 3a–4 (scrape tiers + daily schedule + alarms) — the roadmap as written.
-4. §4.4–4.6 (cleaning tier: image, driver, third target) — reuses 3b's proven pattern one tier later.
+4. §4.4–4.6 (cleaning + embedding tiers: images, drivers, scheduled targets) — reuses 3b's proven pattern one tier later.
 5. §4.7 docs wrap + new-phase gate run.
 
 Principle carried through: the lakes's manifests are the observable record; cloud compute is disposable state riding on top.

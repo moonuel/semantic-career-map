@@ -4,12 +4,12 @@
 
 Job postings were manually collected from LinkedIn by copying content into markdown files. Each file preserves the original posting structure including headers and bullet points.
 
-> **2026-10-23 update — this section describes the curated experiment corpus (27 postings, July 2026).** Production collection has since moved to the lake: 9.2k raw postings content-addressed in the object store (`lake/raw/`, see [data.md](../architecture/data.md)), from which the cleaning pipeline selects and produces the landed `cleaned_text` dataset. The 27-posting JSON corpus remains the golden-set and experiment history source.
+> **2026-10-23 update — this section describes the curated experiment corpus (27 postings, July 2026).** Production collection has since moved to the lake: roughly 9–10k raw postings content-addressed on S3 (`lake/raw/`, see [data.md](../architecture/data.md)), from which the scheduled cleaning pipeline selects and produces the `cleaned_text` dataset. The 27-posting JSON corpus remains the golden-set and experiment history source.
 
 | Property | Value |
 |---|---|
 | Source | LinkedIn job postings |
-| Count | 27 postings (curated experiment/golden corpus; the lake raw layer holds 9.2k) |
+| Count | 27 postings (curated experiment/golden corpus; the lake raw layer holds ~9–10k) |
 | Format | Markdown (`data/selected-job-postings/*.md`) |
 | Storage | Structured JSON (`data/jobs.json`) |
 | Period | July 2026 |
@@ -78,7 +78,7 @@ Content systematically removed: company descriptions, salary/compensation, benef
 
 **Experiment 008 correction:** the 003 prompt's over-deletion (12.8–39.4% vs golden) was confirmed at scale on a hand-curated 39-posting golden set (22.8% mean over-deletion with the original prompt). A revised **boilerplate-only** prompt family — including a v3 variant distilled from measured human strip behavior — reduces over-deletion to 2.3–5.2% at zero hallucination, and `gemini-2.5-flash-lite` edges `gpt-5.4-nano` on fidelity (Jaccard 0.894 vs 0.858). See the [experiment report](../experiments/008-boilerplate-only-cleaning.md) and `scripts/008_boilerplate_only_cleaning/`.
 
-**Production status (landed 2026-10-23):** the winner is now the production cleaning stage — `backend/pipeline/cleaning` (selection via Athena anti-join, per-posting fail-fast with a quality-gated retry ledger and zero-mean admitted loss, flush-watermark parts, artifact-cache done-index keyed by `(source_hash, configuration_hash)`). Landed over the pinned sample: 65-row `cleaned_text/variant=llm/version=v1` on the dev store (`google/gemini-2.5-flash-lite`, `configuration_hash 4486c2d5…`), plus the eval loop — golden Parquet (39 manual references) and `cleaning_quality` results per rubric under `backend/pipeline/eval` (exp-003 metrics verbatim); fresh eval over the sample: mean Jaccard 0.958, mean over-deletion 0.9%, zero hallucinations. Run the CLI with `python -m backend.pipeline.cleaning --help` / `python -m backend.pipeline.eval --help`. Layout and lineage: [data.md](../architecture/data.md); decisions: [design-decisions.md](../architecture/design-decisions.md); adoption findings: [experiment 007](../experiments/007-llm-latency-benchmark.md) (adoption section) and [008](../experiments/008-boilerplate-only-cleaning.md).
+**Production status (landed 2026-10-23, scheduled since):** the winner is the production cleaning stage — `backend/pipeline/cleaning` (Athena anti-join selection, per-posting fail-fast with a quality-gated retry ledger and zero-mean admitted loss, flush-watermark parts, artifact-cache done-index keyed by `(source_hash, configuration_hash)`). It ran first over a pinned sample (65-row `cleaned_text/variant=llm/version=v1`, `google/gemini-2.5-flash-lite`, `configuration_hash 4486c2d5…`) and now runs daily at 06:00 UTC, bounded to 3 days / 5,000 rows; the cleaned corpus reached 9,621 rows at the 2026-10-31 snapshot. The eval loop is a manual gate over a 39-reference golden Parquet and `cleaning_quality` results under `backend/pipeline/eval` (exp-003 metrics verbatim); fresh eval over the golden ∩ sample intersection: mean Jaccard 0.958, mean over-deletion 0.9%, zero hallucinations. Run the CLI with `python -m backend.pipeline.cleaning --help` / `python -m backend.pipeline.eval --help`. Layout and lineage: [data.md](../architecture/data.md); decisions: [design-decisions.md](../architecture/design-decisions.md); adoption findings: [experiment 007](../experiments/007-llm-latency-benchmark.md) (adoption section) and [008](../experiments/008-boilerplate-only-cleaning.md).
 
 ### Step 3: Semantic Partitioning (New)
 

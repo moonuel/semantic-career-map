@@ -23,23 +23,25 @@ aws sts get-caller-identity   # verify who boto3/the CLI will act as
 ### Query
 
 ```bash
-# list buckets (expect: eval, live, configs, lake)
+# list buckets (expect: eval, live, configs, lake, state)
 aws s3 ls
 
+BUCKET="${STORE_S3_BUCKET:?set STORE_S3_BUCKET to your lake bucket}"
+
 # list objects under a prefix
-aws s3 ls s3://lake/raw/source=linkedin/
+aws s3 ls "s3://$BUCKET/raw/source=linkedin/"
 
 # everything, recursively
-aws s3 ls s3://lake --recursive --human-readable --summarize
+aws s3 ls "s3://$BUCKET" --recursive --human-readable --summarize
 
 # print an object to stdout (no temp file)
-aws s3 cp s3://live/raw/<id>/source.md -
+aws s3 cp "s3://$BUCKET/raw/source=<source>/sha256=<hash>.json" -
 
 # size/etag without downloading
-aws s3api head-object --bucket lake --key "lake/raw/source=linkedin/sha256=<hash>.json"
+aws s3api head-object --bucket "$BUCKET" --key "raw/source=linkedin/sha256=<hash>.json"
 
 # count objects in a branch
-aws s3 ls s3://live/raw/ --recursive | wc -l
+aws s3 ls "s3://$BUCKET/raw/" --recursive | wc -l
 ```
 
 Notes:
@@ -56,13 +58,14 @@ Field-discipline lakehouse for job postings under construction (see `docs/projec
 
 | Deliverable | Status |
 |---|---|
-| Lake ingestion | 🟡 live — 9.2k content-addressed raw postings on the dev store, manifest branches live |
-| Data selection (Athena catalog) | 🟡 live — `select_uncleaned` anti-join drives the production cleaning selection (D12) |
-| LLM cleaning (boilerplate-only, exp 008) | 🟡 live — `cleaned_text/variant=llm/version=v1` (flush-watermark parts, artifact-cache, `python -m backend.pipeline.cleaning`) |
-| Cleaning evaluation (exp 003 metrics) | 🟡 live — golden + `cleaning_quality` result datasets with run manifests (`python -m backend.pipeline.eval`) |
-| Scrape + clean on AWS | 🟢 live — Lambda ATS tier + Fargate curator/clean tasks, daily EventBridge schedules (04:00/05:00/06:00 UTC), provisioner `python -m scripts.provision_compute_stack`; runbook in `deploy/README.md` |
-| Embedding tier | 🟡 live — normalized Titan V2 (`amazon.titan-embed-text-v2:0`, 1,024-d) is the scheduled `daily-embed` generation under `embeddings/model=amazon-titan-embed-text-v2/variant=titan-v2/version=v1/`; MiniLM 384-d stays listed for rollback (`python scripts/embed.py`) |
-| Clustering → API → Docker | 🔴 next phases |
+| Lake ingestion | ✅ live — content-addressed raw postings on S3, ingestion manifests per run |
+| Data selection (Athena catalog) | ✅ live — `select_uncleaned` / `select_unembedded` anti-joins drive scheduled selection |
+| LLM cleaning (boilerplate-only, exp 008) | ✅ live — `cleaned_text/variant=llm/version=v1` with flush-watermark parts, artifact cache, run records |
+| Cleaning evaluation (exp 003 metrics) | 🟡 implemented, manual gate — golden + `cleaning_quality` result datasets with run manifests |
+| Scrape + clean + embed on AWS | ✅ live — Lambda ATS tier + Fargate curator/clean/embed tasks, four daily EventBridge schedules (04:00/05:00/06:00/07:00 UTC) |
+| Embedding tier | ✅ live — normalized Titan V2 (`amazon.titan-embed-text-v2:0`, 1,024-d), version claims + production pointer; MiniLM 384-d rollback |
+| Map + demo | ✅ live — 10,010 Titan V2 postings (1,024-d), published 2026-11-05 with lazy detail buckets |
+| Clustering → API → app deployment | 🔴 next phases — EVōC clustering is experimental; FastAPI and resume search are not built |
 
 ---
 

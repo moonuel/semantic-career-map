@@ -1,6 +1,9 @@
 # Demo
 
-Interactive map of the current job-posting corpus. Each point is a posting placed by UMAP over its MiniLM embedding, so nearby postings describe similar work.
+Interactive map of the current published job-posting snapshot. Each point is a posting placed by UMAP over its production **Amazon Titan V2** embedding, so nearby postings describe similar work.
+
+!!! info "Current generation"
+    Published 2026-11-05 from the production pointer's first embedding entry: normalized **Amazon Titan V2 (1,024-d)**, **10,010 postings**.
 
 <iframe
   src="map/index.html"
@@ -14,14 +17,14 @@ Interactive map of the current job-posting corpus. Each point is a posting place
 </p>
 
 !!! info "What this demo is"
-    Hover a point for the job title and employer. Click a point for the posting details. The map is generated offline by `scripts/map.py`; the resume-to-role search interface is still planned for Phases 4 and 7 of the [project scope](project.md).
+    Hover a point for the job title. Click a point for the posting details. The map is generated offline by `scripts/map.py`; the resume-to-role search interface is still planned.
 
 ## How to read the map
 
 - **Distance** indicates semantic similarity: postings close together use similar language and responsibilities.
-- **Hover** a point to see its title and employer.
-- **Click** a point to open the posting details panel.
-- The current artifact covers 9,354 postings from the MiniLM generation. The map loads its Deck.GL runtime from a CDN, so an internet connection is required.
+- **Hover** a point to see its title.
+- **Click** a point to open the posting details panel, including employer, location, salary, source, and cleaned text.
+- The published artifact covers 10,010 postings from the Titan V2 generation. The map loads its Deck.GL runtime from a CDN, so an internet connection is required.
 
 <!-- ## Example query
 

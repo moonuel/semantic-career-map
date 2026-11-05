@@ -15,11 +15,11 @@
 | Active work-in-progress items (backlog) | `TODO.md` |
 | Developer log (dated journal) | `dev-log/index.md`, `dev-log/2026.md` |
 | Capability spec inventory (canonical) | `openspec/specs/` (6 specs: data-ingestion, llm-text-extraction, embedding-pipeline, evaluation-framework, semantic-partitioning, taxonomy-label-generation) |
-| Current phase / deliverable status table | `project.md:81-93`, `index.md:88-106` (commented-out) |
-| Experiment # and status (completed/planned) | `experiments/index.md:24-65`, `research-reports/index.md:36-44`, `project.md:81-93` |
-| Dataset size (27 postings) | `project.md:85`, `technical/data-processing.md:11-12`, `technical/evaluation.md:140`, `technical/embedding-pipeline.md:38`, `results.md:113`, `results.md:10` (date), `experiments/001-baseline-embedding.md:11`, `architecture/design-decisions.md` (precomputed embeddings) |
-| Embedding model name | `index.md:61` (badge), `architecture/design-decisions.md` (design rationale), `technical/embedding-pipeline.md:44-57`, `technical/tech-choices.md:19`, `index.md:81` (commented-out), `experiments/001-baseline-embedding.md:24`, `experiments/002-boilerplate-removal.md:18` |
-| Tech stack badges (FastAPI/Docker "planned") | `index.md:63-64` |
+| Current phase / deliverable status table | `project.md` §Current Status, `index.md` current-work callout |
+| Experiment # and status (completed/planned) | `experiments/index.md`, `research-reports/index.md`, `project.md` §Current Status |
+| Dataset size (27 experiment corpus; production lake is separate) | `project.md` §Current Status, `technical/data-processing.md:5-13`, `technical/evaluation.md:140`, `technical/embedding-pipeline.md:38`, `results.md` (experiment-era sections), `experiments/001-baseline-embedding.md:11` |
+| Embedding model name (Titan V2 production; MiniLM rollback) | `index.md` badges, `architecture/design-decisions.md` (design rationale), `technical/embedding-pipeline.md`, `technical/tech-choices.md`, `experiments/001-baseline-embedding.md:24`, `experiments/002-boilerplate-removal.md:18` |
+| Tech stack badges | `index.md` badges |
 
 **When status changes:** Update `project.md`, then uncomment/update `index.md:88-106`. Update `experiments/index.md` and `research-reports/index.md` if experiments are affected.
 
@@ -71,12 +71,12 @@ Adding a research report requires updating:
 |---|---|
 | All 7 design decisions (pipeline stages, dense embedding, L2 norm, precomputed, stateless API, LLM extraction, immutable scripts) | `architecture/design-decisions.md` |
 | Why L2 normalization | `architecture/design-decisions.md`, `technical/embedding-pipeline.md:69-82`, `research-reports/001-embedding-optimization-research.md:78-96` |
-| Why all-MiniLM-L6-v2 | `architecture/design-decisions.md`, `technical/embedding-pipeline.md:57-65`, `technical/tech-choices.md:19` |
+| Why all-MiniLM-L6-v2 initially / Titan V2 now | `architecture/design-decisions.md`, `technical/embedding-pipeline.md`, `technical/tech-choices.md` |
 | Why precomputed embeddings | `architecture/design-decisions.md` |
-| Why CPU-only | `architecture/design-decisions.md`, `technical/tech-choices.md:10` |
+| Why CPU-only locally (legacy) / managed Bedrock inference now | `architecture/design-decisions.md`, `technical/tech-choices.md` |
 | Why stateless API | `architecture/design-decisions.md` |
 | Why LLM-based boilerplate removal | `architecture/design-decisions.md`, `technical/tech-choices.md:13`, `technical/data-processing.md:66-75` |
-| Lakehouse data layout: S3 raw layer, Parquet datasets, Hive partitions, metadata/manifests, Athena catalog alignment, legacy store migration | `architecture/data-layout.md` |
+| Lakehouse data layout: S3 raw layer, Parquet datasets, Hive partitions, metadata/manifests, Athena catalog alignment, legacy store migration | `architecture/data.md` |
 | AWS migration roadmap: phased local-store→S3 (Garage retired 2026-10-28), Lambda scraper, EventBridge scheduler, IAM, Glue/Athena; per-phase gates and cost guardrails | `architecture/aws-migration-roadmap.md` |
 | Ingestion + cleaning automation on AWS: Phase 4.5 cleaning tier (Fargate daily driver: Athena select → render manifest → clean run), SSM for `KILO_API_KEY`, idempotence-as-orchestration, gates and cost delta | `architecture/cleaning-automation-report.md` |
 
@@ -142,11 +142,11 @@ The architecture section is multi-page (like the Technical Details section): `ar
 
 | File | What to Update |
 |---|---|
-| `mkdocs.yml` `nav:` | Add new experiment/research report pages, uncomment technical sub-pages when ready |
-| `index.md` | Update badges (FastAPI, Docker from "planned" when built), uncomment "Current Status" section |
-| `project.md` | "Current Status" table — the canonical project progress tracker |
-| `demo.md` | Update when demo is built (currently all placeholder) |
-| `architecture/overview.md` (landing) + sub-pages | Uncomment system overview, components table, data flow, repo structure when design settles; register new notes in the overview grid and nav |
+| `mkdocs.yml` `nav:` | Add new experiment/research report pages; add technical/architecture pages when they are ready for the sidebar |
+| `index.md` | Update badges and the current-work callout |
+| `project.md` | "Current Status" table and system index — the canonical project progress tracker |
+| `demo.md` | Update when the published map generation or demo behavior changes |
+| `architecture/overview.md` (landing) + sub-pages | Update the pipeline status table, diagram, and control-plane notes when the live architecture changes; register new notes in the overview grid and nav |
 
 ---
 
@@ -174,22 +174,22 @@ The architecture section is multi-page (like the Technical Details section): `ar
 4. Open threads → `TODO.md` backlog, quoted with a link to the entry anchor
 
 ### Changing architecture/technical decisions:
-1. Update the relevant page under `architecture/` (e.g. `architecture/design-decisions.md` for decisions, `architecture/data-layout.md` for storage layout)
+1. Update the relevant page under `architecture/` (e.g. `architecture/design-decisions.md` for decisions, `architecture/data.md` for storage layout)
 2. Update `technical/tech-choices.md` tables
 3. Update `technical/embedding-pipeline.md` if embedding strategy changes
 4. Update `technical/data-processing.md` if preprocessing changes
 5. Update `index.md` badges if tech stack changes
 
 ### Advancing project phase:
-1. Update `project.md` "Current Status" table
-2. Uncomment relevant sections in `index.md`
+1. Update `project.md` "Current Status" table and system index
+2. Update the `index.md` current-work callout
 3. Update `index.md` badges
-4. Update `technical/overview.md` when done
-5. Uncomment relevant sections in `architecture/overview.md`
+4. Update `technical/overview.md` when the implementation surface changes
+5. Update `architecture/overview.md` when the pipeline/status changes
 
 ### Changing the dataset:
 1. Update `technical/data-processing.md` dataset properties and role breakdown
-2. Update `project.md` (commented-out data status section)
+2. Update `project.md` "Current Status" and system index
 3. Update `technical/evaluation.md` limitations section
 4. Update all experiment pages that reference dataset size (001, 002, 003)
 5. Update `results.md` conclusions

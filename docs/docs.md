@@ -65,4 +65,4 @@ Engineering notes for the AI/ML Career Map: the project's scope, system architec
 
 - [Results](results.md) — measured outcomes and current findings
 - [Backlog](TODO.md) — open work and known gaps
-- [Demo](../demo/) — interactive job map
+- [Demo](demo.md) — interactive job map

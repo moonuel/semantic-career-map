@@ -49,6 +49,7 @@ nav:
           - Overview: architecture/overview.md
           # - Design Decisions: architecture/design-decisions.md
           - Data Architecture: architecture/data.md
+          - Athena Lakehouse Layout: architecture/athena-layout.md
           - AWS Migration Roadmap: architecture/aws-migration-roadmap.md
           - Cleaning & Ingestion Automation: architecture/cleaning-automation-report.md
       - Technical:

@@ -1,9 +1,16 @@
 # Results
 
-!!! info "Results are also in progress!"
-    This page will be used to summarize the performance results of the pipeline, once it is completed. 
-    
-    In the meantime, this page is used to document the strongest findings that will be solidified in the final work.
+!!! info "Current findings"
+    The pipeline is live on AWS; this page records the strongest validated findings and the state of the published artifacts. Later sections preserve the experiment-era results and dates.
+
+As of November 5, 2026:
+
+- The production pipeline now runs end to end on AWS: ATS ingestion at 04:00 UTC, dataroles curation at 05:00, cleaning at 06:00, and Titan V2 embedding at 07:00. The cleaning and embedding tiers use Athena anti-joins, so scheduled runs process deltas rather than the full corpus.
+- Normalized **Titan V2** is the production embedding generation (1,024-d, Bedrock). Experiment 012 selected it over MiniLM; the unresolved subsample stability risk (ARI 0.488) was accepted explicitly.
+- The **published demo map is the Titan V2 generation**: 10,010 postings, 1,024-d, with 256 lazy detail buckets, published 2026-11-05. It was generated from the production pointer's first embedding entry and replaces the earlier 9,354-point MiniLM snapshot.
+- Experiment 011 completed the encoder coverage bake-off and Experiment 012 produced exploratory EVōC overlay maps on a 1,000-posting sample. The overlays are not deployed and do not replace the full-corpus map.
+- GitHub Actions now runs `ruff` and `pytest` on Python 3.14, and the docs workflow builds with Zensical and syncs the published map from S3 before deploying Pages.
+- The retrieval API and resume-to-role search are still not built; the demo is a map, not the finished search product.
 
 As of July 27, 2026:
 

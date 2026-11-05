@@ -4,25 +4,29 @@ Items I'm still working on.
 
 ## Pipeline & Architecture
 
-- "Formalization of the pipeline in multiple stages in backend modules may be helpful in the short term." — [2026-07-23](dev-log/2026.md#july-23-2026)
-- "An architecture document to accommodate modularity and future expansion would be good." — [2026-07-23](dev-log/2026.md#july-23-2026)
+- ~~"Formalization of the pipeline in multiple stages in backend modules may be helpful in the short term." — [2026-07-23](dev-log/2026.md#july-23-2026)~~ **landed as the cleaning, embedding, eval, and query-layer modules**
+- ~~"An architecture document to accommodate modularity and future expansion would be good." — [2026-07-23](dev-log/2026.md#july-23-2026)~~ **architecture section and data/cleaning/AWS pages are live**
 - ~~"Boilerplate removal should probably be its own pipeline step." — [2026-07-27](dev-log/2026.md#july-27-2026)~~ **landed as the production cleaning stage** — [2026-10-23](dev-log/2026.md#october-23-2026)
 - "It would fall under pre-processing - the boilerplate-cleaned text minus the raw text should always be empty (no hallucination)" — [2026-07-27](dev-log/2026.md#july-27-2026)
-- "wire in the remaining evaluation jobs" — [2026-10-25](dev-log/2026.md#october-25-2026)
+- "wire in the remaining evaluation jobs" — [2026-10-25](dev-log/2026.md#october-25-2026). Cleaning quality is wired; the IR/relevance evaluation set and `pytrec_eval` path remain open.
+- Enforce the cleaning eval-before-promote gate instead of runbook prose ([#15](https://github.com/moonuel/semantic-career-map/issues/15)).
 
 ## Deployment & Ops
 
 - "consider automatic redeploy on git tag push, or keeping it manual" — [2026-10-25](dev-log/2026.md#october-25-2026)
-- "push the embedding vector job to production and schedule it in a batch job as well" — [2026-10-25](dev-log/2026.md#october-25-2026)
+- ~~"push the embedding vector job to production and schedule it in a batch job as well" — [2026-10-25](dev-log/2026.md#october-25-2026)~~ **landed: Titan V2 embed task scheduled daily at 07:00 UTC**
+- Add automated map publication and a provenance check (point count, embedding generation, coordinate/details completeness); S3 sync is manual and the Pages workflow only checks file existence.
+- Build and deploy the FastAPI retrieval layer, including resume-to-role similarity search.
 
 ## Data & Versioning
 
-- "The better first step is to formalize and capture this existing structure I think. SQL database perhaps, for the raw and important intermediate representations (like cleaned data and engineered features)." — [2026-08-25](dev-log/2026.md#august-25-2026)
-- "Planning for the future, ML systems require both data and experiment versioning. From Huyen (DSML), you want to capture the entire computational experiment that produced the data." — [2026-08-25](dev-log/2026.md#august-25-2026)
+- ~~"The better first step is to formalize and capture this existing structure I think. SQL database perhaps, for the raw and important intermediate representations (like cleaned data and engineered features)." — [2026-08-25](dev-log/2026.md#august-25-2026)~~ **landed as the S3 lakehouse + Glue/Athena query layer**
+- "Planning for the future, ML systems require both data and experiment versioning. From Huyen (DSML), you want to capture the entire computational experiment that produced the data." — [2026-08-25](dev-log/2026.md#august-25-2026). Run/dataset manifests and the production pointer cover the main path; MLflow-style experiment tracking is still planned.
 - ~~"Data versioning will become crucial. Use S3 object store" — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Done
 - ~~"One blocker is the limited data. Will plan to generate synthetic data, in lieu of more expensive and true data engineering techniques." — [2026-09-16](dev-log/2026.md#september-16-2026)~~ Used real data scrapers
-- Scheduled data scraping
+- ~~Scheduled data scraping~~ **landed: four daily AWS schedules (ATS, curator, clean, embed)**
 - ~~MLflow-style run lineage: dataset versions + run manifests~~ — **landed for the cleaning+eval branch** [2026-10-23](dev-log/2026.md#october-23-2026): `manifests/runs|datasets` live with `pipeline_version` (git sha) + `configuration_hash`, per-run flush checkpoints, per-dataset manifests for artifacts/golden/results. Still open from the original thread: no **environment snapshot** (runtime-dependency digest — two runs on the same commit aren't provably the same code), and the hard-kill window the 5.1 lineage verify caught live (a SIGKILLed run leaves part + checkpoint but no run record — reconstrucible, not complete). The sha pins the checked-out commit, not the working tree — `git describe --dirty` is the cheap fix if it ever matters.
+- Add a version-switch story for the Glue `artifacts_cleaned` table: it is registered at `variant=llm/version=v1`, so a new cleaning version needs re-registration or a partitioned table.
 - Next cleaning variant: the **organizational-context field** — split company-context lines off the cleaned text as a second artifact column so over-deletion has a measured home instead of a 5% flag — and a fuller golden set beyond the 39 references. — [2026-10-23](dev-log/2026.md#october-23-2026)
 - Clean-tier promotion gate — the eval-before-promote rule is runbook prose only; no enforced check ties a `:clean` push to an eval run or pinned-tag promotion. Filed as moonuel/semantic-career-map#15, 2026-10-25; sibling lineage gap (moving-tag runs record tag names, ATS Lambda records `dev`) filed as #16; the active-pipeline-version pointer (switch scheduled tiers between experimental variant/version branches) filed as #17.
 - The four residual AWS-push risks each filed: egress/security reconsideration path (#18), host-scoped flock → co-run decision (#19), LLM fallback posture ratification (#20), backlog daily metric without orchestrator (#21). — 2026-10-26
@@ -44,13 +48,15 @@ Items I'm still working on.
 - "One goal is to compare clustering results between
     - Cleaned postings, with/without the contextual information about the role within the organization (stored as a separate field)
     - Engineered features, maybe based on the role taxonomies, maybe something like generated description strings based on the cleaned data" — [2026-07-25](dev-log/2026.md#july-25-2026) *(Exp 005)*
-- "build embedding vector key builder and pipeline code" — [2026-10-25](dev-log/2026.md#october-25-2026)
+- ~~"build embedding vector key builder and pipeline code" — [2026-10-25](dev-log/2026.md#october-25-2026)~~ **landed: Titan V2 embedding tier, version claims, pointer, reconciliation, and daily schedule**
+- Turn the EVōC clustering results into a production cluster/label dataset and a serving contract.
 
 ## Features & Demo
 
 - "Ohhh you know what would be fire. Have the demo use some variations of my resume, embed them all, and see how different variations map to different job groups." — [2026-07-26](dev-log/2026.md#july-26-2026)
 - "I've done so much more than what can fit on a single resume sheet, this would be such a flex to also demonstrate my breadth" — [2026-07-26](dev-log/2026.md#july-26-2026)
-- "map out potential live interactive visualization tools" — [2026-10-25](dev-log/2026.md#october-25-2026)
+- ~~"map out potential live interactive visualization tools" — [2026-10-25](dev-log/2026.md#october-25-2026)~~ **landed: Deck.GL/DataMapPlot map with lazy details, published via S3 + GitHub Pages**
+- Build the resume-to-role search UI on top of the FastAPI retrieval layer.
 
 ## Ideas & Future Directions
 
